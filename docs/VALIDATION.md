@@ -144,3 +144,5 @@ uv run --frozen --offline --no-python-downloads python -m compileall -q sim2data
 不包含：Isaac/PhysX 运行、真实相机渲染同步、接触抓取、LeRobot SDK 写入回读、LFS 推拉、SSH 登录、子代理实际启动及 GPU 吞吐。元数据时间测试不能证明渲染器的真实图像没有延迟。
 
 交付中的视频关键帧和 `.local/DEPLOYMENT.md` 供本项目私有使用；不要通过公有 GitHub 分享。
+
+官方源码补充复核：overlay 内 538 个 Python 文件与固定 b64fe1ed submodule 逐文件 SHA256 一致，无缺失或新增 Python 文件；packaging shim 仅改打包元数据。私有证据：`export_official/source_python_hash_compare.json`、`local_submodule_crosscheck.json`、`lerobot_packaging_shim_setup.py`、`commands.json`。这不扩展到依赖环境或上游完整构建流程的验收。

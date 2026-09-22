@@ -77,3 +77,5 @@ compatibility test is not the official-source acceptance record. The newly
 generated `environments/data/uv.lock` is a separate 64-package candidate; the
 overlay run did not install or validate that entire lock. Source hashes, the
 packaging shim, and exact private commands remain in the evidence directory.
+
+官方源码补充复核：overlay 内 538 个 Python 文件与固定 b64fe1ed submodule 逐文件 SHA256 一致，无缺失或新增 Python 文件；packaging shim 仅改打包元数据。私有证据：`export_official/source_python_hash_compare.json`、`local_submodule_crosscheck.json`、`lerobot_packaging_shim_setup.py`、`commands.json`。这不扩展到依赖环境或上游完整构建流程的验收。
