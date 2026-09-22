@@ -1,13 +1,62 @@
 {
-  "status": "INVENTORY_ONLY_NOT_RUNTIME_VALIDATION",
+  "status": "IDENTITY_RECHECKED_SMOKE_STARTUP_FAILED_PRODUCTION_UNBOUND",
   "observed_on": "2026-09-22",
   "production_runtime": null,
   "candidate_environments": [
-    {"id": "existing_isaac51", "python": "3.11.15", "isaacsim": "5.1.0.0", "isaaclab_package_metadata": "0.47.3", "torch": "2.7.0+cu128", "candidate_asset_library": "5.1.0", "priority": "first headless verification candidate; no environment modification"},
-    {"id": "existing_isaac50", "python": "3.11.15", "isaacsim": "5.0.0.0", "isaaclab_package_metadata": "0.47.3", "torch": "2.7.0+cu128", "candidate_asset_library": null},
-    {"id": "existing_isaac61", "python": "3.12.13", "isaacsim": "6.1.0.0", "isaaclab_package_metadata": null, "torch": "2.11.0", "candidate_asset_library": null}
+    {
+      "id": "existing_isaac51",
+      "python": "3.11.15",
+      "isaacsim": "5.1.0.0",
+      "isaaclab_package_metadata": "0.47.3",
+      "torch": "2.7.0+cu128",
+      "candidate_asset_library": "5.1.0",
+      "priority": "first headless verification candidate; no environment modification",
+      "isaaclab_source_release_file": "2.3.0",
+      "isaaclab_upstream_commit": null,
+      "source_status": "unversioned copy; three selected core files match official v2.3.0; extension metadata differs",
+      "inherits_system_site_packages": true,
+      "smoke": {
+        "asset_role": "synthetic_fixture",
+        "result": "startup_failed_exit_139",
+        "physics_and_rgb_validated": false,
+        "findings": [
+          "duplicate NVIDIA Vulkan ICD enumeration",
+          "RTX plugin segfault before scene simulation",
+          "shared default DerivedDataCache exclusive lock failure"
+        ],
+        "retry_status": "portable-root and single-GPU settings prepared; retry deferred while unrelated workload uses GPU"
+      }
+    },
+    {
+      "id": "existing_isaac50",
+      "python": "3.11.15",
+      "isaacsim": "5.0.0.0",
+      "isaaclab_package_metadata": "0.47.3",
+      "torch": "2.7.0+cu128",
+      "candidate_asset_library": null,
+      "isaaclab_source_release_file": "2.3.0",
+      "isaaclab_upstream_commit": null,
+      "source_status": "same unversioned editable source as existing_isaac51"
+    },
+    {
+      "id": "existing_isaac61",
+      "python": "3.12.13",
+      "isaacsim": "6.1.0.0",
+      "isaaclab_package_metadata": null,
+      "torch": "2.11.0",
+      "candidate_asset_library": null,
+      "inherits_system_site_packages": true,
+      "isaaclab_source_release_file": null,
+      "priority": "not selected: Isaac Lab absent"
+    }
   ],
-  "required_before_binding": ["verify actual Isaac Lab source/version compatibility", "headless physics and RGB test", "selected USD and dependencies resolve", "record interpreter, packages, code commit and GPU driver"],
+  "required_before_binding": [
+    "review exact Isaac Lab source identity and local changes",
+    "headless physics and RGB test",
+    "selected USD and dependencies resolve",
+    "record interpreter, packages, code commit and GPU driver",
+    "freeze isolated reproducible simulation environment without modifying shared candidates"
+  ],
   "machine_paths": "private .local/paths.json only",
-  "evidence": "private reports/ubuntu_*_host_20260922.json"
+  "evidence": "private .local/evidence/m1/runtime{51,50,61}.json and upstream_source_comparison.json"
 }

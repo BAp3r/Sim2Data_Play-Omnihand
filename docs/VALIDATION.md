@@ -1,4 +1,41 @@
-# M0 验证记录
+# Sim2Data 验证记录
+
+## 2026-09-22 下一阶段实施（基线 0e523e0）
+
+用户本轮明确恢复 A/B/D 及有条件的运行时验证。实施分支从已发布 `0e523e06bb5b0909640a5875e0c37e42e7c4eec6` 派生，旧 A/D/E worktree 保留；不发布、不合并 main。实际启动三个 Luna Max 子代理，工作区和写入范围独立；主会话复核视觉观察、维护公共接口并集成。
+
+### B 装配输入与坐标链
+
+消费主会话实际审阅的 `OBS-M1-20260922-ROOT-01`；原片/帧哈希、时间位置和批准范围存 `.local/evidence/m1/approved_observation.json`。画面仅支持布局/安装拓扑，双 D405 型号来自用户说明，米制外参未解析。
+
+交付 `configs/assembly_inputs.template.json`、`docs/ASSEMBLY_INPUTS.md` 与手根/腕相机原子链接口。B 分支提交 `d251fb5c03bf6f587673c74c8d25ced2a2012bfa`，主分支审阅后 cherry-pick 为 `bdd9a64`；集成时进一步明确每侧安装载荷和模板不直接作为 scene_spec 的边界。B 单独测试实际为 **65 项总数、63 通过、2 跳过**，不是 65 通过外加 2 跳过。
+
+主会话复查：
+
+```powershell
+uv run --frozen --offline --no-python-downloads python -m unittest tests.test_frames tests.test_runtime_identity -v
+uv run --frozen --offline --no-python-downloads python -m sim2data.preflight --out .local/evidence/m1/preflight_after_assembly.json
+```
+
+18 项目标测试通过。预检退出 2，64 个未解析声明、0 个固定契约冲突、采集关闭。证据：`assembly_identity_tests.txt`、`preflight_after_assembly.json`。没有场景投影、初始碰撞、机器人运动、可达性或 M2 验收。
+
+### 运行时身份与实际启动失败
+
+三套候选用 `scripts/runtime_identity.py` 实际重新检查；解释器/包来源、editable 源码、继承配置和选定哈希见私有 `.local/evidence/m1/runtime{51,50,61}.json`。5.1/5.0 的 Isaac Lab 源码 release 文件是 2.3.0、包元数据 0.47.3，没有独立 Git 身份；三个核心文件与官方 v2.3.0 相同，但扩展元数据不同。不能据此声称整份源码原版或生产锁已完成。具体绑定方案见 `RUNTIME_BINDING.md`。
+
+远端准确命令包含机器路径，存 `.local/evidence/m1/COMMANDS.md`。实际命令形态为：
+
+```bash
+uv run --no-project --offline --no-python-downloads --python <existing-python> python runtime_identity_review.py --out <new-private-report.json>
+OMNI_KIT_ACCEPT_EULA=YES timeout 240s uv run --no-project --offline --no-python-downloads --python <existing-isaac51-python> python isaac_smoke.py --asset synthetic_box.usda --asset-role synthetic_fixture --out m1_synthetic_smoke_01
+```
+
+第一次 Kit smoke 使用自建 8 cm 立方体隔离启动，不是 card_box 或机器人。启动前 GPU 0% / 8248 MiB，占用允许尝试；日志出现重复 Vulkan NVIDIA ICD 枚举、默认共享 DerivedDataCache 锁失败和 RTX 段错误，**进程退出 139，physics/RGB 未通过**。崩溃发生在 SimulationApp 初始化，未产出有效 RGB/轨迹。日志及当时脚本分别为 `m1_synthetic_smoke_01.log`、`isaac_smoke_first_attempt.py`。
+
+后续按安装包源码改为显式 `--portable-root` 和单 GPU 配置，只通过 py_compile，未复试。其他任务随后占用 81777 MiB / 100%，本会话未停止其他进程；运行时继续阻断。单进程选择已核对的唯一 Vulkan ICD 是下次诊断方案，不是已验证修复。未修改驱动/系统包/共享环境，也未手工修改或清理公共 cache。
+
+下面章节为旧阶段历史，不能覆盖本节的最新实施授权与分项结果。
+
 
 ## 2026-09-22 本地轻量复核（文档交付后）
 

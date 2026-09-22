@@ -5,10 +5,10 @@
 | 配置项 | 位置或入口 | 当前状态与用途 |
 |---|---|---|
 | 机器路径与 NAS 挂载 | ignored `.local/paths.json`；公开说明 `configs/paths.example.json` | 已记录部分私有盘点路径，生产数据根和运行时未绑定。Windows UNC 与 Linux 挂载分别填写；符号链接不能代替网络挂载 |
-| 仿真环境 | 规划 `envs/sim/pyproject.toml` + `uv.lock` | 尚未生成最终锁。先复用已有 Isaac Lab/Sim 候选做兼容性验证，再锁 Python、PyTorch/CUDA 与引擎版本 |
+| 仿真环境 | `configs/runtime_candidates.json`、`scripts/runtime_identity.py`、`docs/RUNTIME_BINDING.md` | 三套候选已复核；5.1 synthetic 启动失败，生产绑定仍为空。未生成独立仿真锁；不把共享继承式环境的 freeze 当闭包 |
 | 导出环境 | 规划 `envs/export/pyproject.toml` + `uv.lock` | 与仿真环境隔离；固定官方 LeRobot SDK/视频编码依赖。根 `uv.lock` 仅覆盖无重依赖的 M0 工具 |
 | 机器人与资产 manifest | 规划 `configs/asset_manifest.*` | 官方来源/版本/hash/许可、arm 与 hand 的真实驱动映射、单位和限位；当前没有生产 manifest |
-| 标定与装配 | 原件放 `.local/calibration/` 或 ignored `calibration/`，公开草案 `configs/scene_spec.draft.json` | 桌面/底座/手/法兰/D405/框子参数仍需补齐；原件不进 GitHub。主相机可以设计，但位姿也必须填写 |
+| 标定与装配 | 原件放 `.local/calibration/` 或 ignored `calibration/`；`configs/assembly_inputs.template.json`、`docs/ASSEMBLY_INPUTS.md` | 已提供逐侧原子链和安装刚体输入模板；它不是可直接合并的场景配置。实测值仍为空；主相机位姿及覆盖也必须核查 |
 | 任务与采集 schema | `configs/scene_spec.draft.json` | 桌面中转、三路 RGB 和显式门禁已定义；阈值、可达性、反馈/命令维度尚未冻结，depth 默认关闭 |
 | 活动数据与缓存 | ignored `outputs/`、`datasets/`、`.cache/`、`logs/`、`reports/` | 实际可写根目录放服务器本地盘；每 writer 独立临时根，成功回读后归档 NAS。不要把不同进程指向同一个数据根 |
 | uv / Kit 缓存 | 用户级 `UV_CACHE_DIR` 与未来启动器配置的 Kit cache | 保留已有缓存；uv cache/venv 尽量同文件系统以便 hardlink。Kit 缓存只在实际启动器中绑定，不能假定通用环境变量会生效 |
@@ -30,3 +30,11 @@
 3. 绑定机器人、盒子资产和标定输入，核定单位与坐标链。
 4. 完成运行时兼容性验证，分别生成仿真/导出 uv 环境锁。
 5. 通过接触、相机与官方 SDK 验收后，再配置批次、seed、数据划分、并行度和归档策略。
+
+## 本轮运行时证据与下一次启动
+
+主会话的实际命令及机器路径集中在 ignored `.local/evidence/m1/COMMANDS.md`；`runtime51.json`、`runtime50.json`、`runtime61.json` 分别记录候选解释器和源文件身份。公开配置只使用候选 ID，不含服务器绝对路径。源文件 SHA256 只证明被比较的文件，不能替代缺失的上游 commit 或完整来源审核。
+
+`isaac_smoke.py` 使用新的输出目录，源 USD 只读；其 `--asset-role` 必须声明 synthetic fixture 或 selected card_box。第一次 synthetic Kit 启动退出 139，后续 portable-root/单 GPU 设置只完成编译检查。下一次启动先确认 GPU 已空闲并选择单一 Vulkan ICD，再审查日志实际使用的 cache/data/log 路径。禁止通过修改共享缓存、驱动或系统 ICD 排除故障。
+
+装配工具接受已知原子 `FrameTransform`，不会从名义 4 cm 或视觉推断生产 SE(3)。每侧安装件和相机载荷分别记录，合并刚体前确认参考 frame、质心和惯性；depth 继续关闭。批准拓扑观察包原件与视频哈希在 ignored 私有证据目录，公开文件只引用 observation ID。

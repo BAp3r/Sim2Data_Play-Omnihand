@@ -6,7 +6,7 @@
 
 当前为 M0/M1 前置框架，**尚未完成物理接触抓取或正式机器人数据采集**。设计、输入参数和实施顺序见 [实施计划](docs/EXECUTION_PLAN.md)。远程发布采用基于既有 GitHub main 的独立审阅分支，保留原始历史与 LICENSE；开发 worktree 中未完成内容不随发布快照提交。
 
-设计、计划和 [代理协作约定](AGENTS.md) 已交付，现补充本地离线契约复核。资产/导出/批量计划器的在途工作继续保留；GPU 和官方 SDK 验收仍在后续实施计划中。
+设计、计划和 [代理协作约定](AGENTS.md) 已交付。用户已恢复资产/模型审计、装配输入、运行时验证与官方 SDK synthetic smoke；旧在途工作保留并经审阅复用。接触任务和正式批量采集继续受关卡阻断。
 
 已实现：依赖为零的主机/资产/视频文件盘点、可重复的 episode/component seed、资产路径和 LFS 指针检查、具名 state/action 维度检查、记录时钟同步契约，以及对应单元测试。
 
@@ -23,7 +23,7 @@
 - `.local/DEPLOYMENT.md`：本次项目的私有路径与两台机器的盘点命令。此目录已被 Git 忽略。
 - `AGENTS.md` 与 `tasks/`：Luna Max 子任务边界、交付格式和执行顺序。
 - `configs/scene_spec.draft.json`：未标定参数为 null，禁止作为生产场景配置。
-- `configs/runtime_candidates.json`：只读盘点候选，不代表运行时兼容性验证。
+- `configs/runtime_candidates.json` 与 `docs/RUNTIME_BINDING.md`：候选身份、运行时验证状态与剩余绑定条件。
 
 ## 无重型依赖测试
 

@@ -51,7 +51,23 @@
       "T_world_base": null,
       "T_flange_mount": null,
       "T_mount_hand_root": null,
-      "T_hand_root_grasp_tcp": null
+      "T_hand_root_grasp_tcp": null,
+      "installation_bodies": {
+        "mount_assembly": {
+          "mass_kg": null,
+          "center_of_mass_m": null,
+          "inertia_kg_m2": null,
+          "inertia_reference_frame": null,
+          "collision_geometry": null
+        },
+        "camera_housing": {
+          "mass_kg": null,
+          "center_of_mass_m": null,
+          "inertia_kg_m2": null,
+          "inertia_reference_frame": null,
+          "collision_geometry": null
+        }
+      }
     },
     "right": {
       "arm_revision": null,
@@ -62,7 +78,23 @@
       "T_world_base": null,
       "T_flange_mount": null,
       "T_mount_hand_root": null,
-      "T_hand_root_grasp_tcp": null
+      "T_hand_root_grasp_tcp": null,
+      "installation_bodies": {
+        "mount_assembly": {
+          "mass_kg": null,
+          "center_of_mass_m": null,
+          "inertia_kg_m2": null,
+          "inertia_reference_frame": null,
+          "collision_geometry": null
+        },
+        "camera_housing": {
+          "mass_kg": null,
+          "center_of_mass_m": null,
+          "inertia_kg_m2": null,
+          "inertia_reference_frame": null,
+          "collision_geometry": null
+        }
+      }
     }
   },
   "adapter_installation": {
@@ -77,9 +109,37 @@
       "model": "generic_pinhole_rgb",
       "calibration_source": "synthetic_design",
       "T_parent_optical": null,
-      "resolution_wh": [640, 480],
-      "intrinsics_K": [[600.0, 0.0, 319.5], [0.0, 600.0, 239.5], [0.0, 0.0, 1.0]],
-      "distortion_model_and_coefficients": {"model": "ideal_pinhole", "coefficients": [0.0, 0.0, 0.0, 0.0, 0.0]},
+      "resolution_wh": [
+        640,
+        480
+      ],
+      "intrinsics_K": [
+        [
+          600.0,
+          0.0,
+          319.5
+        ],
+        [
+          0.0,
+          600.0,
+          239.5
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "distortion_model_and_coefficients": {
+        "model": "ideal_pinhole",
+        "coefficients": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
       "coverage_validation": null
     },
     "wrist_left": {
@@ -116,5 +176,7 @@
       "mass_kg": null,
       "rigidity_model": null
     }
-  }
+  },
+  "purpose": "requirements handoff only; not directly mergeable into scene_spec and not a calibrated scene",
+  "production_collection_enabled": false
 }
