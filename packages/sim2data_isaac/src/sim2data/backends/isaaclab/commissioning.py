@@ -499,6 +499,9 @@ def _validate_meshes(
             continue
         filename = _require_text(element.get("filename"), "mesh filename")
         resolved_path = _resolve_mesh(filename, source_path.parent, package_roots)
+        # Output lives away from both source URDFs. Preserve the actual binding
+        # in this private artifact instead of leaving now-broken relative URIs.
+        element.set("filename", resolved_path.as_posix())
         resolved.append(str(resolved_path))
     return tuple(resolved)
 
@@ -586,7 +589,7 @@ def _box_geometry_link(
         visual = ET.SubElement(link, "visual")
         ET.SubElement(visual, "origin", visual_mesh.origin.as_origin_attributes())
         geometry = ET.SubElement(visual, "geometry")
-        ET.SubElement(geometry, "mesh", {"filename": visual_mesh.filename})
+        ET.SubElement(geometry, "mesh", {"filename": Path(resolved_meshes[-1]).as_posix()})
     if size_xyz_m is not None:
         size = " ".join(_format_number(value) for value in size_xyz_m)
         for element_name in ("visual", "collision"):

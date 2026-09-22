@@ -17,13 +17,16 @@ def main() -> None:
     parser.add_argument("--asset", type=Path, required=True)
     parser.add_argument("--asset-role", choices=("synthetic_fixture", "selected_card_box"), required=True)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--graphics-api", choices=("default", "vulkan", "d3d12"), default="default",
+                        help="Per-process Kit graphics backend diagnostic; no driver changes")
     args = parser.parse_args()
     asset = args.asset.resolve(strict=True)
     args.out = args.out.resolve()
     args.out.mkdir(parents=True, exist_ok=False)
     result = {"scope": "synthetic_runtime_smoke_not_robot_acceptance",
               "asset": str(asset), "asset_role": args.asset_role,
-              "passed": False, "phase": "starting_kit", "production_collection_allowed": False}
+              "passed": False, "phase": "starting_kit", "production_collection_allowed": False,
+              "requested_graphics_api": args.graphics_api}
     (args.out / "result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
     app = None
     try:
@@ -31,6 +34,11 @@ def main() -> None:
         # SimulationApp forwards sys.argv and detects --portable-root here.
         # Kit's default portable cache otherwise lives inside the shared install.
         sys.argv = [sys.argv[0], "--portable-root", str(args.out / "kit")]
+        if args.graphics_api != "default":
+            sys.argv.append("--" + args.graphics_api)
+            # Isaac's .kit explicitly sets app.vulkan=true; the shorthand alone
+            # does not override that setting in the installed Windows 5.1 app.
+            sys.argv.append("--/app/vulkan=" + ("false" if args.graphics_api == "d3d12" else "true"))
         app = SimulationApp({"headless": True, "width": 320, "height": 240,
                              "renderer": "RaytracedLighting", "anti_aliasing": 0,
                              "multi_gpu": False, "active_gpu": 0, "max_gpu_count": 1,
@@ -72,7 +80,9 @@ def main() -> None:
         table.CreateDisplayColorAttr([Gf.Vec3f(0.12, 0.15, 0.18)])
         UsdPhysics.CollisionAPI.Apply(table.GetPrim())
         prim = stage.DefinePrim("/World/CardBox", "Xform")
-        stage.DefinePrim("/World/CardBox/Asset", "Xform").GetReferences().AddReference(str(asset))
+        # Do not override the referenced default prim's concrete type (a Cube
+        # fixture would otherwise become an empty Xform with invalid bounds).
+        stage.DefinePrim("/World/CardBox/Asset").GetReferences().AddReference(str(asset))
         rigid = [p for p in Usd.PrimRange(prim) if p.HasAPI(UsdPhysics.RigidBodyAPI)]
         collisions = [p for p in Usd.PrimRange(prim) if p.HasAPI(UsdPhysics.CollisionAPI)
                       and UsdPhysics.CollisionAPI(p).GetCollisionEnabledAttr().Get() is not False]

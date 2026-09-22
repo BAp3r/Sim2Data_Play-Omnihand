@@ -168,7 +168,7 @@ class CommissioningTests(unittest.TestCase):
         mount = root.find("link[@name='left__mount_assembly']")
         mesh = mount.find("visual/geometry/mesh")
         origin = mount.find("visual/origin")
-        self.assertEqual(mesh.get("filename"), "package://hand_pkg/meshes/mount.stl")
+        self.assertEqual(mesh.get("filename"), (self.root / "hand" / "meshes" / "mount.stl").resolve().as_posix())
         self.assertEqual(origin.get("rpy"), "1.57079632679 0 0")
         housing = root.find("link[@name='left__camera_housing']")
         self.assertEqual(housing.find("visual/geometry/box").get("size"), "0.045 0.045 0.025")

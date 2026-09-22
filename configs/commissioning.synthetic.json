@@ -1,0 +1,219 @@
+{
+  "schema_version": 1,
+  "purpose": "synthetic_commissioning_only",
+  "production_collection_enabled": false,
+  "assumptions": [
+    "Design values for debug only, not measured calibration",
+    "Scene left uses anatomical left O10 and scene right uses anatomical right O10 as a synthetic choice",
+    "Flange and hand roots aligned by synthetic fixed joints; mating side and overlap unverified",
+    "Camera housing is a dimensioned proxy, not a D405 mechanical model"
+  ],
+  "table": {
+    "size_xyz_m": [
+      1.4,
+      0.8,
+      0.05
+    ],
+    "center_xyz_m": [
+      0,
+      0,
+      -0.025
+    ]
+  },
+  "robots": {
+    "left": {
+      "base_xyz_m": [
+        -0.35,
+        -0.28,
+        0
+      ],
+      "base_rpy_rad": [
+        0,
+        0,
+        0
+      ],
+      "T_flange_mount": {
+        "xyz_m": [
+          0,
+          0,
+          0
+        ],
+        "rpy_rad": [
+          0,
+          0,
+          0
+        ]
+      },
+      "T_mount_hand_root": {
+        "xyz_m": [
+          0,
+          0,
+          0.0261
+        ],
+        "rpy_rad": [
+          0,
+          0,
+          0
+        ]
+      },
+      "T_mount_camera_housing": {
+        "xyz_m": [
+          0,
+          -0.055,
+          0.012
+        ],
+        "rpy_rad": [
+          0,
+          0,
+          0
+        ]
+      },
+      "T_housing_color_optical": {
+        "xyz_m": [
+          0,
+          0,
+          0
+        ],
+        "rpy_rad": [
+          0,
+          0,
+          0
+        ]
+      },
+      "camera_proxy_size_xyz_m": [
+        0.045,
+        0.045,
+        0.025
+      ]
+    },
+    "right": {
+      "base_xyz_m": [
+        0.35,
+        -0.28,
+        0
+      ],
+      "base_rpy_rad": [
+        0,
+        0,
+        0
+      ],
+      "T_flange_mount": {
+        "xyz_m": [
+          0,
+          0,
+          0
+        ],
+        "rpy_rad": [
+          0,
+          0,
+          0
+        ]
+      },
+      "T_mount_hand_root": {
+        "xyz_m": [
+          0,
+          0,
+          0.0261
+        ],
+        "rpy_rad": [
+          0,
+          0,
+          0
+        ]
+      },
+      "T_mount_camera_housing": {
+        "xyz_m": [
+          0,
+          -0.055,
+          0.012
+        ],
+        "rpy_rad": [
+          0,
+          0,
+          0
+        ]
+      },
+      "T_housing_color_optical": {
+        "xyz_m": [
+          0,
+          0,
+          0
+        ],
+        "rpy_rad": [
+          0,
+          0,
+          0
+        ]
+      },
+      "camera_proxy_size_xyz_m": [
+        0.045,
+        0.045,
+        0.025
+      ]
+    }
+  },
+  "relay_region": {
+    "center_xyz_m": [
+      0,
+      0.13,
+      0.001
+    ],
+    "size_xyz_m": [
+      0.24,
+      0.2,
+      0.002
+    ]
+  },
+  "box": {
+    "size_xyz_m": [
+      0.08,
+      0.06,
+      0.08
+    ],
+    "center_xyz_m": [
+      -0.35,
+      0.13,
+      0.04
+    ],
+    "mass_kg": 0.12,
+    "asset_role": "synthetic_box_not_nas_card_box"
+  },
+  "bin": {
+    "inner_size_xyz_m": [
+      0.28,
+      0.32,
+      0.2
+    ],
+    "wall_thickness_m": 0.012,
+    "bottom_center_xyz_m": [
+      0.96,
+      0.05,
+      -0.06
+    ]
+  },
+  "overhead": {
+    "eye_xyz_m": [
+      1.3,
+      -1.7,
+      1.8
+    ],
+    "target_xyz_m": [
+      0.2,
+      0,
+      0.12
+    ],
+    "resolution_wh": [
+      640,
+      480
+    ],
+    "focal_length_mm": 24,
+    "horizontal_aperture_mm": 25.6
+  },
+  "gates": {
+    "static_preview_only": true,
+    "physics_validated": false,
+    "rgb_validated": false,
+    "contact_validated": false,
+    "dataset_export_allowed": false
+  }
+}
