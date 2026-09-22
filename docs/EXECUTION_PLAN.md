@@ -89,3 +89,5 @@ GitHub 只发布经审阅的代码、公开文档和允许再分发的文件。�
 已实现 `scripts/assemble_commissioning.py` 双侧 URDF 组合、`scripts/build_commissioning_preview.py` 静态 USD 与 `scripts/blender_review_scene.py` CPU 预览。官方 O10 包和第三方 ROS2 arm 包已闭合；Astra Max 已实际执行视频/CAD/网格复核。Luna 在独立 worktree 用 uv 建立新的 Windows 环境；由主会话串行执行 GPU smoke。下一接口为审阅后的装配 datum、限位内姿态与动力学/控制映射；生产采集关闭，尚无接力 episode。
 
 装配修正进度：新用户单臂包闭合，保留6轴；旧G2座通过替换输入模型消除。官方Thor桌面已定向审计，工具支持只读绑定/单位核对/静态展开。预览采用限位内姿态与独立腕部近景，未恢复接触任务。下一步核定转接件配合、相机支架、六轴非零驱动约束与桌面碰撞支撑面。
+
+本轮Astra xhigh已实际执行左右手来源与D405对称复核，官方左右包36个mesh重新核验；主会话集成右相机刚体滚转候选、逐侧hand SHA绑定、官网参考材质与正交对称图。下一阶段先解决右screw朝向改变后的支架和校准，不将静态对称、参考配色或本轮证据目录名m4当作M4数据验收。

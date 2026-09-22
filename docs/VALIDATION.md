@@ -166,3 +166,11 @@ uv run --frozen --offline --no-python-downloads python -m compileall -q sim2data
 `assemble_commissioning.py` 用用户包生成双侧URDF成功；同一profile用旧ROS2 binding会报source identity mismatch且不创建输出目录。远端CPU `build_commissioning_preview.py --table-usd ...` 实际生成并重新打开200 prim静态场景，三路Camera保留，Thor源尺度未改变，profile哈希 `a5f919aa6b2b383b9f073d0cb4cfdf163b07c3bdbbf4c5454420d3aefc057c16`。Blender实际导入，生成三路静态视图及左右腕部近景；所有图仅用于审阅。
 
 未运行：本次新机器人和Thor组合的PhysX cooking、动力学、接触、相机覆盖与数据导出。六轴effort/velocity为零，连接件机械配合与相机支架缺失，Thor视觉/碰撞支撑高度不同；生产继续关闭。精确命令、输出位置和图例见私有 `.local/evidence/m3/COMMANDS.md`。
+
+## 左右对称与参考配色验证
+
+Astra xhigh实际检查独立左右手URDF及36个源mesh；右实体D405滚转候选使外壳中心/光心镜像残差降至浮点误差范围，此数值不是实测精度。有效静态姿态下全visual AABB分离，自遮挡采样左18/315、右20/315，中心射线畅通；详见 `WRIST_SYMMETRY_REVIEW.md`。
+
+CPU测试89项，85通过、4跳过；日志 `.local/evidence/m4/cpu_tests.txt`。新增回归验证名义外壳与光心对称，以及右optical X/Y反向、Z同向。误将左手URDF绑定右侧的失败注入被SHA校验拒绝，未创建输出目录。USD新旧54个机器人mesh的points/counts/indices逐字节哈希一致，变换和材质按设计更新；参考色不是重建几何或原厂纹理。
+
+远端CPU生成带材质分区的静态USD，本机Blender实际渲染三路静态相机、左右近景、双腕正面和俯视共7张审阅图。首次单子集导入缺少base fallback，已改显式完整材质partition并重新渲染；不改变网格。精确命令和证据在 `.local/evidence/m4/COMMANDS.md`。本轮未执行物理、接触、动态任务覆盖或数据导出，生产保持关闭。

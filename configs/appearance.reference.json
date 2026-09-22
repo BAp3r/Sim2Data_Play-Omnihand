@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "purpose": "reference_appearance_only",
+  "observation_id": "OBS-M4-20260922-ROOT-APPEARANCE-01",
+  "source_status": "official illustrations reviewed; approximate design materials, not original vendor textured meshes",
+  "sources": [
+    "https://docs.discover-robotics.com/assets/docs-center/play.png",
+    "https://www.agibot.com.cn/DOCS/OS/Omnihand-O10",
+    "https://www.agibot.com.cn/file/ueditor/php/upload/file/20260522/1779437338739932.pdf"
+  ],
+  "palette": {
+    "charcoal": {"color_linear_rgb": [0.028, 0.032, 0.038], "roughness": 0.4, "metallic": 0.2},
+    "ivory": {"color_linear_rgb": [0.74, 0.76, 0.79], "roughness": 0.32, "metallic": 0.08},
+    "alloy": {"color_linear_rgb": [0.42, 0.46, 0.5], "roughness": 0.28, "metallic": 0.7},
+    "camera_alloy": {"color_linear_rgb": [0.38, 0.42, 0.46], "roughness": 0.32, "metallic": 0.6}
+  },
+  "selectors": {
+    "arm_panel_links": ["link2", "link3"],
+    "arm_panel_normal_axis": 2,
+    "arm_panel_min_abs_normal": 0.85,
+    "palm_proximal_max_z_m": 0.045
+  },
+  "limitations": [
+    "Colour families are observed; numeric colour, roughness, metallic and material boundaries are synthetic approximations",
+    "No logo, UV texture or photometric calibration is inferred",
+    "Material subsets preserve all vertices and faces; collision and dynamics are unchanged",
+    "Custom adapter and D405 alloy are generic review choices, not confirmed finishes of supplied hardware"
+  ]
+}

@@ -37,21 +37,22 @@ def place(xform, matrix):
     xform.AddTransformOp().Set(Gf.Matrix4d(matrix.T.tolist()))
 
 
-def material(stage, prim, colour):
+def material(stage, prim, colour, roughness=.55, metallic=0.0):
     # Explicit PreviewSurface makes colours portable to Blender and Kit;
     # displayColor alone is not interpreted as a surface by every importer.
-    key = "c_" + "_".join(str(round(float(c) * 65535)) for c in colour[:3])
+    key = "c_" + "_".join(str(round(float(c) * 65535)) for c in [*colour[:3], roughness, metallic])
     path = "/World/Looks/" + key
     mat = UsdShade.Material.Define(stage, path)
     shader = UsdShade.Shader.Define(stage, path + "/Surface")
     shader.CreateIdAttr("UsdPreviewSurface")
     shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(*colour[:3]))
-    shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(.55)
+    shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(roughness)
+    shader.CreateInput("metallic", Sdf.ValueTypeNames.Float).Set(metallic)
     mat.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), "surface")
     UsdShade.MaterialBindingAPI.Apply(prim).Bind(mat)
 
 
-def mesh(stage, path, geometry, colour):
+def mesh(stage, path, geometry, colour, style=None):
     vertices = np.asarray(geometry.vertices, dtype=np.float32)
     faces = np.asarray(geometry.faces, dtype=np.int32)
     if not len(vertices) or not len(faces) or not np.isfinite(vertices).all():
@@ -63,9 +64,51 @@ def mesh(stage, path, geometry, colour):
     prim.CreateSubdivisionSchemeAttr("none")
     prim.CreateDisplayColorAttr([Gf.Vec3f(*colour[:3])])
     material(stage, prim.GetPrim(), colour)
+    if style:
+        primary, accent, indices = style
+        material(stage, prim.GetPrim(), primary["color_linear_rgb"], primary["roughness"], primary["metallic"])
+        if accent is not None and len(indices):
+            # Explicitly partition both regions: some importers do not use the
+            # parent mesh material as fallback for faces outside one subset.
+            remaining = np.setdiff1d(np.arange(len(faces)), indices, assume_unique=True).tolist()
+            for label, selected, surface in (("ReferenceBase", remaining, primary),
+                                              ("ReferenceAccent", indices, accent)):
+                if selected:
+                    subset = UsdGeom.Subset.CreateGeomSubset(
+                        UsdGeom.Imageable(prim.GetPrim()), label, UsdGeom.Tokens.face,
+                        selected, "materialBind", UsdGeom.Tokens.partition)
+                    material(stage, subset.GetPrim(), surface["color_linear_rgb"], surface["roughness"], surface["metallic"])
     prim.CreateExtentAttr([Gf.Vec3f(*vertices.min(axis=0).tolist()),
                            Gf.Vec3f(*vertices.max(axis=0).tolist())])
     return len(vertices), len(faces)
+
+
+def reference_style(name, geometry, appearance):
+    """Approximate reference colours without changing any mesh geometry."""
+    if appearance is None:
+        return None
+    palette, rules = appearance["palette"], appearance["selectors"]
+    accent, indices = None, []
+    if "_arm__" in name:
+        base = palette["charcoal"]
+        if name.split("_arm__", 1)[1] in rules["arm_panel_links"]:
+            accent = palette["ivory"]
+            indices = np.flatnonzero(np.abs(geometry.face_normals[:, rules["arm_panel_normal_axis"]])
+                                     >= rules["arm_panel_min_abs_normal"]).tolist()
+    elif "_hand__" in name:
+        base = palette["ivory"]
+        if name.lower().endswith("palm"):
+            accent = palette["charcoal"]
+            indices = np.flatnonzero(geometry.triangles_center[:, 2] <= rules["palm_proximal_max_z_m"]).tolist()
+        elif "thumb_roll" in name:
+            base = palette["alloy"]
+    elif name.endswith("_mount_assembly"):
+        base = palette["alloy"]
+    elif name.endswith("_camera_housing"):
+        base = palette["camera_alloy"]
+    else:
+        return None
+    return base, accent, indices
 
 
 def cube(stage, path, size, centre, colour):
@@ -98,7 +141,7 @@ def load_geometry(node):
     raise ValueError("Unsupported URDF visual geometry")
 
 
-def add_robot(stage, path, urdf, base):
+def add_robot(stage, path, urdf, base, appearance=None):
     root = ET.parse(urdf).getroot()
     links = {n.attrib["name"]: n for n in root.findall("link")}
     joints = {n.attrib["name"]: n for n in root.findall("joint")}
@@ -141,7 +184,8 @@ def add_robot(stage, path, urdf, base):
             colour_node = visual.find("material/color")
             colour = [0.6, 0.65, 0.72] if colour_node is None else [
                 float(x) for x in colour_node.attrib["rgba"].split()[:3]]
-            mesh(stage, visual_path + "/mesh", load_geometry(visual.find("geometry")), colour)
+            geometry = load_geometry(visual.find("geometry"))
+            mesh(stage, visual_path + "/mesh", geometry, colour, reference_style(name, geometry, appearance))
         visiting.remove(name)
         paths[name] = link_path
         return link_path
@@ -155,6 +199,9 @@ def add_robot(stage, path, urdf, base):
 
 def build(args):
     profile = json.loads(args.profile.read_text(encoding="utf-8"))
+    appearance = None if args.appearance is None else json.loads(args.appearance.read_text(encoding="utf-8"))
+    if appearance is not None and appearance.get("purpose") != "reference_appearance_only":
+        raise ValueError("Appearance must be an explicit reference-only material design")
     if profile["purpose"] != "synthetic_commissioning_only" or profile["production_collection_enabled"] is not False:
         raise ValueError("Only explicit synthetic commissioning profiles accepted")
     args.out.mkdir(parents=True, exist_ok=False)
@@ -220,7 +267,7 @@ def build(args):
         cube(stage, "/World/Bin/"+label, size, pos, (0.2,0.35,0.65))
     robots = {}
     for side, urdf in [("left", args.left), ("right", args.right)]:
-        robots[side] = add_robot(stage, "/World/" + side, urdf, profile["robots"][side])
+        robots[side] = add_robot(stage, "/World/" + side, urdf, profile["robots"][side], appearance)
         paths = robots[side]["link_paths"]
         optical = [p for name,p in paths.items() if name.endswith("color_optical")]
         if len(optical) != 1:
@@ -249,6 +296,8 @@ def build(args):
     if len(cameras) != 3:
         raise RuntimeError("Preview must contain three cameras")
     result.update(passed=True, robots=robots, camera_paths=cameras,
+                  appearance_sha256=None if args.appearance is None else hashlib.sha256(args.appearance.read_bytes()).hexdigest(),
+                  appearance_scope=None if appearance is None else appearance["source_status"],
                   stage_prim_count=sum(1 for _ in reopened.Traverse()),
                   profile_sha256=hashlib.sha256(args.profile.read_bytes()).hexdigest(),
                   limitations=["Limit-checked synthetic pose with URDF mimic; visual FK only", "No articulation/drive/collision cooking authored",
@@ -262,4 +311,5 @@ if __name__ == "__main__":
     for name in ("profile", "left", "right", "out"):
         parser.add_argument("--"+name, type=Path, required=True)
     parser.add_argument("--table-usd", type=Path, help="Private audited table asset; source remains read-only")
+    parser.add_argument("--appearance", type=Path, help="Reviewed reference-only material palette; no geometry changes")
     build(parser.parse_args())

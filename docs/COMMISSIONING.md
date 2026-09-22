@@ -62,3 +62,7 @@ ROS2 完整包已闭合并用于 `combined02` / `assembly_preview02`，此前 mi
 ## 用户单臂包修正（当前选择）
 
 前述ROS2/DISCOVERSE夹爪残留候选已被用户提供的 `play` 包替代，当前配置使用该URDF的SHA256校验。6轴链保留，按新坐标重新定义synthetic安装变换；旧-51.4mm显示偏置不再使用。桌面绑定官方Thor，参见 `ASSEMBLY_CORRECTION.md`、`THOR_TABLE_AUDIT.md`。本次新的静态USD/Blender近景不是新的物理smoke；证据目录名m3也不表示M3接触验收。
+
+## 当前相机对称与外观版本
+
+`WRIST_SYMMETRY_REVIEW.md` 取代旧版仅彩色光心对称的安装候选，右手仍使用独立OmniHandright4/R_palm。`APPEARANCE_REFERENCE.md` 描述官网参考配色和局限；物理安装、支架及右optical滚转的真实标定尚待验证。正面/俯视比较图属于审阅相机，不是三路采集数据。

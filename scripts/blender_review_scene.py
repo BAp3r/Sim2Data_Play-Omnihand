@@ -16,6 +16,9 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--usd", type=Path, required=True)
 parser.add_argument("--out", type=Path, required=True)
 parser.add_argument("--wrist-closeups", action="store_true", help="Add labeled static inspection views, not sensors")
+parser.add_argument("--symmetry-views", action="store_true", help="Add paired front/top orthographic review views")
+parser.add_argument("--material-mode", choices=("diagnostic", "reference"), default="diagnostic",
+                    help="Reference mode preserves authored robot materials; table MDL still gets a review fallback")
 args = parser.parse_args(sys.argv[sys.argv.index("--") + 1:])
 args.out.mkdir(parents=True, exist_ok=False)
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -70,7 +73,7 @@ for obj in scene.objects:
             role = "table"
             break
         ancestor = ancestor.parent
-    if role:
+    if role and not (args.material_mode == "reference" and role != "table"):
         targets = [obj] if obj.type == "MESH" else [
             item for item in obj.instance_collection.all_objects if item.type == "MESH"]
         for target in targets:
@@ -95,6 +98,20 @@ if args.wrist_closeups:
         view.data.type = "ORTHO"
         view.data.ortho_scale = .34
         cameras.append(view)
+if args.symmetry_views:
+    frames = [bpy.data.objects.get(f"{side}_arm__link6") for side in ("left", "right")]
+    if any(frame is None for frame in frames):
+        raise RuntimeError("Missing wrist frames for paired symmetry review")
+    target = sum((frame.matrix_world @ Vector((0, 0, .12)) for frame in frames), Vector()) / 2
+    for label, offset in (("front", (0, .7, -.12)), ("top", (0, 0, .8))):
+        name = "review_pair_" + label
+        view = bpy.data.objects.new(name, bpy.data.cameras.new(name))
+        scene.collection.objects.link(view)
+        view.location = target + Vector(offset)
+        view.rotation_euler = (target-view.location).to_track_quat("-Z", "Y").to_euler()
+        view.data.type = "ORTHO"
+        view.data.ortho_scale = .8
+        cameras.append(view)
 # Use one known review lighting setup; imported USD dome intensity does not
 # have an equivalent Blender exposure and otherwise washes out the geometry.
 for obj in list(scene.objects):
@@ -117,6 +134,7 @@ report = {"blender_version": bpy.app.version_string,
           "source_usd": str(args.usd.resolve()), "physics_validated": False,
           "dataset_export_allowed": False, "production_collection_allowed": False,
           "review_material_overrides": review_overrides,
+          "material_mode": args.material_mode,
           "mesh_objects": sum(o.type == "MESH" for o in scene.objects), "cameras": []}
 for camera in cameras:
     camera.data.clip_start = .005

@@ -6,7 +6,7 @@
     "Design values for debug only, not measured calibration",
     "Scene left uses anatomical left O10 and scene right uses anatomical right O10 as a synthetic choice",
     "Flange and hand roots aligned by synthetic fixed joints; mating side and overlap unverified",
-    "D405 visual geometry/nominal internal frames from fixed official ROS description; mount placement unreviewed and extrinsics not calibrated"
+    "D405 nominal body and color optical centers symmetric; right is rotated 180deg around optical direction with bottom-screw translation compensation; mounting support and calibrated extrinsics unknown"
   ],
   "table": {
     "asset_id": "isaac_5_1_thorlabs_table",
@@ -93,10 +93,15 @@
       ],
       "camera_housing_frame": "D405 bottom screw frame (official nominal convention)",
       "flange_frame_status": "user play native link6; nominal end plane .0865 m plus .0001 m display clearance; butt placement only; +90deg synthetic clocking places camera below palm, not measured key alignment",
-      "camera_candidate_status": "Astra Max v2 static mesh review only; joint-limit pose and task coverage pending",
+      "camera_candidate_status": "Astra xhigh: mirrored nominal body/optical centers using rigid camera rotation; bracket and calibration unverified",
       "preview_joint_positions": {
         "left_arm__joint2": -0.7,
         "left_arm__joint3": 0.7
+      },
+      "hand_model": {
+        "id": "official_o10_20260827_left",
+        "anatomical_side": "left",
+        "urdf_sha256": "8c33ee9e9e9ce08cb9e379618d7e06f07791bf65a159e36f6481dd4e4d75e468"
       }
     },
     "right": {
@@ -136,12 +141,12 @@
       },
       "T_mount_camera_housing": {
         "xyz_m": [
-          0.08,
-          -0.029,
+          0.038,
+          -0.011,
           0.012
         ],
         "rpy_rad": [
-          0,
+          3.141592653589793,
           -1.5707963267948966,
           0
         ]
@@ -165,10 +170,15 @@
       ],
       "camera_housing_frame": "D405 bottom screw frame (official nominal convention)",
       "flange_frame_status": "user play native link6; nominal end plane .0865 m plus .0001 m display clearance; butt placement only; +90deg synthetic clocking places camera below palm, not measured key alignment",
-      "camera_candidate_status": "Astra Max v2 static mesh review only; joint-limit pose and task coverage pending",
+      "camera_candidate_status": "Astra xhigh: mirrored nominal body/optical centers using rigid camera rotation; bracket and calibration unverified",
       "preview_joint_positions": {
         "right_arm__joint2": -0.7,
         "right_arm__joint3": 0.7
+      },
+      "hand_model": {
+        "id": "official_o10_20260827_right",
+        "anatomical_side": "right",
+        "urdf_sha256": "5acb477166ae7b1211d2a8378fd1593e59e7742aa26f4f4578c0ba01bda9e952"
       }
     }
   },
@@ -249,10 +259,23 @@
     "extrinsics_status": "official_nominal_not_calibrated",
     "inertial_status": "upstream_explicitly_unreliable_do_not_use"
   },
-  "review_status": "USER_PLAY_STATIC_CORRECTION; original gripper removed by source replacement; mating and camera support unverified",
+  "review_status": "ASTRA_XHIGH_SYMMETRIC_CAMERA_CANDIDATE; independent anatomical hands; mechanical support pending",
   "arm_model": {
     "id": "user_play_b02c7ac6",
     "urdf_sha256": "b02c7ac6fd1dd6a65f355ef6650c2a7584fdbd56ccfc497b767292010ce4e0b0",
     "source_status": "user_supplied_private_model_not_hardware_validated"
+  },
+  "camera_symmetry": {
+    "mode": "mirrored_centers_with_rigid_camera_roll",
+    "reflection_plane": "mount Y=0 between corresponding side-local frames",
+    "right_optical_roll_relative_left_rad": 3.141592653589793,
+    "negative_mesh_scale_allowed": false,
+    "image_pixel_flip_applied": false,
+    "nominal_body_center_in_housing_m": [
+      0.00315,
+      0,
+      0.021
+    ],
+    "production_calibration": false
   }
 }
