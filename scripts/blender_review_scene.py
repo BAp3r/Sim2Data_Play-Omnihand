@@ -4,6 +4,7 @@ Run with Blender --background --factory-startup --python this.py -- ... .
 These CPU Cycles images are assembly review artifacts, never simulator frames.
 """
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -20,9 +21,47 @@ parser.add_argument("--symmetry-views", action="store_true", help="Add paired fr
 parser.add_argument("--material-mode", choices=("diagnostic", "reference"), default="diagnostic",
                     help="Reference mode preserves authored robot materials; table MDL still gets a review fallback")
 args = parser.parse_args(sys.argv[sys.argv.index("--") + 1:])
+args.usd = args.usd.resolve(strict=True)
+args.out = args.out.resolve()
+# Reject an incomplete transfer before starting an expensive render. The USD
+# and its relative texture dependencies form one portable review artifact.
+preview_report = args.usd.parent / "preview_report.json"
+if preview_report.is_file():
+    for dependency in json.loads(preview_report.read_text(encoding="utf-8")).get("texture_dependencies", []):
+        texture = args.usd.parent / dependency["path"]
+        if not texture.is_file():
+            raise RuntimeError(f"Missing preview texture: {texture}")
+        if hashlib.sha256(texture.read_bytes()).hexdigest() != dependency["sha256"]:
+            raise RuntimeError(f"Preview texture identity mismatch: {texture}")
 args.out.mkdir(parents=True, exist_ok=False)
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.wm.usd_import(filepath=str(args.usd.resolve()))
+packed_textures = []
+for mat in bpy.data.materials:
+    if mat.node_tree is None:
+        continue
+    for node in mat.node_tree.nodes:
+        if node.type != "TEX_IMAGE" or not any(output.is_linked for output in node.outputs):
+            continue
+        if node.image is None:
+            raise RuntimeError(f"USD texture failed to import: {mat.name}/{node.name}")
+        image = node.image
+        if image.source != "FILE":
+            continue
+        image_path = Path(bpy.path.abspath(image.filepath))
+        if not image_path.is_file() and not Path(image.filepath).is_absolute():
+            image_path = args.usd.parent / image.filepath
+            if image_path.is_file():
+                image.filepath = str(image_path)
+                image.reload()
+        if not image_path.is_file():
+            raise RuntimeError(f"Missing imported texture: {image.filepath}")
+        image.pack()
+        if image.packed_file is None:
+            raise RuntimeError(f"Could not pack imported texture: {image.filepath}")
+        packed_textures.append({"image": image.name, "packed": True,
+                                "sha256": hashlib.sha256(image_path.read_bytes()).hexdigest(),
+                                "colorspace": image.colorspace_settings.name})
 scene = bpy.context.scene
 scene.unit_settings.system = "METRIC"
 scene.unit_settings.scale_length = 1.0
@@ -135,6 +174,7 @@ report = {"blender_version": bpy.app.version_string,
           "dataset_export_allowed": False, "production_collection_allowed": False,
           "review_material_overrides": review_overrides,
           "material_mode": args.material_mode,
+          "packed_image_textures": packed_textures,
           "mesh_objects": sum(o.type == "MESH" for o in scene.objects), "cameras": []}
 for camera in cameras:
     camera.data.clip_start = .005

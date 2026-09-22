@@ -6,7 +6,8 @@
     "Design values for debug only, not measured calibration",
     "Scene left uses anatomical left O10 and scene right uses anatomical right O10 as a synthetic choice",
     "Flange and hand roots aligned by synthetic fixed joints; mating side and overlap unverified",
-    "D405 nominal body and color optical centers symmetric; right is rotated 180deg around optical direction with bottom-screw translation compensation; mounting support and calibrated extrinsics unknown"
+    "D405 nominal body and color optical centers symmetric; right is rotated 180deg around optical direction with bottom-screw translation compensation; mounting support and calibrated extrinsics unknown",
+    "User-requested outward camera shift: left mount Y +0.020 m, right mount Y -0.020 m from M4; reviewed arm pose maps these to world X outward by 0.020 m"
   ],
   "table": {
     "asset_id": "isaac_5_1_thorlabs_table",
@@ -65,7 +66,7 @@
       "T_mount_camera_housing": {
         "xyz_m": [
           0.08,
-          0.011,
+          0.031,
           0.012
         ],
         "rpy_rad": [
@@ -93,7 +94,7 @@
       ],
       "camera_housing_frame": "D405 bottom screw frame (official nominal convention)",
       "flange_frame_status": "user play native link6; nominal end plane .0865 m plus .0001 m display clearance; butt placement only; +90deg synthetic clocking places camera below palm, not measured key alignment",
-      "camera_candidate_status": "Astra xhigh: mirrored nominal body/optical centers using rigid camera rotation; bracket and calibration unverified",
+      "camera_candidate_status": "Astra xhigh M5: user-requested 20 mm outward shift, mirrored body/optical centers; bracket and calibration unverified",
       "preview_joint_positions": {
         "left_arm__joint2": -0.7,
         "left_arm__joint3": 0.7
@@ -142,7 +143,7 @@
       "T_mount_camera_housing": {
         "xyz_m": [
           0.038,
-          -0.011,
+          -0.031,
           0.012
         ],
         "rpy_rad": [
@@ -170,7 +171,7 @@
       ],
       "camera_housing_frame": "D405 bottom screw frame (official nominal convention)",
       "flange_frame_status": "user play native link6; nominal end plane .0865 m plus .0001 m display clearance; butt placement only; +90deg synthetic clocking places camera below palm, not measured key alignment",
-      "camera_candidate_status": "Astra xhigh: mirrored nominal body/optical centers using rigid camera rotation; bracket and calibration unverified",
+      "camera_candidate_status": "Astra xhigh M5: user-requested 20 mm outward shift, mirrored body/optical centers; bracket and calibration unverified",
       "preview_joint_positions": {
         "right_arm__joint2": -0.7,
         "right_arm__joint3": 0.7
@@ -259,7 +260,7 @@
     "extrinsics_status": "official_nominal_not_calibrated",
     "inertial_status": "upstream_explicitly_unreliable_do_not_use"
   },
-  "review_status": "ASTRA_XHIGH_SYMMETRIC_CAMERA_CANDIDATE; independent anatomical hands; mechanical support pending",
+  "review_status": "ASTRA_XHIGH_M5_OUTWARD_CAMERA_CANDIDATE; independent anatomical hands; mechanical support pending",
   "arm_model": {
     "id": "user_play_b02c7ac6",
     "urdf_sha256": "b02c7ac6fd1dd6a65f355ef6650c2a7584fdbd56ccfc497b767292010ce4e0b0",

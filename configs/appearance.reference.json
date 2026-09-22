@@ -1,29 +1,38 @@
 {
   "schema_version": 1,
   "purpose": "reference_appearance_only",
-  "observation_id": "OBS-M4-20260922-ROOT-APPEARANCE-01",
-  "source_status": "official illustrations reviewed; approximate design materials, not original vendor textured meshes",
+  "observation_id": "OBS-M5-20260922-ASTRA-PHOTO-APPEARANCE-01",
+  "source_status": "user photo and prior official illustrations reviewed; silver-white hand shells and continuous arm-panel materials are visual approximations, not vendor textures",
   "sources": [
     "https://docs.discover-robotics.com/assets/docs-center/play.png",
     "https://www.agibot.com.cn/DOCS/OS/Omnihand-O10",
     "https://www.agibot.com.cn/file/ueditor/php/upload/file/20260522/1779437338739932.pdf"
   ],
   "palette": {
-    "charcoal": {"color_linear_rgb": [0.028, 0.032, 0.038], "roughness": 0.4, "metallic": 0.2},
+    "charcoal": {"color_linear_rgb": [0.018, 0.022, 0.027], "roughness": 0.33, "metallic": 0.18},
     "ivory": {"color_linear_rgb": [0.74, 0.76, 0.79], "roughness": 0.32, "metallic": 0.08},
+    "hand_shell": {"color_linear_rgb": [0.72, 0.75, 0.78], "roughness": 0.28, "metallic": 0.25},
     "alloy": {"color_linear_rgb": [0.42, 0.46, 0.5], "roughness": 0.28, "metallic": 0.7},
     "camera_alloy": {"color_linear_rgb": [0.38, 0.42, 0.46], "roughness": 0.32, "metallic": 0.6}
   },
   "selectors": {
     "arm_panel_links": ["link2", "link3"],
     "arm_panel_normal_axis": 2,
-    "arm_panel_min_abs_normal": 0.85,
-    "palm_proximal_max_z_m": 0.045
+    "arm_panel_normal_blend_range": [0.74, 0.96],
+    "palm_material": "hand_shell"
+  },
+  "surface_shading": {
+    "normals": "angle_limited_corner_normals",
+    "crease_angle_deg": 45.0,
+    "weld_position_tolerance_m": 1e-8,
+    "scope": "visual shading only; original points, face indices and collision geometry unchanged"
   },
   "limitations": [
     "Colour families are observed; numeric colour, roughness, metallic and material boundaries are synthetic approximations",
-    "No logo, UV texture or photometric calibration is inferred",
-    "Material subsets preserve all vertices and faces; collision and dynamics are unchanged",
+    "No vendor logo, vendor texture or photometric calibration is inferred; the generated colour ramp is synthetic",
+    "Arm panels use a continuous corner-normal colour field and a relative-path colour-ramp texture; material boundaries remain approximate",
+    "Palm shells have one silver-white material; no unsupported proximal black cutoff",
+    "Derived corner normals and UVs change shading only; all original vertices and faces, collision and dynamics are unchanged",
     "Custom adapter and D405 alloy are generic review choices, not confirmed finishes of supplied hardware"
   ]
 }

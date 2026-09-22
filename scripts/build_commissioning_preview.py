@@ -10,11 +10,13 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import struct
 import xml.etree.ElementTree as ET
+import zlib
 
 import numpy as np
 import trimesh
-from pxr import Gf, Sdf, Usd, UsdGeom, UsdLux, UsdShade
+from pxr import Gf, Sdf, Usd, UsdGeom, UsdLux, UsdShade, Vt
 from sim2data.backends.isaaclab.preview_pose import resolve_preview_positions
 
 
@@ -50,6 +52,93 @@ def material(stage, prim, colour, roughness=.55, metallic=0.0):
     shader.CreateInput("metallic", Sdf.ValueTypeNames.Float).Set(metallic)
     mat.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), "surface")
     UsdShade.MaterialBindingAPI.Apply(prim).Bind(mat)
+    return mat
+
+
+def corner_shading_normals(geometry, settings):
+    """Angle-weighted, crease-limited visual normals without welding the mesh.
+
+    Coincident corners are grouped only in temporary arrays. Authored source
+    vertices, face indices and collision geometry are never changed.
+    """
+    tolerance = float(settings["weld_position_tolerance_m"])
+    crease = float(settings["crease_angle_deg"])
+    if not np.isfinite(tolerance) or tolerance <= 0 or not 0 < crease < 90:
+        raise ValueError("Invalid visual normal tolerances")
+    vertices = np.asarray(geometry.vertices)
+    faces = np.asarray(geometry.faces)
+    _, vertex_groups = np.unique(np.round(vertices / tolerance).astype(np.int64), axis=0, return_inverse=True)
+    corner_groups = vertex_groups[faces.reshape(-1)]
+    order = np.argsort(corner_groups, kind="stable")
+    _, starts, degrees = np.unique(corner_groups[order], return_index=True, return_counts=True)
+    source = np.repeat(np.asarray(geometry.face_normals), 3, axis=0)
+    weights = np.asarray(geometry.face_angles).reshape(-1)
+    normals = source.copy()
+    threshold = np.cos(np.deg2rad(crease))
+    for degree in np.unique(degrees):
+        # Unusual nonmanifold stars retain their original corner normals.
+        # Bound temporary pairwise arrays; ordinary source surface stars are small.
+        if degree > 128:
+            continue
+        selected_starts = starts[degrees == degree]
+        for offset in range(0, len(selected_starts), 4096):
+            indices = order[selected_starts[offset:offset + 4096, None] + np.arange(degree)]
+            incident = source[indices]
+            compatible = np.einsum("nik,njk->nij", incident, incident) >= threshold
+            weighted = compatible * weights[indices][:, None, :]
+            smoothed = np.einsum("nij,njk->nik", weighted, incident)
+            length = np.linalg.norm(smoothed, axis=2, keepdims=True)
+            smoothed = np.divide(smoothed, length, out=incident.copy(), where=length > 1e-12)
+            normals[indices] = smoothed
+    return normals.reshape(-1, 3, 3)
+
+
+def write_colour_ramp(path, first, second, width=256):
+    """Small RGB PNG containing linear values; no image-library dependency."""
+    ramp = np.linspace(first, second, width)
+    pixels = np.uint8(np.round(np.clip(ramp, 0, 1) * 255))
+    rows = b"".join(b"\x00" + pixels.tobytes() for _ in range(4))
+
+    def chunk(kind, data):
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xffffffff)
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, 4, 8, 2, 0, 0, 0))
+                     + chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b""))
+
+
+def continuous_panel_material(stage, prim, primary, accent, weights):
+    """Portable UV texture field, continuous within and across smooth faces."""
+    identity = json.dumps([primary, accent], sort_keys=True).encode()
+    key = hashlib.sha256(identity).hexdigest()[:16]
+    relative = Path("textures") / f"reference_panel_{key}.png"
+    texture_path = Path(stage.GetRootLayer().realPath).parent / relative
+    if not texture_path.exists():
+        write_colour_ramp(texture_path, primary["color_linear_rgb"], accent["color_linear_rgb"])
+    mat = UsdShade.Material.Define(stage, "/World/Looks/panel_" + key)
+    surface = UsdShade.Shader.Define(stage, mat.GetPath().AppendChild("Surface"))
+    surface.CreateIdAttr("UsdPreviewSurface")
+    surface.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(primary["roughness"])
+    surface.CreateInput("metallic", Sdf.ValueTypeNames.Float).Set(primary["metallic"])
+    reader = UsdShade.Shader.Define(stage, mat.GetPath().AppendChild("UV"))
+    reader.CreateIdAttr("UsdPrimvarReader_float2")
+    reader.CreateInput("varname", Sdf.ValueTypeNames.Token).Set("st")
+    reader.CreateOutput("result", Sdf.ValueTypeNames.Float2)
+    texture = UsdShade.Shader.Define(stage, mat.GetPath().AppendChild("Colour"))
+    texture.CreateIdAttr("UsdUVTexture")
+    texture.CreateInput("file", Sdf.ValueTypeNames.Asset).Set(Sdf.AssetPath(relative.as_posix()))
+    texture.CreateInput("sourceColorSpace", Sdf.ValueTypeNames.Token).Set("raw")
+    texture.CreateInput("wrapS", Sdf.ValueTypeNames.Token).Set("clamp")
+    texture.CreateInput("wrapT", Sdf.ValueTypeNames.Token).Set("clamp")
+    texture.CreateInput("st", Sdf.ValueTypeNames.Float2).ConnectToSource(reader.ConnectableAPI(), "result")
+    texture.CreateOutput("rgb", Sdf.ValueTypeNames.Float3)
+    surface.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).ConnectToSource(texture.ConnectableAPI(), "rgb")
+    mat.CreateSurfaceOutput().ConnectToSource(surface.ConnectableAPI(), "surface")
+    UsdShade.MaterialBindingAPI.Apply(prim).Bind(mat)
+    uv = np.column_stack((np.asarray(weights).reshape(-1) * (255 / 256) + .5 / 256,
+                          np.full(np.asarray(weights).size, .5))).astype(np.float32)
+    UsdGeom.PrimvarsAPI(prim).CreatePrimvar("st", Sdf.ValueTypeNames.TexCoord2fArray,
+                                         UsdGeom.Tokens.faceVarying).Set(Vt.Vec2fArray.FromNumpy(uv))
 
 
 def mesh(stage, path, geometry, colour, style=None):
@@ -65,19 +154,14 @@ def mesh(stage, path, geometry, colour, style=None):
     prim.CreateDisplayColorAttr([Gf.Vec3f(*colour[:3])])
     material(stage, prim.GetPrim(), colour)
     if style:
-        primary, accent, indices = style
+        primary, accent = style["primary"], style["accent"]
         material(stage, prim.GetPrim(), primary["color_linear_rgb"], primary["roughness"], primary["metallic"])
-        if accent is not None and len(indices):
-            # Explicitly partition both regions: some importers do not use the
-            # parent mesh material as fallback for faces outside one subset.
-            remaining = np.setdiff1d(np.arange(len(faces)), indices, assume_unique=True).tolist()
-            for label, selected, surface in (("ReferenceBase", remaining, primary),
-                                              ("ReferenceAccent", indices, accent)):
-                if selected:
-                    subset = UsdGeom.Subset.CreateGeomSubset(
-                        UsdGeom.Imageable(prim.GetPrim()), label, UsdGeom.Tokens.face,
-                        selected, "materialBind", UsdGeom.Tokens.partition)
-                    material(stage, subset.GetPrim(), surface["color_linear_rgb"], surface["roughness"], surface["metallic"])
+        prim.CreateDisplayColorAttr([Gf.Vec3f(*primary["color_linear_rgb"])])
+        normals = np.asarray(style["corner_normals"], dtype=np.float32).reshape(-1, 3)
+        prim.CreateNormalsAttr(Vt.Vec3fArray.FromNumpy(normals))
+        prim.SetNormalsInterpolation(UsdGeom.Tokens.faceVarying)
+        if accent is not None:
+            continuous_panel_material(stage, prim.GetPrim(), primary, accent, style["weights"])
     prim.CreateExtentAttr([Gf.Vec3f(*vertices.min(axis=0).tolist()),
                            Gf.Vec3f(*vertices.max(axis=0).tolist())])
     return len(vertices), len(faces)
@@ -88,18 +172,22 @@ def reference_style(name, geometry, appearance):
     if appearance is None:
         return None
     palette, rules = appearance["palette"], appearance["selectors"]
-    accent, indices = None, []
+    normals = corner_shading_normals(geometry, appearance["surface_shading"])
+    accent, weights = None, None
     if "_arm__" in name:
         base = palette["charcoal"]
         if name.split("_arm__", 1)[1] in rules["arm_panel_links"]:
             accent = palette["ivory"]
-            indices = np.flatnonzero(np.abs(geometry.face_normals[:, rules["arm_panel_normal_axis"]])
-                                     >= rules["arm_panel_min_abs_normal"]).tolist()
+            lower, upper = rules["arm_panel_normal_blend_range"]
+            if not 0 <= lower < upper <= 1:
+                raise ValueError("Invalid continuous panel blend range")
+            coordinate = np.abs(normals[:, :, rules["arm_panel_normal_axis"]])
+            weights = np.clip((coordinate - lower) / (upper - lower), 0, 1)
+            weights = weights * weights * (3 - 2 * weights)
     elif "_hand__" in name:
         base = palette["ivory"]
         if name.lower().endswith("palm"):
-            accent = palette["charcoal"]
-            indices = np.flatnonzero(geometry.triangles_center[:, 2] <= rules["palm_proximal_max_z_m"]).tolist()
+            base = palette[rules["palm_material"]]
         elif "thumb_roll" in name:
             base = palette["alloy"]
     elif name.endswith("_mount_assembly"):
@@ -108,7 +196,7 @@ def reference_style(name, geometry, appearance):
         base = palette["camera_alloy"]
     else:
         return None
-    return base, accent, indices
+    return {"primary": base, "accent": accent, "weights": weights, "corner_normals": normals}
 
 
 def cube(stage, path, size, centre, colour):
@@ -290,7 +378,24 @@ def build(args):
     stage.GetRootLayer().Save()
     # Private review derivative includes referenced table geometry. Texture
     # asset paths remain external and must resolve on the reviewing machine.
-    stage.Flatten().Export(str(args.out / "assembly_preview.usdc"))
+    flattened = stage.Flatten()
+    flat_stage = Usd.Stage.Open(flattened)
+    texture_dependencies = []
+    for shader_prim in flat_stage.Traverse():
+        if not shader_prim.IsA(UsdShade.Shader):
+            continue
+        shader = UsdShade.Shader(shader_prim)
+        if shader.GetIdAttr().Get() != "UsdUVTexture":
+            continue
+        file_input = shader.GetInput("file")
+        asset = file_input.Get()
+        name = Path(asset.path).name if asset is not None else ""
+        texture = args.out / "textures" / name
+        if name.startswith("reference_panel_") and texture.is_file():
+            relative = "textures/" + name
+            file_input.Set(Sdf.AssetPath(relative))
+            texture_dependencies.append({"path": relative, "sha256": hashlib.sha256(texture.read_bytes()).hexdigest()})
+    flattened.Export(str(args.out / "assembly_preview.usdc"))
     reopened = Usd.Stage.Open(str(args.out / "assembly_preview.usda"))
     cameras = [str(p.GetPath()) for p in reopened.Traverse() if p.IsA(UsdGeom.Camera)]
     if len(cameras) != 3:
@@ -298,6 +403,8 @@ def build(args):
     result.update(passed=True, robots=robots, camera_paths=cameras,
                   appearance_sha256=None if args.appearance is None else hashlib.sha256(args.appearance.read_bytes()).hexdigest(),
                   appearance_scope=None if appearance is None else appearance["source_status"],
+                  texture_dependencies=texture_dependencies,
+                  shading_scope=None if appearance is None else appearance["surface_shading"]["scope"],
                   stage_prim_count=sum(1 for _ in reopened.Traverse()),
                   profile_sha256=hashlib.sha256(args.profile.read_bytes()).hexdigest(),
                   limitations=["Limit-checked synthetic pose with URDF mimic; visual FK only", "No articulation/drive/collision cooking authored",
