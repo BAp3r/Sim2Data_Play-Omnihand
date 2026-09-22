@@ -61,6 +61,6 @@ uv sync --project environments/local_windows --active --locked --check --no-pyth
 
 ## 当前边界
 
-本环境只完成依赖解析、安装和只读身份检查。本轮没有启动 Kit、没有执行 GPU smoke、没有打开场景、没有验证资产/机器人装配、碰撞、相机投影、抓取接触或 LeRobot 数据集兼容性。通过上述 CPU/metadata 检查不代表物理仿真或生产采集验收。
+环境子任务只完成依赖解析、安装和身份检查，没有启动 Kit。主会话随后已运行本机 synthetic Cube physics/RGB smoke，实际结果见 `VALIDATION.md`；尚未验证机器人装配、三相机同步、抓取接触或完整数据回合。通过上述 CPU/metadata 检查不代表物理仿真或生产采集验收。
 
 完整命令输出和包含本机路径的身份 JSON 只保存在 worktree 的 `.local/evidence`，不应提交或发布。

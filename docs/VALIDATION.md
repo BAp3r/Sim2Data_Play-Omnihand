@@ -150,3 +150,11 @@ uv run --frozen --offline --no-python-downloads python -m compileall -q sim2data
 ## M2 本机调试增量
 
 `uv run --frozen --offline --no-python-downloads python -m unittest discover -s tests -v`：85项，81通过、4跳过，日志 `.local/evidence/m2/cpu_tests03.txt`。两次 Blender CPU 静态导入/三相机渲染完成，证据 `blender_review01` / `blender_review02`，不是物理或数据回合。新环境首轮 `newenv_smoke01/result.json` 明确失败：physics context 未初始化；修正生命周期后复试。三路同步、机器人动力学、接触任务均未验收，生产关闭。
+
+## 本机 headless 物理/RGB 结果（2026-09-22）
+
+新隔离 Windows 环境（Isaac Sim 5.1.0.0、IsaacLab 0.47.2/v2.3.0、Torch 2.7.0+cu128）已实际完成 synthetic 8 cm Cube 的480步测试，dt=1/240 s、CPU PhysX + D3D12 RTX RGB。中心高度从0.289489 m降至0.03999999 m，末速度约0.000176 m/s，RGB为240×320×3，标准差39.2979；主会话已查看实际图像。`newenv_smoke02/result.json` 为 passed=true / completed。该结果仅证明桌面夹具下落支撑和单相机渲染，不包含官方 card_box、机械臂、三相机同步或接力数据。Kit 首次着色器编译较慢，物理结果写完后关闭阶段另行记录，不以退出码替代结果检查。
+
+精确机器命令与私有证据见 `.local/evidence/m2/COMMANDS.md`。装配复核见 `ASSEMBLY_VISUAL_REVIEW.md`；生产开关保持关闭。
+
+关闭阶段补充：结果写完后 Kit 超过4分钟未退出，主会话核对进程命令后仅终止本次 smoke。物理/RGB通过，正常关闭未通过；证据 `.local/evidence/m2/newenv_smoke02_shutdown.json`。Blender review04 改用独立灯光/曝光，已实际查看；它对应 camera v1 位置的 preview02，不能用作公开 v2 偏置的复验。

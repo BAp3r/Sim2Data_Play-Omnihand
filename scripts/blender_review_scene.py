@@ -32,6 +32,8 @@ scene.render.resolution_x = 640
 scene.render.resolution_y = 480
 scene.render.resolution_percentage = 100
 scene.render.image_settings.file_format = "PNG"
+scene.view_settings.view_transform = "AgX"
+scene.view_settings.exposure = -2.0
 scene["sim2data_scope"] = "static_assembly_review_not_simulator_capture"
 scene["production_collection_allowed"] = False
 cameras = [obj for obj in scene.objects if obj.type == "CAMERA"]
@@ -48,7 +50,7 @@ world.use_nodes = True
 world.node_tree.nodes["Background"].inputs["Color"].default_value = (.25, .25, .25, 1)
 world.node_tree.nodes["Background"].inputs["Strength"].default_value = .6
 light_data = bpy.data.lights.new("ReviewArea", type="AREA")
-light_data.energy = 700
+light_data.energy = 70
 light_data.shape = "DISK"
 light_data.size = 3
 light = bpy.data.objects.new("ReviewArea", light_data)

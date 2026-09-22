@@ -50,3 +50,11 @@ D405 来源为官方 RealSense ROS 仓库 commit `9a11121700cb4780e273e34141f640
 ROS2 完整包已闭合并用于 `combined02` / `assembly_preview02`，此前 missing mesh 仅适用于旧单文件检查。Astra Max v2 将左/右 housing 的 mount Y 设为 +0.011/-0.029 m，固定网格姿态采样自遮挡降至17/315和20/315；该姿态左拇指零值略超限，不能视为有效关节态或覆盖验收。link6夹爪座残留及法兰接合缺口未解决。Blender review02 已用显式 PreviewSurface 完成第二次实际静态渲染。
 
 新 uv 环境第一次运行完成 Kit 启动，但 smoke 错设 `ISAAC_LAUNCHED_FROM_TERMINAL=True` 跳过物理上下文初始化。已移除覆盖，保留 SimulationApp 生命周期设置，继续新目录复试。退出码0不作为通过证据，必须读取 result.json。
+
+## 本机 headless 物理/RGB 结果（2026-09-22）
+
+新隔离 Windows 环境（Isaac Sim 5.1.0.0、IsaacLab 0.47.2/v2.3.0、Torch 2.7.0+cu128）已实际完成 synthetic 8 cm Cube 的480步测试，dt=1/240 s、CPU PhysX + D3D12 RTX RGB。中心高度从0.289489 m降至0.03999999 m，末速度约0.000176 m/s，RGB为240×320×3，标准差39.2979；主会话已查看实际图像。`newenv_smoke02/result.json` 为 passed=true / completed。该结果仅证明桌面夹具下落支撑和单相机渲染，不包含官方 card_box、机械臂、三相机同步或接力数据。Kit 首次着色器编译较慢，物理结果写完后关闭阶段另行记录，不以退出码替代结果检查。
+
+精确机器命令与私有证据见 `.local/evidence/m2/COMMANDS.md`。装配复核见 `ASSEMBLY_VISUAL_REVIEW.md`；生产开关保持关闭。
+
+关闭阶段补充：结果写完后 Kit 超过4分钟未退出，主会话核对进程命令后仅终止本次 smoke。物理/RGB通过，正常关闭未通过；证据 `.local/evidence/m2/newenv_smoke02_shutdown.json`。Blender review04 改用独立灯光/曝光，已实际查看；它对应 camera v1 位置的 preview02，不能用作公开 v2 偏置的复验。
