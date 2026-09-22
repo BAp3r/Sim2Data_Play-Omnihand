@@ -192,3 +192,7 @@ Git over SSH 可用不等于 LFS 端点已可用。实际要测试一个小的�
 - uv cache: https://docs.astral.sh/uv/concepts/cache/
 - Git LFS: https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-git-large-file-storage
 - OpenAI custom subagents: https://developers.openai.com/codex/multi-agent
+
+## Synthetic 装配调试边界（2026-09-22）
+
+用户已允许独立 synthetic 场景和安装假设。`configs/commissioning.synthetic.json` 与生产草案分离，生产变换继续为 null；真实网格静态 USD/Blender 预览不进入数据导出。D405 采用固定官方 ROS 几何和 screw→optical 名义内部链，外部安装、质量惯性和实物标定仍待核。link6 原夹爪座残留、机械搭接和关节限位内的相机覆盖未解决前，不通过 A/B 接触门禁。

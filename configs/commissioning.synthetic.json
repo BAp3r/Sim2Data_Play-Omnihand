@@ -6,7 +6,7 @@
     "Design values for debug only, not measured calibration",
     "Scene left uses anatomical left O10 and scene right uses anatomical right O10 as a synthetic choice",
     "Flange and hand roots aligned by synthetic fixed joints; mating side and overlap unverified",
-    "Camera housing is a dimensioned proxy, not a D405 mechanical model"
+    "D405 visual geometry/nominal internal frames from fixed official ROS description; mount placement unreviewed and extrinsics not calibrated"
   ],
   "table": {
     "size_xyz_m": [
@@ -36,7 +36,7 @@
         "xyz_m": [
           0,
           0,
-          0
+          -0.0514
         ],
         "rpy_rad": [
           0,
@@ -48,7 +48,7 @@
         "xyz_m": [
           0,
           0,
-          0.0261
+          0.0262
         ],
         "rpy_rad": [
           0,
@@ -58,33 +58,36 @@
       },
       "T_mount_camera_housing": {
         "xyz_m": [
-          0,
-          -0.055,
+          0.08,
+          0.011,
           0.012
         ],
         "rpy_rad": [
           0,
-          0,
+          -1.5707963267948966,
           0
         ]
       },
       "T_housing_color_optical": {
         "xyz_m": [
-          0,
-          0,
-          0
+          0.01085,
+          0.009,
+          0.021
         ],
         "rpy_rad": [
+          -1.5707963267948966,
           0,
-          0,
-          0
+          -1.5707963267948966
         ]
       },
       "camera_proxy_size_xyz_m": [
-        0.045,
-        0.045,
-        0.025
-      ]
+        0.023,
+        0.042,
+        0.042
+      ],
+      "camera_housing_frame": "D405 bottom screw frame (official nominal convention)",
+      "flange_frame_status": "link6 visual-envelope datum only; retained gripper body and mechanical gap unresolved",
+      "camera_candidate_status": "Astra Max v2 static mesh review only; joint-limit pose and task coverage pending"
     },
     "right": {
       "base_xyz_m": [
@@ -101,7 +104,7 @@
         "xyz_m": [
           0,
           0,
-          0
+          -0.0514
         ],
         "rpy_rad": [
           0,
@@ -113,7 +116,7 @@
         "xyz_m": [
           0,
           0,
-          0.0261
+          0.0262
         ],
         "rpy_rad": [
           0,
@@ -123,33 +126,36 @@
       },
       "T_mount_camera_housing": {
         "xyz_m": [
-          0,
-          -0.055,
+          0.08,
+          -0.029,
           0.012
         ],
         "rpy_rad": [
           0,
-          0,
+          -1.5707963267948966,
           0
         ]
       },
       "T_housing_color_optical": {
         "xyz_m": [
-          0,
-          0,
-          0
+          0.01085,
+          0.009,
+          0.021
         ],
         "rpy_rad": [
+          -1.5707963267948966,
           0,
-          0,
-          0
+          -1.5707963267948966
         ]
       },
       "camera_proxy_size_xyz_m": [
-        0.045,
-        0.045,
-        0.025
-      ]
+        0.023,
+        0.042,
+        0.042
+      ],
+      "camera_housing_frame": "D405 bottom screw frame (official nominal convention)",
+      "flange_frame_status": "link6 visual-envelope datum only; retained gripper body and mechanical gap unresolved",
+      "camera_candidate_status": "Astra Max v2 static mesh review only; joint-limit pose and task coverage pending"
     }
   },
   "relay_region": {
@@ -215,5 +221,19 @@
     "rgb_validated": false,
     "contact_validated": false,
     "dataset_export_allowed": false
-  }
+  },
+  "camera_model_source": {
+    "repository": "https://github.com/IntelRealSense/realsense-ros",
+    "commit": "9a11121700cb4780e273e34141f6402fe184321d",
+    "xacro": "realsense2_description/urdf/_d405.urdf.xacro",
+    "mesh": "realsense2_description/meshes/d405.stl",
+    "mesh_scale_xyz": [
+      0.001,
+      0.001,
+      0.001
+    ],
+    "extrinsics_status": "official_nominal_not_calibrated",
+    "inertial_status": "upstream_explicitly_unreliable_do_not_use"
+  },
+  "review_status": "ASTRA_MAX_CANDIDATE_02_NOT_ACCEPTED; wrist field of view and mechanical fit unresolved"
 }

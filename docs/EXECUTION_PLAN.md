@@ -83,3 +83,7 @@ GitHub 只发布经审阅的代码、公开文档和允许再分发的文件。�
 ## 本轮实现后的直接接入点
 
 三包和固定上游源码已落实，独立锁见 `PACKAGING.md`。A 的 `configs/asset_manifest.json` 提供来源、静态解析、SDK 驱动映射候选及生产阻塞；B 的 `configs/assembly_inputs.template.json` 提供逐侧原子链，CAD 审查见 `FLANGE_ASSEMBLY_REVIEW.md`；D 提供 `sim2data.export` 和 `scripts/lerobot_smoke.py`。后续先补模型 archive 绑定、实物修订及装配 datum，再处理运行时 RTX 启动失败并执行场景验证。当前不进入 C/E 批量阶段。
+
+## Synthetic 调试推进（2026-09-22）
+
+已实现 `scripts/assemble_commissioning.py` 双侧 URDF 组合、`scripts/build_commissioning_preview.py` 静态 USD 与 `scripts/blender_review_scene.py` CPU 预览。官方 O10 包和第三方 ROS2 arm 包已闭合；Astra Max 已实际执行视频/CAD/网格复核。Luna 在独立 worktree 用 uv 建立新的 Windows 环境；由主会话串行执行 GPU smoke。下一接口为审阅后的装配 datum、限位内姿态与动力学/控制映射；生产采集关闭，尚无接力 episode。

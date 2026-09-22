@@ -14,7 +14,7 @@ import xml.etree.ElementTree as ET
 
 import numpy as np
 import trimesh
-from pxr import Gf, Usd, UsdGeom, UsdLux
+from pxr import Gf, Sdf, Usd, UsdGeom, UsdLux, UsdShade
 
 
 def transform(xyz=(0, 0, 0), rpy=(0, 0, 0)):
@@ -36,6 +36,20 @@ def place(xform, matrix):
     xform.AddTransformOp().Set(Gf.Matrix4d(matrix.T.tolist()))
 
 
+def material(stage, prim, colour):
+    # Explicit PreviewSurface makes colours portable to Blender and Kit;
+    # displayColor alone is not interpreted as a surface by every importer.
+    key = "c_" + "_".join(str(round(float(c) * 65535)) for c in colour[:3])
+    path = "/World/Looks/" + key
+    mat = UsdShade.Material.Define(stage, path)
+    shader = UsdShade.Shader.Define(stage, path + "/Surface")
+    shader.CreateIdAttr("UsdPreviewSurface")
+    shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(*colour[:3]))
+    shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(.55)
+    mat.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), "surface")
+    UsdShade.MaterialBindingAPI.Apply(prim).Bind(mat)
+
+
 def mesh(stage, path, geometry, colour):
     vertices = np.asarray(geometry.vertices, dtype=np.float32)
     faces = np.asarray(geometry.faces, dtype=np.int32)
@@ -47,6 +61,7 @@ def mesh(stage, path, geometry, colour):
     prim.CreateFaceVertexIndicesAttr(faces.reshape(-1).tolist())
     prim.CreateSubdivisionSchemeAttr("none")
     prim.CreateDisplayColorAttr([Gf.Vec3f(*colour[:3])])
+    material(stage, prim.GetPrim(), colour)
     prim.CreateExtentAttr([Gf.Vec3f(*vertices.min(axis=0).tolist()),
                            Gf.Vec3f(*vertices.max(axis=0).tolist())])
     return len(vertices), len(faces)
@@ -58,6 +73,7 @@ def cube(stage, path, size, centre, colour):
     item.AddTranslateOp().Set(Gf.Vec3d(*centre))
     item.AddScaleOp().Set(Gf.Vec3f(*size))
     item.CreateDisplayColorAttr([Gf.Vec3f(*colour)])
+    material(stage, item.GetPrim(), colour)
 
 
 def load_geometry(node):
@@ -202,6 +218,7 @@ def build(args):
     camera.CreateVerticalApertureAttr(cam["horizontal_aperture_mm"]*0.75)
     UsdLux.DomeLight.Define(stage, "/World/Light").CreateIntensityAttr(900)
     stage.GetRootLayer().Save()
+    stage.GetRootLayer().Export(str(args.out / "assembly_preview.usdc"))
     reopened = Usd.Stage.Open(str(args.out / "assembly_preview.usda"))
     cameras = [str(p.GetPath()) for p in reopened.Traverse() if p.IsA(UsdGeom.Camera)]
     if len(cameras) != 3:

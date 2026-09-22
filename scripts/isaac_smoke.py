@@ -47,7 +47,6 @@ def main() -> None:
                                             "--/app/extensions/syncRegistryOnStartup=false",
                                             f"--/log/file={args.out / 'kit.log'}"]})
         result["phase"] = "building_scene"
-        import builtins
         import carb
         import numpy as np
         import omni.usd
@@ -64,7 +63,8 @@ def main() -> None:
         result["asset_up_axis"] = str(UsdGeom.GetStageUpAxis(source_stage))
         if result["asset_meters_per_unit"] != 1.0 or result["asset_up_axis"] != "Z":
             raise RuntimeError("Smoke requires reviewed metre/Z-up asset; no implicit unit conversion")
-        builtins.ISAAC_LAUNCHED_FROM_TERMINAL = True
+        # Keep SimulationApp's standalone lifecycle flag. Overriding it skips
+        # Isaac core's synchronous physics-context initialization.
         carb.settings.get_settings().set_bool("/isaaclab/render/offscreen", True)
         carb.settings.get_settings().set_bool("/isaaclab/render/active_viewport", True)
         omni.usd.get_context().new_stage()

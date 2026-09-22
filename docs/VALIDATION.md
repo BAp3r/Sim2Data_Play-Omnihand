@@ -146,3 +146,7 @@ uv run --frozen --offline --no-python-downloads python -m compileall -q sim2data
 交付中的视频关键帧和 `.local/DEPLOYMENT.md` 供本项目私有使用；不要通过公有 GitHub 分享。
 
 官方源码补充复核：overlay 内 538 个 Python 文件与固定 b64fe1ed submodule 逐文件 SHA256 一致，无缺失或新增 Python 文件；packaging shim 仅改打包元数据。私有证据：`export_official/source_python_hash_compare.json`、`local_submodule_crosscheck.json`、`lerobot_packaging_shim_setup.py`、`commands.json`。这不扩展到依赖环境或上游完整构建流程的验收。
+
+## M2 本机调试增量
+
+`uv run --frozen --offline --no-python-downloads python -m unittest discover -s tests -v`：85项，81通过、4跳过，日志 `.local/evidence/m2/cpu_tests03.txt`。两次 Blender CPU 静态导入/三相机渲染完成，证据 `blender_review01` / `blender_review02`，不是物理或数据回合。新环境首轮 `newenv_smoke01/result.json` 明确失败：physics context 未初始化；修正生命周期后复试。三路同步、机器人动力学、接触任务均未验收，生产关闭。

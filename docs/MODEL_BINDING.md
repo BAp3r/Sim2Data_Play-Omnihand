@@ -206,3 +206,7 @@ assembly.T_housing_optical = null
 - 由 B 通过相机投影与遮挡检查后，才允许 C 接触任务。
 
 本轮没有启动真实机器人、CAN/电机或接触任务，也没有下载整套官方资产库。
+
+## 后续包闭合复核
+
+主会话补取第三方 ROS2 候选 commit `7792960fb60f3118d9827b641dcc441e9ae2d06f` 的 `manipulator/Airbot/airbot_play_description`，完整 visual/collision 引用已解析且无 LFS pointer；证据 `.local/evidence/m2/airbot_ros2_full_package.json`。这取代此前仅有单文件时的缺 mesh 状态，不改变第三方来源或未绑定实物的结论。组合保留关节/惯性/碰撞 XML，静态预览未验证动力学。link6 保留原夹爪座，不可作为裸法兰验收。

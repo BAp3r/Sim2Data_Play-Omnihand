@@ -123,11 +123,16 @@ class MeshVisual:
     origin: Transform = field(
         default_factory=lambda: Transform((0.0, 0.0, 0.0), (0.0, 0.0, 0.0))
     )
+    scale_xyz: tuple[float, float, float] = (1.0, 1.0, 1.0)
 
     def __post_init__(self) -> None:
         _require_text(self.filename, "mesh visual filename")
         if not isinstance(self.origin, Transform):
             raise CommissioningError("mesh visual origin must be Transform")
+        scale = _vector3(self.scale_xyz, "mesh scale_xyz")
+        if any(value <= 0 for value in scale):
+            raise CommissioningError("mesh scale_xyz must be positive")
+        object.__setattr__(self, "scale_xyz", scale)
 
     @classmethod
     def from_mapping(cls, value: Mapping[str, object]) -> "MeshVisual":
@@ -140,6 +145,7 @@ class MeshVisual:
         return cls(
             _require_text(value["filename"], "mesh visual filename"),
             Transform.from_mapping(origin_value, "mesh visual origin"),  # type: ignore[arg-type]
+            tuple(value.get("scale_xyz", (1, 1, 1))),
         )
 
 
@@ -159,6 +165,7 @@ class SideCommissioningSpec:
     mount_visual: MeshVisual | None = None
     camera_housing_size_xyz_m: tuple[float, float, float] | None = None
     mount_mesh_base: Path | None = None
+    camera_housing_visual: MeshVisual | None = None
 
     def __post_init__(self) -> None:
         _require_text(self.side, "side")
@@ -176,6 +183,8 @@ class SideCommissioningSpec:
                 raise CommissioningError("package_roots values must be pathlib.Path values")
         if self.mount_visual is not None and not isinstance(self.mount_visual, MeshVisual):
             raise CommissioningError("mount_visual must be MeshVisual or None")
+        if self.camera_housing_visual is not None and not isinstance(self.camera_housing_visual, MeshVisual):
+            raise CommissioningError("camera_housing_visual must be MeshVisual or None")
         if self.camera_housing_size_xyz_m is not None:
             size = _vector3(self.camera_housing_size_xyz_m, "camera_housing_size_xyz_m")
             if any(value <= 0.0 for value in size):
@@ -589,10 +598,13 @@ def _box_geometry_link(
         visual = ET.SubElement(link, "visual")
         ET.SubElement(visual, "origin", visual_mesh.origin.as_origin_attributes())
         geometry = ET.SubElement(visual, "geometry")
-        ET.SubElement(geometry, "mesh", {"filename": Path(resolved_meshes[-1]).as_posix()})
+        ET.SubElement(geometry, "mesh", {"filename": Path(resolved_meshes[-1]).as_posix(),
+                                        "scale": " ".join(map(_format_number, visual_mesh.scale_xyz))})
     if size_xyz_m is not None:
         size = " ".join(_format_number(value) for value in size_xyz_m)
         for element_name in ("visual", "collision"):
+            if element_name == "visual" and visual_mesh is not None:
+                continue
             element = ET.SubElement(link, element_name)
             geometry = ET.SubElement(element, "geometry")
             ET.SubElement(geometry, "box", {"size": size})
@@ -676,7 +688,7 @@ def build_combined_urdf(spec: SideCommissioningSpec) -> CommissioningResult:
     housing_element, housing_meshes = _box_geometry_link(
         housing,
         spec.camera_housing_size_xyz_m,
-        None,
+        spec.camera_housing_visual,
         arm.path.parent,
         spec.package_roots,
     )

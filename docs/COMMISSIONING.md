@@ -27,4 +27,26 @@ URDF composer 的 7 项 CPU 测试通过；覆盖旧末端裁剪、mimic重命�
 
 详细本机日志和身份保存在 `.local/evidence/m2/local_runtime.json`、`local_smoke01*`、`local_smoke02_d3d12*`、`local_smoke03_d3d12_override*`。本轮尚未生成新的物理采集回合。A/B输入、关节动力学、必要碰撞及三相机视场通过前，完整接力仍不可称成功。
 
-用户要求新的 Astra xhigh/max 装配复核；模型清单支持，但本聊天 spawn 两次被线程上限拒绝。先前 Astra High 的 CAD 观察仍有效，不能将其称为这次 Max 复核。尚未通过 Max 复核的 synthetic 安装值维持待审状态。
+用户要求新的 Astra xhigh/max 装配复核；前两次 spawn 被线程上限拒绝，模型审计任务完成释放名额后，GPT-6 Astra Max 已实际启动。它已发现初版转接件悬空和相机掌宽侧置问题，正在量化修正。先前 High 的 CAD 观察与本次 Max 复核分别记证，尚未批准的安装值维持待审。
+
+
+## 真实几何静态预览与 D405 来源
+
+`MODEL_BINDING.md` 记录新取回的官方 O10 左右模型：各 18 个被引用 STL，17 个 revolute 其中 6 个 mimic，另 middle_abad 为上下限/effort/velocity 都为零的锁定候选；左名保留上游拼写 `l_middle_abad_jonit`。它不代表 11 个电机，也不替代旧私有快照。当前未冻结 action 映射。
+
+旧 AIRBOT 候选 URDF 的 mesh 包没有闭合。为让几何可审阅，单独取同一 DISCOVERSE commit 的 `new_airbot_play` MJCF 与对应 11 个 OBJ，按原 body transform/q=0 生成 **固定关节 visual snapshot**，去除旧手指和 camera_stand。它不是旧 URDF 的补丁、不是动力学转换。私有转换脚本/输入身份在 `.local/evidence/m2/prepare_visual_binding.py`、`assembly_inputs/arm_pose/source_identity.json`。左右组合 URDF 实际生成于 `combined01/`；49 个唯一 mesh 输入生成并重新打开静态 USD，196 个 prim、3 个 Camera。CAD 与第三方派生 USD/BLEND 均不提交。
+
+D405 来源为官方 RealSense ROS 仓库 commit `9a11121700cb4780e273e34141f6402fe184321d`：`realsense2_description/urdf/_d405.urdf.xacro` 与 `meshes/d405.stl`，证据 `.local/evidence/m2/d405/source_identity.json`。STL 数值为毫米，按上游 `scale=0.001` 转米，不能二次缩放。选 `camera_housing` 为官方 bottom screw frame，组合名义内部链为：
+
+- screw→visual mesh：xyz `[0.01465,0,0.021]` m，rpy `[π/2,0,π/2]`；
+- screw→color optical：xyz `[0.01085,0.009,0.021]` m，rpy `[-π/2,0,-π/2]`。
+
+这只是固定版本源码中的 nominal extrinsics，不是每台实物标定。源码明确说明 inertial 不可靠、不应用于建模，因此未把其质量/惯量填为生产输入。外部 mount→screw 安装关系仍独立审阅。
+
+本机 Blender 5.2.2 LTS 已通过 `scripts/blender_review_scene.py` 真实导入初版 USD，CPU Cycles 生成3张640×480静态图和私有 `.blend`，记录在 `.local/evidence/m2/blender_review01/`。这些不是 Isaac 相机帧或物理回合。初版 displayColor 在 Blender 未成为有效表面，已给 USD 工具补显式 PreviewSurface 材质绑定，待下一版复核。
+
+## 后续修正
+
+ROS2 完整包已闭合并用于 `combined02` / `assembly_preview02`，此前 missing mesh 仅适用于旧单文件检查。Astra Max v2 将左/右 housing 的 mount Y 设为 +0.011/-0.029 m，固定网格姿态采样自遮挡降至17/315和20/315；该姿态左拇指零值略超限，不能视为有效关节态或覆盖验收。link6夹爪座残留及法兰接合缺口未解决。Blender review02 已用显式 PreviewSurface 完成第二次实际静态渲染。
+
+新 uv 环境第一次运行完成 Kit 启动，但 smoke 错设 `ISAAC_LAUNCHED_FROM_TERMINAL=True` 跳过物理上下文初始化。已移除覆盖，保留 SimulationApp 生命周期设置，继续新目录复试。退出码0不作为通过证据，必须读取 result.json。

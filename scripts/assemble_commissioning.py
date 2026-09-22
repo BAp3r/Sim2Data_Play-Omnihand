@@ -29,6 +29,7 @@ def run(profile_path: Path, binding_path: Path, output: Path):
         source = binding[side]
         design = profile["robots"][side]
         mount = source.get("mount_visual")
+        camera_visual = source.get("camera_housing_visual")
         specs.append(SideCommissioningSpec(
             side=side, output_robot_name=f"{side}_commissioning",
             namespace_prefix=f"{side}_", arm_urdf=Path(source["arm_urdf"]),
@@ -38,7 +39,8 @@ def run(profile_path: Path, binding_path: Path, output: Path):
             package_roots={name: Path(path) for name, path in source["package_roots"].items()},
             mount_visual=None if mount is None else MeshVisual.from_mapping(mount),
             mount_mesh_base=None if mount is None else Path(source["mount_mesh_base"]),
-            camera_housing_size_xyz_m=tuple(design["camera_proxy_size_xyz_m"]),
+            camera_housing_size_xyz_m=None if camera_visual else tuple(design["camera_proxy_size_xyz_m"]),
+            camera_housing_visual=None if camera_visual is None else MeshVisual.from_mapping(camera_visual),
         ))
     paths = write_combined_urdfs(specs, output)
     record = {"scope": "synthetic_static_assembly", "production_collection_allowed": False,

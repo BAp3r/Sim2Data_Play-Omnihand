@@ -38,3 +38,7 @@
 `isaac_smoke.py` 使用新的输出目录，源 USD 只读；其 `--asset-role` 必须声明 synthetic fixture 或 selected card_box。第一次 synthetic Kit 启动退出 139，后续 portable-root/单 GPU 设置只完成编译检查。下一次启动先确认 GPU 已空闲并选择单一 Vulkan ICD，再审查日志实际使用的 cache/data/log 路径。禁止通过修改共享缓存、驱动或系统 ICD 排除故障。
 
 装配工具接受已知原子 `FrameTransform`，不会从名义 4 cm 或视觉推断生产 SE(3)。每侧安装件和相机载荷分别记录，合并刚体前确认参考 frame、质心和惯性；depth 继续关闭。批准拓扑观察包原件与视频哈希在 ignored 私有证据目录，公开文件只引用 observation ID。
+
+## 本机隔离调试配置
+
+`scripts/assemble_commissioning.py --profile configs/commissioning.synthetic.json --binding <private-binding.json> --out <new-directory>` 接受逐侧模型包与可选 CAD/D405 visual。私有 binding 不提交。D405 STL 按上游 scale=0.001 转米；housing 为 bottom screw frame。synthetic v2 左右 housing 横向偏置为设计选择，非实测。`isaac_smoke.py --graphics-api d3d12` 同时设置 Kit app.vulkan=false，仅作用当前进程。Blender 工具仅生成静态审阅图，不作为训练 RGB。

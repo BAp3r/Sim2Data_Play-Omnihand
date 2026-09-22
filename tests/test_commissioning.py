@@ -1,4 +1,5 @@
 import json
+from dataclasses import replace
 from pathlib import Path
 import tempfile
 import unittest
@@ -113,6 +114,12 @@ class CommissioningTests(unittest.TestCase):
         self.assertEqual(result.summary["status"], "synthetic_commissioning_only")
         self.assertFalse(result.summary["physics_validated"])
         self.assertFalse(result.summary["production"])
+        # The composed file is written in a third directory, so source-relative
+        # mesh URIs must be rebound rather than merely checked in their old cwd.
+        for mesh in root.findall(".//mesh"):
+            target = Path(mesh.get("filename"))
+            self.assertTrue(target.is_absolute())
+            self.assertTrue(target.is_file())
 
     def test_retained_mimic_to_deleted_arm_joint_fails(self):
         arm = self.root / "arm" / "arm.urdf"
@@ -190,6 +197,18 @@ class CommissioningTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(CommissioningError, "flange link"):
             build_combined_urdf(bad)
+
+
+    def test_camera_mesh_unit_scale_is_explicit_and_not_a_second_proxy(self):
+        spec = _spec(self.root / "arm" / "arm.urdf", self.root / "hand" / "hand.urdf", self.root / "hand")
+        camera = MeshVisual("package://hand_pkg/meshes/finger.stl", scale_xyz=(.001, .001, .001))
+        result = build_combined_urdf(replace(spec, camera_housing_visual=camera,
+                                            camera_housing_size_xyz_m=(.023, .042, .042)))
+        housing = ET.fromstring(result.xml_text).find("link[@name='left__camera_housing']")
+        self.assertEqual(len(housing.findall("visual")), 1)
+        self.assertEqual(housing.find("visual/geometry/mesh").get("scale"), "0.001 0.001 0.001")
+        with self.assertRaises(CommissioningError):
+            MeshVisual("mesh.stl", scale_xyz=(0, 1, 1))
 
 
 if __name__ == "__main__":

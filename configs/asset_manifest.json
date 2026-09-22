@@ -475,5 +475,54 @@
     "usd_parse_method": "read-only pxr Usd/UsdGeom/UsdPhysics inspection on the existing remote asset",
     "runtime_status": "no Kit/GPU physics or RGB smoke performed by this asset audit",
     "production_gate": "keep collection disabled until a single arm candidate, O10/O12 identity, model archive, adapter chain, mass/inertia and runtime collision checks are approved"
-  }
+  },
+  "commissioning_model_packages": [
+    {
+      "id": "official_o10_20260827_left",
+      "status": "STATIC_PACKAGE_CLOSED_SYNTHETIC_ASSEMBLY_CANDIDATE",
+      "anatomical_side": "left",
+      "source_page": "https://www.agibot.com.cn/DOCS/OS/Omnihand-O10",
+      "report": "docs/MODEL_BINDING.md",
+      "private_evidence": ".local/evidence/m2/omni_left_inspection.json",
+      "urdf_sha256": "8c33ee9e9e9ce08cb9e379618d7e06f07791bf65a159e36f6481dd4e4d75e468",
+      "physical_joint_count": 17,
+      "mimic_joint_count": 6,
+      "zero_range_revolute_joints": [
+        "l_middle_abad_jonit"
+      ],
+      "hardware_action_dimension": null,
+      "hardware_revision_binding": null,
+      "physics_validated": false,
+      "not_equivalent_to_previous_private_snapshot": true
+    },
+    {
+      "id": "official_o10_20260827_right",
+      "status": "STATIC_PACKAGE_CLOSED_SYNTHETIC_ASSEMBLY_CANDIDATE",
+      "anatomical_side": "right",
+      "source_page": "https://www.agibot.com.cn/DOCS/OS/Omnihand-O10",
+      "report": "docs/MODEL_BINDING.md",
+      "private_evidence": ".local/evidence/m2/omni_right_inspection.json",
+      "urdf_sha256": "5acb477166ae7b1211d2a8378fd1593e59e7742aa26f4f4578c0ba01bda9e952",
+      "physical_joint_count": 17,
+      "mimic_joint_count": 6,
+      "zero_range_revolute_joints": [
+        "R_middle_abad_joint"
+      ],
+      "hardware_action_dimension": null,
+      "hardware_revision_binding": null,
+      "physics_validated": false,
+      "not_equivalent_to_previous_private_snapshot": true
+    },
+    {
+      "id": "airbot_ros2_7792960",
+      "status": "THIRD_PARTY_STATIC_PACKAGE_CLOSED",
+      "repository": "https://github.com/foiegreis/ros2_quadrupeds_and_humanoids",
+      "commit": "7792960fb60f3118d9827b641dcc441e9ae2d06f",
+      "relative_package": "manipulator/Airbot/airbot_play_description",
+      "private_evidence": ".local/evidence/m2/airbot_ros2_full_package.json",
+      "physics_validated": false,
+      "flange_boundary": "link6 retains original gripper body; not bare flange",
+      "hardware_binding": null
+    }
+  ]
 }
