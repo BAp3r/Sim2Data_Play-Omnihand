@@ -6,7 +6,7 @@
 先读 AGENTS.md、本任务相关 DESIGN 章节和最小所需 manifest；不要整库重复检索。缺少实际输入时提交缺失清单，不能填猜测值。
 
 ## 允许修改
-sim2data/backends/isaaclab/scene*, assets/owned/mounts/, tests/test_frames*
+packages/sim2data_isaac/src/sim2data/backends/isaaclab/scene*, assets/owned/mounts/, tests/test_frames*
 
 公共 schema、依赖锁、main 与其他代理目录归负责人。
 

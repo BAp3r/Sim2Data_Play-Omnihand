@@ -178,5 +178,14 @@
     }
   },
   "purpose": "requirements handoff only; not directly mergeable into scene_spec and not a calibrated scene",
-  "production_collection_enabled": false
+  "production_collection_enabled": false,
+  "cad_observations": [
+    {
+      "observation_id": "OBS-M1-20260922-ASTRA-FLANGE-01",
+      "approval_status": "approved_geometry_and_candidate_topology_only",
+      "report": "docs/FLANGE_ASSEMBLY_REVIEW.md",
+      "production_transform_binding": null,
+      "mass_inertia_binding": null
+    }
+  ]
 }

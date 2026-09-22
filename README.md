@@ -27,7 +27,7 @@
 
 ## 无重型依赖测试
 
-已有 Python >= 3.10 与 uv 时，在此目录执行：
+源码布局、固定 submodule 和两套运行环境见 [PACKAGING](docs/PACKAGING.md)，法兰 CAD 分析见 [装配审查](docs/FLANGE_ASSEMBLY_REVIEW.md)。首次 editable 构建可能需联网获取小型 setuptools 工具；构建缓存就绪后，在此目录执行：
 
 ```bash
 uv run --frozen --offline --no-python-downloads python -m unittest discover -s tests -v

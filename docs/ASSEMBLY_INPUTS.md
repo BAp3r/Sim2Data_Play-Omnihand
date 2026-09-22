@@ -39,3 +39,7 @@ T_world_color      = T_world_flange × T_flange_mount
 - 桌面中转区、桌外右侧框子的世界位姿/内尺寸/壁厚/支撑高度、右臂可达性，以及源物体尺寸、质量和刚性假设。
 
 输入齐备后才运行 Isaac 场景打开、初始穿透、遮挡、标定板投影和可达性检查。本模板和 CPU 链测试不构成 M2 或物理抓取验收，生产采集继续关闭。
+
+## 已批准单件 CAD 观察
+
+`OBS-M1-20260922-ASTRA-FLANGE-01` 已由 Astra High 实际解析和审阅，详见 `FLANGE_ASSEMBLY_REVIEW.md`。CAD 约为 37.568 × 26.100 × 37.568 mm 的中空带槽转接件。26.1 mm 不作为 flange→hand 平移；两端归属、搭接、键位、左右安装和质量仍待实测/配合件确认。派生 mesh 数值已为米，保留原 CAD frame，禁止二次缩放或把 CAD 原点偏移当装配外参。

@@ -58,5 +58,26 @@
     "freeze isolated reproducible simulation environment without modifying shared candidates"
   ],
   "machine_paths": "private .local/paths.json only",
-  "evidence": "private .local/evidence/m1/runtime{51,50,61}.json and upstream_source_comparison.json"
+  "evidence": "private .local/evidence/m1/runtime{51,50,61}.json and upstream_source_comparison.json",
+  "isolated_reproducible_candidates": {
+    "sim": {
+      "project": "environments/sim",
+      "lock": "environments/sim/uv.lock",
+      "lock_resolved_packages": 200,
+      "isaaclab_commit": "3c6e67bb5c7ada942a6d1884ab69338f57596f77",
+      "isaaclab_package_version": "0.47.2",
+      "isaacsim": "5.1.0.0",
+      "full_environment_synced": false,
+      "physics_rgb_validated": false
+    },
+    "data": {
+      "project": "environments/data",
+      "lock": "environments/data/uv.lock",
+      "lock_resolved_packages": 64,
+      "lerobot_commit": "b64fe1ed9f11eeac53ee821356d2797601701054",
+      "lerobot_version": "0.6.2",
+      "full_environment_synced": false,
+      "production_validated": false
+    }
+  }
 }

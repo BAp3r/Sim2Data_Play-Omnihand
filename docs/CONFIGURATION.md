@@ -5,9 +5,9 @@
 | 配置项 | 位置或入口 | 当前状态与用途 |
 |---|---|---|
 | 机器路径与 NAS 挂载 | ignored `.local/paths.json`；公开说明 `configs/paths.example.json` | 已记录部分私有盘点路径，生产数据根和运行时未绑定。Windows UNC 与 Linux 挂载分别填写；符号链接不能代替网络挂载 |
-| 仿真环境 | `configs/runtime_candidates.json`、`scripts/runtime_identity.py`、`docs/RUNTIME_BINDING.md` | 三套候选已复核；5.1 synthetic 启动失败，生产绑定仍为空。未生成独立仿真锁；不把共享继承式环境的 freeze 当闭包 |
-| 导出环境 | 规划 `envs/export/pyproject.toml` + `uv.lock` | 与仿真环境隔离；固定官方 LeRobot SDK/视频编码依赖。根 `uv.lock` 仅覆盖无重依赖的 M0 工具 |
-| 机器人与资产 manifest | 规划 `configs/asset_manifest.*` | 官方来源/版本/hash/许可、arm 与 hand 的真实驱动映射、单位和限位；当前没有生产 manifest |
+| 仿真环境 | `configs/runtime_candidates.json`、`scripts/runtime_identity.py`、`docs/RUNTIME_BINDING.md` | 三套候选已复核；5.1 synthetic 启动失败，生产绑定仍为空。`environments/sim/uv.lock` 已实际解析；未完整安装或验收，不把共享环境 freeze 当闭包 |
+| 导出环境 | `environments/data/pyproject.toml` + `uv.lock` | 与仿真环境隔离；固定官方 LeRobot SDK/视频编码依赖。根 `uv.lock` 仅覆盖无重依赖的 M0 工具 |
+| 机器人与资产 manifest | `configs/asset_manifest.json` | 官方来源/版本/hash/许可、arm 与 hand 的真实驱动映射、单位和限位；已有静态审计 manifest，尚未生产绑定 |
 | 标定与装配 | 原件放 `.local/calibration/` 或 ignored `calibration/`；`configs/assembly_inputs.template.json`、`docs/ASSEMBLY_INPUTS.md` | 已提供逐侧原子链和安装刚体输入模板；它不是可直接合并的场景配置。实测值仍为空；主相机位姿及覆盖也必须核查 |
 | 任务与采集 schema | `configs/scene_spec.draft.json` | 桌面中转、三路 RGB 和显式门禁已定义；阈值、可达性、反馈/命令维度尚未冻结，depth 默认关闭 |
 | 活动数据与缓存 | ignored `outputs/`、`datasets/`、`.cache/`、`logs/`、`reports/` | 实际可写根目录放服务器本地盘；每 writer 独立临时根，成功回读后归档 NAS。不要把不同进程指向同一个数据根 |
@@ -19,16 +19,16 @@
 
 ## 公开与私有存储
 
-两个远端本次同步相同的公开安全代码快照。NAS 有足够容量也不表示所有文件都应进 Git LFS：官方全集留外部，数据集/实录/标定放私有文件存储；自建或获授权的 USD 才进入版本库。若未来内网 Git 需要包含私有资产，使用独立私有资产仓库或专门发布流程，避免把带私有历史的分支直接推到公有 GitHub。
+此前两个远端已同步 M0 公开安全快照；本轮实施提交尚未推送。NAS 有足够容量也不表示所有文件都应进 Git LFS：官方全集留外部，数据集/实录/标定放私有文件存储；自建或获授权的 USD 才进入版本库。若未来内网 Git 需要包含私有资产，使用独立私有资产仓库或专门发布流程，避免把带私有历史的分支直接推到公有 GitHub。
 
-`third_party/` 默认只允许说明和空 manifest 模板被跟踪；新增源码需先固定版本和审核许可。`.gitignore` 不会自动取消已跟踪文件，也不是保密审计。每次公开发布只选已审阅文件，不推送临时 worktree 中尚未完成的 A/D/E 内容。
+`third_party/IsaacLab` 与 `third_party/lerobot` 已作为官方固定提交的 Git submodule 纳入；其他外部内容继续忽略。版本和独立环境见 `PACKAGING.md`。`.gitignore` 不会自动取消已跟踪文件，也不是保密审计。每次公开发布只选已审阅文件，不推送临时 worktree 中尚未完成的 A/D/E 内容。
 
 ## 配置顺序
 
 1. 固定两个远端的认证方式和审阅分支，保持 HTTPS 证书校验开启。
 2. 确认本地盘数据/缓存目录与 NAS 的真实只读资产路径。
 3. 绑定机器人、盒子资产和标定输入，核定单位与坐标链。
-4. 完成运行时兼容性验证，分别生成仿真/导出 uv 环境锁。
+4. 使用已生成的独立仿真/导出候选锁完成隔离安装与运行时兼容性验证，再冻结生产绑定。
 5. 通过接触、相机与官方 SDK 验收后，再配置批次、seed、数据划分、并行度和归档策略。
 
 ## 本轮运行时证据与下一次启动

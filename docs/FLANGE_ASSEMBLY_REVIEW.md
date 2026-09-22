@@ -72,7 +72,7 @@ visual 使用原始中空细节，collision 使用经净空检查的多个凸件
 已执行：真实 STEP read/transfer、BRepCheck、解析面/bbox/volume、CPU 多视图、OBJ 单位和有向体积核对。OBJ 共 9,256 顶点/10,232 三角面，mesh 与 BRep 最大 bbox 差约 0.004236 mm，有向体积相对差约 0.023585%，索引和阈值检查通过。脚本 `--help`、语法检查通过。可复用调用（私有路径通过参数传入）：
 
 ```powershell
-python scripts/inspect_flange.py <private-step-path> <new-private-output-directory>
+uv run --no-project --offline --no-python-downloads --python <isolated-cad-python> python scripts/inspect_flange.py <private-step-path> <new-private-output-directory>
 ```
 
 未运行 Blender 导入、Isaac USD cooking/场景打开、GPU 渲染、碰撞/载荷或抓取测试；训练 GPU 占用期间未启动 Kit。以上是 CPU CAD 几何审查，不是物理抓取、装配标定或 M2 验收。

@@ -79,3 +79,7 @@ GitHub 只发布经审阅的代码、公开文档和允许再分发的文件。�
 运行入口为 `uv run --frozen --offline --no-python-downloads python -m unittest discover -s tests -v` 和 `python -m sim2data.preflight`（同一 uv 环境）。当前预检退出 2 是预期阻断；结果分为 `unresolved_parameters`（缺项）和 `invalid_contracts`（与已冻结设计冲突）。完整命令与结果见 `docs/VALIDATION.md`。
 
 本轮对候选 URDF 的 XML/关节图/mesh 引用执行静态审计，D 执行官方 SDK 回读；资源允许的运行时 smoke 只验证引擎、单盒物理和 RGB。E 的 plan-only 模块继续保留，不扩随机化跑测。机器人装配投影、碰撞和接触仍分别属于 M2/M3。
+
+## 本轮实现后的直接接入点
+
+三包和固定上游源码已落实，独立锁见 `PACKAGING.md`。A 的 `configs/asset_manifest.json` 提供来源、静态解析、SDK 驱动映射候选及生产阻塞；B 的 `configs/assembly_inputs.template.json` 提供逐侧原子链，CAD 审查见 `FLANGE_ASSEMBLY_REVIEW.md`；D 提供 `sim2data.export` 和 `scripts/lerobot_smoke.py`。后续先补模型 archive 绑定、实物修订及装配 datum，再处理运行时 RTX 启动失败并执行场景验证。当前不进入 C/E 批量阶段。

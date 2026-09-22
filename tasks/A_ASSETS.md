@@ -6,7 +6,7 @@
 先读 AGENTS.md、本任务相关 DESIGN 章节和最小所需 manifest；不要整库重复检索。缺少实际输入时提交缺失清单，不能填猜测值。
 
 ## 允许修改
-sim2data/assets/, configs/asset_manifest.*, tests/test_assets*
+packages/sim2data_core/src/sim2data/assets/, configs/asset_manifest.*, tests/test_assets*
 
 公共 schema、依赖锁、main 与其他代理目录归负责人。
 

@@ -1,5 +1,55 @@
 # Sim2Data 验证记录
 
+## 2026-09-22 本轮集成结果
+
+输入为已发布 M0 基线；本地实施分支 `work/m1-implementation-20260922`，未推送。包迁移提交 `b42eb75`；A 官方 API 取证集成为 `38a873b`；Astra CAD 审查原提交 `44bb93c`、集成为 `e1e4427`。后续文档提交见 Git 历史，不把未提交状态填作 SHA。
+
+### 源码布局与环境锁
+
+实际固定官方 submodule：Isaac Lab v2.3.0 / 包版本 0.47.2，commit `3c6e67bb5c7ada942a6d1884ab69338f57596f77`；LeRobot 0.6.2，commit `b64fe1ed9f11eeac53ee821356d2797601701054`。三包 editable 导入保持 `sim2data.*` 接口；文档见 `PACKAGING.md`。
+
+实际运行：
+
+```powershell
+uv lock --check --offline
+uv lock --project environments/data --check --offline --no-python-downloads
+uv run --frozen --offline --no-python-downloads python -m unittest discover -s tests -v
+uv run --frozen --offline --no-python-downloads python -m compileall -q packages scripts tests
+```
+
+根锁 4 包、data 锁 64 包检查通过；测试 **77 项总数、73 通过、4 跳过**（2 个 Windows symlink、2 个本机未安装 SDK 的集成测试）。compileall 通过。原始输出 `.local/evidence/m1/final_cpu_tests.txt`。没有通过本机跳过项宣称 SDK 兼容。
+
+sim 锁在隔离 Linux 目录由真实 `uv lock --project environments/sim --python <existing-python> --no-python-downloads` 解析 **200 包**，随后 `uv lock --project environments/sim --check --offline --no-python-downloads` 返回 0。最初 Windows 在线解析因 NVIDIA 大 wheel 范围读取/内存映射失败；Windows 离线复核也因缺元数据缓存失败。仅在 Linux 的实际解析和检查记为成功。旧 flatdict 构建依赖 `pkg_resources`，隔离构建约束 `setuptools<81`；Isaac Lab 构建补 `toml`。没有完整 sync 两套环境，锁解析不是物理验收。精确私有命令和日志见 `.local/evidence/m1/COMMANDS.md`、`sim_lock_linux_retry.log`、`sim_lock_check.log`。
+
+最终预检 `uv run --frozen --offline --no-python-downloads python -m sim2data.preflight --out .local/evidence/m1/final_preflight.json` 仍阻断：64 个未解决字段、0 个固定契约冲突、`production_collection_allowed=false`。6 个受跟踪 JSON、11 个 TOML 解析通过；两个 submodule 工作树干净；已跟踪文件指定私有地址/路径字面量扫描无命中，私有目录无跟踪项。检查记录 `final_repository_checks.json`；这不是完整第三方许可或凭据审计。
+
+### A 资产与 SDK 静态证据
+
+`configs/asset_manifest.json` 和 `ASSET_AUDIT.md` 是下一阶段绑定入口。NAS 官方 card_box 的实际 USD 为 0.70×0.50×0.50 m、米制/Z-up、boundingCube collision、无 authored rigid body/质量；七个显式依赖存在，未验证渲染解析。桌面应用需先审阅缩放和动态 wrapper/物理参数。
+
+AIRBOT 两个指定候选复用旧快照并复核哈希，未将第三方仓库称官方；mesh、实物修订及 motor 映射待绑定。OmniHand 官方 O10 页面和 commit `026740d9fdd8ba32b0605fa702a992b322076f1b` 的 API 文档实际取回，确认 10 active + 6 passive 及具名主动角度表；16 项角度接口不是已冻结 observation 维度。官方模型 archive 尚未做 hash 绑定，SDK release version 未确认。详细哈希/取证命令在上述审计文档和私有 evidence index。
+
+### B / Astra 单件 CAD
+
+用户指定 STEP 经实际启动的 GPT-6 Astra High 解析审阅，观察 `OBS-M1-20260922-ASTRA-FLANGE-01`。1 个有效 solid、134 面；约 37.568×26.100×37.568 mm。CPU BRep/mesh 尺寸与体积核对通过；完整输入版本、准确命令、哈希和派生几何保存在 `.local/evidence/m1/flange/`，公共报告 `FLANGE_ASSEMBLY_REVIEW.md`。没有 Blender 导入或 Isaac cooking/GPU 验证。
+
+模板只新增批准观察引用，没有把 CAD 长度或原点偏移填入生产变换。两端归属、搭接、datum、材料/质量、D405 支架和光学外参仍缺。B 原子链、预检及 scene requirements 是下一接入接口；M2 不通过，采集继续关闭。
+
+### D 官方 LeRobot 0.6.2 synthetic 回读
+
+D 原提交 `2c9813b` 集成为 `703814c`。固定上游 b64fe1ed 的真实源码通过私有 packaging shim 构建 wheel，以 `--no-deps` 放入独立 overlay，未修改共享环境。实际解释器 Python 3.12.13，Torch 2.11.0、NumPy 2.3.1、PyAV 15.1.0；完整身份、源码/包哈希、依赖和命令保存在 `.local/evidence/m1/export_official/`。这是官方源码 + 本次已有依赖组合的验证，不是原样上游 wheel 安装测试，也不是新 data 锁全量 sync。
+
+通过官方 `create/add_frame/save_episode/finalize` 写入，官方 loader 实际重开：2 episodes / 6 frames、三个 8×8 H.264 RGB、每路 2 个视频文件；分片边界解码、统计、episode 局部窗口/padding、sidecar、Torch batch 检查成功。窗口 state/action batch 为 `[2,2,2]`；overhead 窗口 batch 为 `[2,2,3,8,8]`。D 快照 63 项测试全部通过，其中 2 项 SDK 集成测试亦独立运行通过；它与根迁移后 77 项本地测试范围不同。
+
+准确私有命令存证据目录；公开可复用命令形态（先安装本项目包/显式设置审核过的 overlay）：
+
+```bash
+uv run --no-project --offline --no-python-downloads --python <verified-sdk-python> python -m unittest tests.integration.test_lerobot_v3 -v
+uv run --no-project --offline --no-python-downloads --python <verified-sdk-python> python scripts/lerobot_smoke.py --root <new-private-root> --report <new-private-report.json>
+```
+
+`source_identity.json`、`tests_official.stdout`、`full_tests.stdout`、`uv.stdout`、`uv_report.json`、`dataset_inspection.json` 提供原始结果。旧 0.5.2 checkout 无法从官方取回 commit，仅作兼容分支测试；0.4.3 的两个兼容测试同样不替代当前固定源证据。未上传 Hub、未共写数据根、未手拼 v3 元数据。**格式小样通过，真实机器人 M4 未通过。**
+
 ## 2026-09-22 下一阶段实施（基线 0e523e0）
 
 用户本轮明确恢复 A/B/D 及有条件的运行时验证。实施分支从已发布 `0e523e06bb5b0909640a5875e0c37e42e7c4eec6` 派生，旧 A/D/E worktree 保留；不发布、不合并 main。实际启动三个 Luna Max 子代理，工作区和写入范围独立；主会话复核视觉观察、维护公共接口并集成。

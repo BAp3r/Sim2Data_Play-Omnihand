@@ -30,7 +30,7 @@ mjlab 不是不能并行：其官方项目结合 Isaac Lab 风格的 manager API
 
 机器人、任务、采样、相机、导出、批处理独立模块；不要写成一个同时启动 Kit、控制手指、编码视频和管理 Git 的巨大脚本。
 
-模块划分为 `sim2data/backends/isaaclab/`、`sim2data/robots/`、`sim2data/tasks/`、`sim2data/randomization/`、`sim2data/export/`、`sim2data/qa/`。当前已合入 M0 的 `core.py`、`preflight.py` 和 `backends/isaaclab/scene_*` 坐标/需求工具；尚未合入物理 collector、任务控制器或官方 SDK writer。其余目录按里程碑增加。
+源码已拆分为 `packages/sim2data_core`（数据契约、预检、资产接口）、`packages/sim2data_isaac`（坐标链与装配需求）和 `packages/sim2data_lerobot`（官方 SDK writer/loader 适配）。保留 `sim2data.*` 导入接口，具体安装方式见 `PACKAGING.md`。物理 collector、接触控制器和 Mimic 适配尚未实现。官方上游以固定 Git submodule 纳入，两套 Linux 运行环境各有真实 uv 锁；锁定不等于运行验收。
 
 ## 3. 机器人与坐标契约
 
