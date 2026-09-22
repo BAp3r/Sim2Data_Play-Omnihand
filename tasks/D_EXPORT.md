@@ -1,6 +1,6 @@
 # D_EXPORT — 官方 LeRobot v3 写入与回读
 
-指定模型：GPT-5.6 Luna Max；2026-09-22 已实际启动，后按用户“文档优先、测试后置”要求暂停。保留 worktree 在途代码；官方 SDK 兼容性未作为已验收结果交付。
+指定模型：GPT-5.6 Luna Max；2026-09-22 用户已恢复本轮实施，实际启动独立代理，复用并修订旧适配器。官方 SDK synthetic smoke 的具体版本、实际结果和局限见 `docs/LEROBOT_SMOKE.md` 与 `docs/VALIDATION.md`；不将格式小样算作 M4。
 
 ## 输入
 先读 AGENTS.md、本任务相关 DESIGN 章节和最小所需 manifest；不要整库重复检索。缺少实际输入时提交缺失清单，不能填猜测值。

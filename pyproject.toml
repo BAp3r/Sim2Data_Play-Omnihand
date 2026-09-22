@@ -1,9 +1,18 @@
 [project]
 name = "sim2data-foundation"
 version = "0.1.0"
-description = "Dependency-free preflight and contracts for AIRBOT Play + OmniHand simulation data"
+description = "CPU development workspace for the split Sim2Data packages"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = ["sim2data-core", "sim2data-isaac", "sim2data-lerobot"]
 
 [tool.uv]
 package = false
+
+[tool.uv.workspace]
+members = ["packages/*"]
+exclude = ["environments/*", "third_party/*"]
+
+[tool.uv.sources]
+sim2data-core = { workspace = true }
+sim2data-isaac = { workspace = true }
+sim2data-lerobot = { workspace = true }

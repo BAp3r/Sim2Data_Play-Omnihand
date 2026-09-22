@@ -2,14 +2,27 @@
 name = "sim2data-data"
 version = "0.1.0"
 description = "Sim2Data LeRobot export and dataset environment"
-requires-python = ">=3.10"
+requires-python = ">=3.12,<3.13"
 dependencies = [
   "sim2data-core>=0.1,<0.2",
   "sim2data-lerobot>=0.1,<0.2",
-  "lerobot==0.5.2",
+  "lerobot==0.6.2",
+  "torch==2.11.0+cu128",
+  "torchvision==0.26.0+cu128",
 ]
 
 [tool.uv.sources]
 sim2data-core = { path = "../../packages/sim2data_core", editable = true }
 sim2data-lerobot = { path = "../../packages/sim2data_lerobot", editable = true }
 lerobot = { path = "../../third_party/lerobot", editable = false }
+torch = { index = "pytorch-cu128" }
+torchvision = { index = "pytorch-cu128" }
+
+[tool.uv]
+package = false
+environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true

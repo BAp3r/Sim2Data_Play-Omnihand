@@ -1,6 +1,6 @@
 # A_ASSETS — 官方资产与机器人接口审计
 
-指定模型：GPT-5.6 Luna Max；2026-09-22 已实际启动，后按用户“文档优先、测试后置”要求暂停。保留 worktree 在途内容，未合入、未宣称验收通过。
+指定模型：GPT-5.6 Luna Max；2026-09-22 用户已恢复本轮实施，实际启动独立代理并审阅旧 worktree。候选/静态审计 manifest 已交付，来源绑定和物理未决项以 `configs/asset_manifest.json`、`docs/ASSET_AUDIT.md` 为准；不宣称 A 的生产验收通过。
 
 ## 输入
 先读 AGENTS.md、本任务相关 DESIGN 章节和最小所需 manifest；不要整库重复检索。缺少实际输入时提交缺失清单，不能填猜测值。

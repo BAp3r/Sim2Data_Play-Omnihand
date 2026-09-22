@@ -208,9 +208,15 @@ def validate_manifest(manifest: Mapping[str, Any]) -> list[str]:
 def load_manifest(path: str | Path | None = None) -> dict[str, Any]:
     """Load and validate the repository asset manifest."""
 
-    manifest_path = Path(path) if path is not None else (
-        Path(__file__).resolve().parents[2] / "configs" / "asset_manifest.json"
-    )
+    if path is None:
+        manifest_path = next(
+            (parent / "configs" / "asset_manifest.json" for parent in Path(__file__).resolve().parents
+             if (parent / "configs" / "asset_manifest.json").is_file()), None
+        )
+        if manifest_path is None:
+            raise ManifestError("installed package has no repository manifest; pass an explicit path")
+    else:
+        manifest_path = Path(path)
     try:
         data = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:

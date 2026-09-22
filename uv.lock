@@ -2,7 +2,54 @@ version = 1
 revision = 3
 requires-python = ">=3.10"
 
+[manifest]
+members = [
+    "sim2data-core",
+    "sim2data-foundation",
+    "sim2data-isaac",
+    "sim2data-lerobot",
+]
+
+[[package]]
+name = "sim2data-core"
+version = "0.1.0"
+source = { editable = "packages/sim2data_core" }
+
 [[package]]
 name = "sim2data-foundation"
 version = "0.1.0"
 source = { virtual = "." }
+dependencies = [
+    { name = "sim2data-core" },
+    { name = "sim2data-isaac" },
+    { name = "sim2data-lerobot" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "sim2data-core", editable = "packages/sim2data_core" },
+    { name = "sim2data-isaac", editable = "packages/sim2data_isaac" },
+    { name = "sim2data-lerobot", editable = "packages/sim2data_lerobot" },
+]
+
+[[package]]
+name = "sim2data-isaac"
+version = "0.1.0"
+source = { editable = "packages/sim2data_isaac" }
+dependencies = [
+    { name = "sim2data-core" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "sim2data-core", editable = "packages/sim2data_core" }]
+
+[[package]]
+name = "sim2data-lerobot"
+version = "0.1.0"
+source = { editable = "packages/sim2data_lerobot" }
+dependencies = [
+    { name = "sim2data-core" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "sim2data-core", editable = "packages/sim2data_core" }]
