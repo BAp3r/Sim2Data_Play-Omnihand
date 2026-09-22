@@ -1,4 +1,5 @@
 import json
+import copy
 from pathlib import Path
 import unittest
 
@@ -46,6 +47,28 @@ class AssetManifestTests(unittest.TestCase):
         text = self.path.read_text(encoding="utf-8").lower()
         for marker in ("192.168.", "\\\\", "/mnt/", "/workspace/", "c:\\"):
             self.assertNotIn(marker, text)
+
+    def test_invalid_numeric_units_dimensions_and_hashes_are_rejected(self):
+        for value in (True, float("inf"), float("nan"), -1.0):
+            with self.subTest(dimension=value):
+                changed = copy.deepcopy(self.manifest)
+                changed["assets"]["card_box"]["usd"]["world_bounds_m"][0] = value
+                self.assertIn("assets.card_box.usd.world_bounds_m", validate_manifest(changed))
+        changed = copy.deepcopy(self.manifest)
+        changed["schema_version"] = True
+        changed["assets"]["card_box"]["usd"]["meters_per_unit"] = True
+        changed["assets"]["card_box"]["sha256"] = "+" + "1" * 63
+        errors = validate_manifest(changed)
+        self.assertIn("schema_version", errors)
+        self.assertIn("assets.card_box.usd.meters_per_unit", errors)
+        self.assertIn("assets.card_box.sha256", errors)
+
+    def test_selected_asset_cannot_escape_the_external_root(self):
+        for value in ("../other.usd", "/private/other.usd", "C:/private/other.usd", "safe/../../other.usd"):
+            with self.subTest(path=value):
+                changed = copy.deepcopy(self.manifest)
+                changed["assets"]["card_box"]["relative_path"] = value
+                self.assertIn("assets.card_box.relative_path", validate_manifest(changed))
 
 
 if __name__ == "__main__":

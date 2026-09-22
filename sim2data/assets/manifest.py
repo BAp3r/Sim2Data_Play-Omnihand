@@ -8,6 +8,7 @@ NAS or assuming that an external root is mounted.
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -28,11 +29,7 @@ def _is_posix_relative(value: Any) -> bool:
 def _sha256(value: Any) -> bool:
     if not isinstance(value, str) or len(value) != 64:
         return False
-    try:
-        int(value, 16)
-    except ValueError:
-        return False
-    return True
+    return all(char in "0123456789abcdefABCDEF" for char in value)
 
 
 def _add(errors: list[str], condition: bool, field: str) -> None:
@@ -52,7 +49,7 @@ def validate_manifest(manifest: Mapping[str, Any]) -> list[str]:
     if not isinstance(manifest, Mapping):
         return ["manifest"]
 
-    _add(errors, manifest.get("schema_version") == 1, "schema_version")
+    _add(errors, type(manifest.get("schema_version")) is int and manifest["schema_version"] == 1, "schema_version")
     _add(errors, manifest.get("production_collection_allowed") is False,
          "production_collection_allowed")
 
@@ -67,7 +64,7 @@ def validate_manifest(manifest: Mapping[str, Any]) -> list[str]:
         usd = card.get("usd")
         _add(errors, isinstance(usd, Mapping), "assets.card_box.usd")
         if isinstance(usd, Mapping):
-            _add(errors, usd.get("meters_per_unit") == 1.0,
+            _add(errors, type(usd.get("meters_per_unit")) in (int, float) and usd["meters_per_unit"] == 1.0,
                  "assets.card_box.usd.meters_per_unit")
             _add(errors, usd.get("up_axis") == "Z",
                  "assets.card_box.usd.up_axis")
@@ -75,7 +72,7 @@ def validate_manifest(manifest: Mapping[str, Any]) -> list[str]:
                  "assets.card_box.usd.mesh_prim")
             bounds = usd.get("world_bounds_m")
             _add(errors, isinstance(bounds, list) and len(bounds) == 3 and
-                 all(isinstance(x, (int, float)) and x > 0 for x in bounds),
+                 all(type(x) in (int, float) and math.isfinite(x) and x > 0 for x in bounds),
                  "assets.card_box.usd.world_bounds_m")
         collision = card.get("collision")
         _add(errors, isinstance(collision, Mapping), "assets.card_box.collision")
