@@ -1,0 +1,15 @@
+[project]
+name = "sim2data-sim"
+version = "0.1.0"
+description = "Sim2Data Isaac Lab runtime environment"
+requires-python = ">=3.10"
+dependencies = [
+  "sim2data-core>=0.1,<0.2",
+  "sim2data-isaac>=0.1,<0.2",
+  "isaaclab==2.3.0",
+]
+
+[tool.uv.sources]
+sim2data-core = { path = "../../packages/sim2data_core", editable = true }
+sim2data-isaac = { path = "../../packages/sim2data_isaac", editable = true }
+isaaclab = { path = "../../third_party/IsaacLab", editable = false }

@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sim2data-isaac"
+version = "0.1.0"
+description = "Sim2Data Isaac Lab scene and assembly adapters"
+requires-python = ">=3.10"
+dependencies = ["sim2data-core>=0.1,<0.2"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["sim2data*"]
