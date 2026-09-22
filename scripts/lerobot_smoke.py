@@ -49,11 +49,14 @@ def run(root: Path, *, episodes: int, frames: int, height: int, width: int, fps:
         raise ValueError("episodes and frames must be positive")
     schema = ExportSchema.smoke_test(height=height, width=width)
     try:
-        from lerobot.configs.video import VideoEncoderConfig
-    except ModuleNotFoundError:
+        from lerobot.configs import video as video_config
+        encoder_config = getattr(video_config, "RGBEncoderConfig", None) or getattr(
+            video_config, "VideoEncoderConfig", None
+        )
+    except ImportError:
         # LeRobot 0.4.x has the v3 writer methods but no encoder config class;
         # the adapter maps the SDK's default codec for that API.
-        VideoEncoderConfig = None
+        encoder_config = None
 
     writer = LeRobotV3Writer(
         root=root,
@@ -63,8 +66,8 @@ def run(root: Path, *, episodes: int, frames: int, height: int, width: int, fps:
         video_files_size_in_mb=0.0001,
         data_files_size_in_mb=0.0001,
         camera_encoder=(
-            VideoEncoderConfig(vcodec="h264", preset="ultrafast", g=1)
-            if VideoEncoderConfig is not None
+            encoder_config(vcodec="h264", preset="ultrafast", g=1)
+            if encoder_config is not None
             else SimpleNamespace(vcodec="h264")
         ),
     )

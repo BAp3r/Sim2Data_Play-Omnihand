@@ -348,7 +348,13 @@ class LeRobotV3Writer:
             }
             create_params = inspect.signature(dataset_cls.create).parameters
             if camera_encoder is not None:
-                if "camera_encoder" in create_params:
+                if "rgb_encoder" in create_params:
+                    # Current official v3 releases name the RGB video encoder
+                    # ``rgb_encoder``.  Keep accepting the adapter's neutral
+                    # ``camera_encoder`` argument so callers do not depend on
+                    # a particular SDK release's spelling.
+                    create_kwargs["rgb_encoder"] = camera_encoder
+                elif "camera_encoder" in create_params:
                     create_kwargs["camera_encoder"] = camera_encoder
                 elif "vcodec" in create_params:
                     # LeRobot 0.4.x exposes the same v3 writer surface but

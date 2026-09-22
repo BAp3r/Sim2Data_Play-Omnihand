@@ -65,11 +65,14 @@ class LeRobotV3SmokeTests(unittest.TestCase):
         # is selected explicitly so this test reports missing codec support
         # instead of silently choosing a machine-dependent hardware encoder.
         try:
-            from lerobot.configs.video import VideoEncoderConfig
-        except ModuleNotFoundError:
+            from lerobot.configs import video as video_config
+            encoder_config = getattr(video_config, "RGBEncoderConfig", None) or getattr(
+                video_config, "VideoEncoderConfig", None
+            )
+        except ImportError:
             # LeRobot 0.4.x has the required v3 writer methods but predates the
             # VideoEncoderConfig facade; the adapter maps its default codec.
-            VideoEncoderConfig = None
+            encoder_config = None
 
         return LeRobotV3Writer(
             root=root,
@@ -79,8 +82,8 @@ class LeRobotV3SmokeTests(unittest.TestCase):
             video_files_size_in_mb=0.0001,
             data_files_size_in_mb=0.0001,
             camera_encoder=(
-                VideoEncoderConfig(vcodec="h264", preset="ultrafast", g=1)
-                if VideoEncoderConfig is not None
+                encoder_config(vcodec="h264", preset="ultrafast", g=1)
+                if encoder_config is not None
                 else SimpleNamespace(vcodec="h264")
             ),
         )
