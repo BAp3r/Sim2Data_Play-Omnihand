@@ -15,6 +15,7 @@ import xml.etree.ElementTree as ET
 import numpy as np
 import trimesh
 from pxr import Gf, Sdf, Usd, UsdGeom, UsdLux, UsdShade
+from sim2data.backends.isaaclab.preview_pose import resolve_preview_positions
 
 
 def transform(xyz=(0, 0, 0), rpy=(0, 0, 0)):
@@ -108,17 +109,7 @@ def add_robot(stage, path, urdf, base):
     container = UsdGeom.Xform.Define(stage, path)
     place(container, transform(base["base_xyz_m"], base["base_rpy_rad"]))
     paths, visiting = {}, set()
-    positions = {}
-
-    def position(name, chain=()):
-        if name in chain:
-            raise ValueError("Cyclic mimic relationship")
-        if name not in positions:
-            mimic = joints[name].find("mimic")
-            positions[name] = 0.0 if mimic is None else (
-                float(mimic.get("multiplier", "1")) * position(mimic.attrib["joint"], chain+(name,))
-                + float(mimic.get("offset", "0")))
-        return positions[name]
+    positions = resolve_preview_positions(root, base.get("preview_joint_positions", {}))
 
     def add_link(name):
         if name in paths:
@@ -131,7 +122,7 @@ def add_robot(stage, path, urdf, base):
         link_path = parent + "/" + name
         frame = UsdGeom.Xform.Define(stage, link_path)
         if joint is not None:
-            q = position(joint.attrib["name"])
+            q = positions[joint.attrib["name"]]
             motion = np.eye(4)
             axis_node = joint.find("axis")
             axis = np.array([float(x) for x in ("1 0 0" if axis_node is None else axis_node.get("xyz", "1 0 0")).split()])
@@ -142,7 +133,7 @@ def add_robot(stage, path, urdf, base):
             elif joint.attrib["type"] != "fixed":
                 raise ValueError("Preview supports only fixed/revolute/continuous/prismatic joints")
             place(frame, origin(joint) @ motion)
-        # Independent joints at zero, URDF mimic applied. No commanded state.
+        # Limit-checked visualization pose, not commanded or calibrated state.
         for index, visual in enumerate(links[name].findall("visual")):
             visual_path = link_path + f"/visual_{index}"
             visual_frame = UsdGeom.Xform.Define(stage, visual_path)
@@ -179,7 +170,39 @@ def build(args):
     stage.SetDefaultPrim(world.GetPrim())
     stage.SetMetadata("comment", "SYNTHETIC STATIC PREVIEW: no physics, calibration or collection acceptance")
     table = profile["table"]
-    cube(stage, "/World/Table", table["size_xyz_m"], table["center_xyz_m"], (0.22, 0.25, 0.28))
+    if table.get("asset_id"):
+        if args.table_usd is None:
+            raise ValueError("Selected table asset requires explicit private --table-usd binding")
+        table_source = args.table_usd.resolve(strict=True)
+        source_stage = Usd.Stage.Open(str(table_source))
+        if source_stage is None or not source_stage.GetDefaultPrim():
+            raise ValueError("Table USD must open and provide a default prim")
+        source_units = UsdGeom.GetStageMetersPerUnit(source_stage)
+        source_axis = UsdGeom.GetStageUpAxis(source_stage)
+        if source_units != table["source_meters_per_unit"] or source_axis != table["source_up_axis"]:
+            raise ValueError("Table metadata differs from the audited binding")
+        if not np.isfinite(source_units) or source_units <= 0:
+            raise ValueError("Invalid table units")
+        placement = table["T_world_asset"]
+        container = UsdGeom.Xform.Define(stage, "/World/Table")
+        # USD references do not convert layer units automatically. This changes
+        # numeric coordinates to metres, never the physical table dimensions.
+        unit_conversion = np.diag([source_units, source_units, source_units, 1.0])
+        place(container, transform(placement["xyz_m"], placement["rpy_rad"]) @ unit_conversion)
+        stage.DefinePrim("/World/Table/Asset").GetReferences().AddReference(str(table_source))
+        bounds = UsdGeom.BBoxCache(0, [UsdGeom.Tokens.default_, UsdGeom.Tokens.render]).ComputeWorldBound(
+            container.GetPrim()).ComputeAlignedRange()
+        actual_size = np.asarray(bounds.GetSize())
+        if not np.isfinite(actual_size).all() or not (actual_size > 0).all():
+            raise ValueError("Table reference has invalid bounds")
+        result["table"] = {"asset_id": table["asset_id"], "source": str(table_source),
+                           "physical_dimensions_preserved": True, "source_meters_per_unit": source_units,
+                           "source_up_axis": source_axis, "bounds_min_m": list(bounds.GetMin()),
+                           "bounds_max_m": list(bounds.GetMax()), "physics_validated": False}
+    else:
+        if args.table_usd is not None:
+            raise ValueError("Table binding supplied but no table asset selected in profile")
+        cube(stage, "/World/Table", table["size_xyz_m"], table["center_xyz_m"], (0.22, 0.25, 0.28))
     box = profile["box"]
     cube(stage, "/World/SyntheticBox", box["size_xyz_m"], box["center_xyz_m"], (0.6, 0.35, 0.14))
     relay = profile["relay_region"]
@@ -218,7 +241,9 @@ def build(args):
     camera.CreateVerticalApertureAttr(cam["horizontal_aperture_mm"]*0.75)
     UsdLux.DomeLight.Define(stage, "/World/Light").CreateIntensityAttr(900)
     stage.GetRootLayer().Save()
-    stage.GetRootLayer().Export(str(args.out / "assembly_preview.usdc"))
+    # Private review derivative includes referenced table geometry. Texture
+    # asset paths remain external and must resolve on the reviewing machine.
+    stage.Flatten().Export(str(args.out / "assembly_preview.usdc"))
     reopened = Usd.Stage.Open(str(args.out / "assembly_preview.usda"))
     cameras = [str(p.GetPath()) for p in reopened.Traverse() if p.IsA(UsdGeom.Camera)]
     if len(cameras) != 3:
@@ -226,7 +251,7 @@ def build(args):
     result.update(passed=True, robots=robots, camera_paths=cameras,
                   stage_prim_count=sum(1 for _ in reopened.Traverse()),
                   profile_sha256=hashlib.sha256(args.profile.read_bytes()).hexdigest(),
-                  limitations=["Independent q=0 with URDF mimic; visual FK only", "No articulation/drive/collision cooking authored",
+                  limitations=["Limit-checked synthetic pose with URDF mimic; visual FK only", "No articulation/drive/collision cooking authored",
                                "No physical state or rendered images; cannot export dataset"])
     result_path.write_text(json.dumps(result, indent=2))
     print(json.dumps({k:v for k,v in result.items() if k != "robots"}, indent=2))
@@ -236,4 +261,5 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("profile", "left", "right", "out"):
         parser.add_argument("--"+name, type=Path, required=True)
+    parser.add_argument("--table-usd", type=Path, help="Private audited table asset; source remains read-only")
     build(parser.parse_args())

@@ -42,3 +42,5 @@
 ## 本机隔离调试配置
 
 `scripts/assemble_commissioning.py --profile configs/commissioning.synthetic.json --binding <private-binding.json> --out <new-directory>` 接受逐侧模型包与可选 CAD/D405 visual。私有 binding 不提交。D405 STL 按上游 scale=0.001 转米；housing 为 bottom screw frame。synthetic v2 左右 housing 横向偏置为设计选择，非实测。`isaac_smoke.py --graphics-api d3d12` 同时设置 Kit app.vulkan=false，仅作用当前进程。Blender 工具仅生成静态审阅图，不作为训练 RGB。
+
+新synthetic profile的 `arm_model.urdf_sha256` 绑定用户 `play` 包；组合工具拒绝旧arm文件，防止错误复用安装变换。`robots.*.preview_joint_positions` 仅控制静态FK显示，缺省取限位内最接近零并应用mimic。`table.asset_id/source_meters_per_unit/source_up_axis/T_world_asset` 与私有 `--table-usd` 共同绑定Thor桌；无源绑定会失败，不回退方块桌。`--wrist-closeups` 只增加审阅视角，不增加训练通道。

@@ -58,3 +58,7 @@ ROS2 完整包已闭合并用于 `combined02` / `assembly_preview02`，此前 mi
 精确机器命令与私有证据见 `.local/evidence/m2/COMMANDS.md`。装配复核见 `ASSEMBLY_VISUAL_REVIEW.md`；生产开关保持关闭。
 
 关闭阶段补充：结果写完后 Kit 超过4分钟未退出，主会话核对进程命令后仅终止本次 smoke。物理/RGB通过，正常关闭未通过；证据 `.local/evidence/m2/newenv_smoke02_shutdown.json`。Blender review04 改用独立灯光/曝光，已实际查看；它对应 camera v1 位置的 preview02，不能用作公开 v2 偏置的复验。
+
+## 用户单臂包修正（当前选择）
+
+前述ROS2/DISCOVERSE夹爪残留候选已被用户提供的 `play` 包替代，当前配置使用该URDF的SHA256校验。6轴链保留，按新坐标重新定义synthetic安装变换；旧-51.4mm显示偏置不再使用。桌面绑定官方Thor，参见 `ASSEMBLY_CORRECTION.md`、`THOR_TABLE_AUDIT.md`。本次新的静态USD/Blender近景不是新的物理smoke；证据目录名m3也不表示M3接触验收。

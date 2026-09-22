@@ -28,6 +28,9 @@ def run(profile_path: Path, binding_path: Path, output: Path):
     for side in ("left", "right"):
         source = binding[side]
         design = profile["robots"][side]
+        expected_arm = profile.get("arm_model", {}).get("urdf_sha256")
+        if expected_arm and hashlib.sha256(Path(source["arm_urdf"]).read_bytes()).hexdigest() != expected_arm:
+            raise ValueError(f"{side} arm source does not match the selected profile identity")
         mount = source.get("mount_visual")
         camera_visual = source.get("camera_housing_visual")
         specs.append(SideCommissioningSpec(

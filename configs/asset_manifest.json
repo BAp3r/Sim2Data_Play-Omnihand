@@ -523,6 +523,37 @@
       "physics_validated": false,
       "flange_boundary": "link6 retains original gripper body; not bare flange",
       "hardware_binding": null
+    },
+    {
+      "id": "user_play_b02c7ac6",
+      "status": "USER_SUPPLIED_STATIC_PACKAGE_CLOSED",
+      "source_kind": "user supplied private SolidWorks URDF package; upstream revision unverified",
+      "urdf_sha256": "b02c7ac6fd1dd6a65f355ef6650c2a7584fdbd56ccfc497b767292010ce4e0b0",
+      "relative_urdf": "urdf/play.urdf",
+      "package_name": "play",
+      "arm_revolute_joints": 6,
+      "flange_candidate": "link6",
+      "original_effector_subtree": "end_joint -> end_link only; no gripper children",
+      "license_status": "package.xml declares Apache-2.0; provenance and redistribution authorization not independently established",
+      "drive_limits_status": "all six effort and velocity limits are zero; physical drive binding blocked",
+      "private_evidence": ".local/evidence/m3/user_play_inspection.json",
+      "physics_validated": false,
+      "hardware_revision_binding": null
+    },
+    {
+      "id": "isaac_5_1_thorlabs_table",
+      "status": "STATIC_DEPENDENCY_AND_GEOMETRY_AUDITED",
+      "source_kind": "existing NVIDIA Isaac Sim 5.1 content package",
+      "relative_path": "5.1.0/Assets/Isaac/5.1/Isaac/Props/Mounts/ThorlabsTable/table_instanceable.usd",
+      "sha256": "f5a00da4c05db6dd0441f8c76a886a898435e61890dd1f445ff7e8f79e1e2495",
+      "dependency": "Props/instaceable_meshes.usd",
+      "dependency_sha256": "b7827de44e5051d8d7803507b9362dbf8521181996449a88934b59ceb0d54db6",
+      "meters_per_unit": 1.0,
+      "up_axis": "Z",
+      "visual_top_z_m": 0.0,
+      "collision_top_z_m": -0.0155,
+      "physics_validated": false,
+      "report": "docs/THOR_TABLE_AUDIT.md"
     }
   ]
 }

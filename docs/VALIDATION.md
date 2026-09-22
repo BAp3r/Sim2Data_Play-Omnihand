@@ -158,3 +158,11 @@ uv run --frozen --offline --no-python-downloads python -m compileall -q sim2data
 精确机器命令与私有证据见 `.local/evidence/m2/COMMANDS.md`。装配复核见 `ASSEMBLY_VISUAL_REVIEW.md`；生产开关保持关闭。
 
 关闭阶段补充：结果写完后 Kit 超过4分钟未退出，主会话核对进程命令后仅终止本次 smoke。物理/RGB通过，正常关闭未通过；证据 `.local/evidence/m2/newenv_smoke02_shutdown.json`。Blender review04 改用独立灯光/曝光，已实际查看；它对应 camera v1 位置的 preview02，不能用作公开 v2 偏置的复验。
+
+## 用户单臂与Thor桌面修正验证
+
+输入：用户play URDF `b02c7ac6...`，7个STL闭合；官方Thor `table_instanceable.usd` 与实例依赖只读审计。源码绑定、单位、末端几何与来源限制见 `ASSEMBLY_CORRECTION.md` 和 `THOR_TABLE_AUDIT.md`。`uv run --frozen --offline --no-python-downloads python -m unittest discover -s tests -v`：88项，84通过、4跳过；日志 `.local/evidence/m3/cpu_tests.txt`。新增测试覆盖预览限位默认值、非法覆盖及mimic超限。
+
+`assemble_commissioning.py` 用用户包生成双侧URDF成功；同一profile用旧ROS2 binding会报source identity mismatch且不创建输出目录。远端CPU `build_commissioning_preview.py --table-usd ...` 实际生成并重新打开200 prim静态场景，三路Camera保留，Thor源尺度未改变，profile哈希 `a5f919aa6b2b383b9f073d0cb4cfdf163b07c3bdbbf4c5454420d3aefc057c16`。Blender实际导入，生成三路静态视图及左右腕部近景；所有图仅用于审阅。
+
+未运行：本次新机器人和Thor组合的PhysX cooking、动力学、接触、相机覆盖与数据导出。六轴effort/velocity为零，连接件机械配合与相机支架缺失，Thor视觉/碰撞支撑高度不同；生产继续关闭。精确命令、输出位置和图例见私有 `.local/evidence/m3/COMMANDS.md`。

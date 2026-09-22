@@ -9,39 +9,45 @@
     "D405 visual geometry/nominal internal frames from fixed official ROS description; mount placement unreviewed and extrinsics not calibrated"
   ],
   "table": {
-    "size_xyz_m": [
-      1.4,
-      0.8,
-      0.05
-    ],
-    "center_xyz_m": [
-      0,
-      0,
-      -0.025
-    ]
+    "asset_id": "isaac_5_1_thorlabs_table",
+    "source_meters_per_unit": 1.0,
+    "source_up_axis": "Z",
+    "T_world_asset": {
+      "xyz_m": [
+        -0.2737505042552948,
+        0,
+        0
+      ],
+      "rpy_rad": [
+        0,
+        0,
+        0
+      ]
+    },
+    "placement_status": "synthetic XY bounding-box centering; native top z=0; original dimensions preserved"
   },
   "robots": {
     "left": {
       "base_xyz_m": [
-        -0.35,
-        -0.28,
+        -0.23,
+        -0.22,
         0
       ],
       "base_rpy_rad": [
         0,
         0,
-        0
+        1.5707963267948966
       ],
       "T_flange_mount": {
         "xyz_m": [
           0,
           0,
-          -0.0514
+          0.0866
         ],
         "rpy_rad": [
           0,
           0,
-          0
+          1.5707963267948966
         ]
       },
       "T_mount_hand_root": {
@@ -86,30 +92,34 @@
         0.042
       ],
       "camera_housing_frame": "D405 bottom screw frame (official nominal convention)",
-      "flange_frame_status": "link6 visual-envelope datum only; retained gripper body and mechanical gap unresolved",
-      "camera_candidate_status": "Astra Max v2 static mesh review only; joint-limit pose and task coverage pending"
+      "flange_frame_status": "user play native link6; nominal end plane .0865 m plus .0001 m display clearance; butt placement only; +90deg synthetic clocking places camera below palm, not measured key alignment",
+      "camera_candidate_status": "Astra Max v2 static mesh review only; joint-limit pose and task coverage pending",
+      "preview_joint_positions": {
+        "left_arm__joint2": -0.7,
+        "left_arm__joint3": 0.7
+      }
     },
     "right": {
       "base_xyz_m": [
-        0.35,
-        -0.28,
+        0.23,
+        -0.22,
         0
       ],
       "base_rpy_rad": [
         0,
         0,
-        0
+        1.5707963267948966
       ],
       "T_flange_mount": {
         "xyz_m": [
           0,
           0,
-          -0.0514
+          0.0866
         ],
         "rpy_rad": [
           0,
           0,
-          0
+          1.5707963267948966
         ]
       },
       "T_mount_hand_root": {
@@ -154,8 +164,12 @@
         0.042
       ],
       "camera_housing_frame": "D405 bottom screw frame (official nominal convention)",
-      "flange_frame_status": "link6 visual-envelope datum only; retained gripper body and mechanical gap unresolved",
-      "camera_candidate_status": "Astra Max v2 static mesh review only; joint-limit pose and task coverage pending"
+      "flange_frame_status": "user play native link6; nominal end plane .0865 m plus .0001 m display clearance; butt placement only; +90deg synthetic clocking places camera below palm, not measured key alignment",
+      "camera_candidate_status": "Astra Max v2 static mesh review only; joint-limit pose and task coverage pending",
+      "preview_joint_positions": {
+        "right_arm__joint2": -0.7,
+        "right_arm__joint3": 0.7
+      }
     }
   },
   "relay_region": {
@@ -177,7 +191,7 @@
       0.08
     ],
     "center_xyz_m": [
-      -0.35,
+      -0.23,
       0.13,
       0.04
     ],
@@ -192,21 +206,21 @@
     ],
     "wall_thickness_m": 0.012,
     "bottom_center_xyz_m": [
-      0.96,
+      0.64,
       0.05,
       -0.06
     ]
   },
   "overhead": {
     "eye_xyz_m": [
-      1.3,
-      -1.7,
-      1.8
+      1.25,
+      -1.65,
+      1.25
     ],
     "target_xyz_m": [
-      0.2,
+      0.08,
       0,
-      0.12
+      0.04
     ],
     "resolution_wh": [
       640,
@@ -235,5 +249,10 @@
     "extrinsics_status": "official_nominal_not_calibrated",
     "inertial_status": "upstream_explicitly_unreliable_do_not_use"
   },
-  "review_status": "ASTRA_MAX_CANDIDATE_02_NOT_ACCEPTED; wrist field of view and mechanical fit unresolved"
+  "review_status": "USER_PLAY_STATIC_CORRECTION; original gripper removed by source replacement; mating and camera support unverified",
+  "arm_model": {
+    "id": "user_play_b02c7ac6",
+    "urdf_sha256": "b02c7ac6fd1dd6a65f355ef6650c2a7584fdbd56ccfc497b767292010ce4e0b0",
+    "source_status": "user_supplied_private_model_not_hardware_validated"
+  }
 }

@@ -196,3 +196,5 @@ Git over SSH 可用不等于 LFS 端点已可用。实际要测试一个小的�
 ## Synthetic 装配调试边界（2026-09-22）
 
 用户已允许独立 synthetic 场景和安装假设。`configs/commissioning.synthetic.json` 与生产草案分离，生产变换继续为 null；真实网格静态 USD/Blender 预览不进入数据导出。D405 采用固定官方 ROS 几何和 screw→optical 名义内部链，外部安装、质量惯性和实物标定仍待核。link6 原夹爪座残留、机械搭接和关节限位内的相机覆盖未解决前，不通过 A/B 接触门禁。
+
+装配修正补充：使用用户提供的 `play` 六轴包替换含旧夹爪座的候选，参考 `ASSEMBLY_CORRECTION.md`。保留J6及其末端连接件；独立安装候选采用原生link6坐标，不能继承旧候选的bbox偏置。Thor table 使用原生0.9×0.7586 m桌面，视觉平面z=0与碰撞上界z=-0.0155 m分别记录；此差异未解决前不得宣称桌面接触通过。
