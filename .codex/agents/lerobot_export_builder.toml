@@ -1,0 +1,13 @@
+# Template for a local Codex client; not executed by this chat.
+name = "lerobot_export_builder"
+description = "官方 LeRobot v3 写入与回读"
+model = "gpt-5.6-luna"
+model_reasoning_effort = "max"
+sandbox_mode = "workspace-write"
+developer_instructions = """
+Read AGENTS.md and tasks/D_EXPORT.md. Work only on that task and its owned files.
+Use the approved manifests; report unknowns rather than inventing robot parameters.
+Do not control hardware, mutate shared assets, install system packages, or spawn children.
+Do not modify main, public contracts, dependency locks, or another worker's outputs.
+Report actual tests and untested work separately; return a short evidence-based summary.
+"""

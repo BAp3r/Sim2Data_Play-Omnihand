@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "status": "DESIGN_ONLY_NOT_CALIBRATED",
+  "production_collection_enabled": false,
+  "backend_proposal": "isaaclab",
+  "world_frame": {
+    "origin": "tabletop_center",
+    "x": "operator_right",
+    "y": "away_from_operator",
+    "z": "up",
+    "length_unit": "m",
+    "angle_unit": "rad",
+    "transform_convention": "T_A_B maps column vectors expressed in B into A",
+    "quaternion_serialization": "wxyz"
+  },
+  "table": {
+    "size_xyz_m": null,
+    "surface": "dark tabletop, observed in reference video"
+  },
+  "robots": {
+    "left": {
+      "arm_model": "AIRBOT Play",
+      "arm_revision": null,
+      "arm_asset": null,
+      "hand_model_requested": "OmniHand 2025",
+      "hand_variant_and_revision": null,
+      "hand_asset": null,
+      "anatomical_hand_side": null,
+      "T_world_base": null,
+      "T_flange_mount": null,
+      "T_mount_hand_root": null,
+      "T_flange_hand_root": null,
+      "T_hand_root_grasp_tcp": null,
+      "state_channel_names": null,
+      "command_channel_names": null,
+      "actuator_to_joint_mapping": null,
+      "control_units_and_limits": null
+    },
+    "right": {
+      "arm_model": "AIRBOT Play",
+      "arm_revision": null,
+      "arm_asset": null,
+      "hand_model_requested": "OmniHand 2025",
+      "hand_variant_and_revision": null,
+      "hand_asset": null,
+      "anatomical_hand_side": null,
+      "T_world_base": null,
+      "T_flange_mount": null,
+      "T_mount_hand_root": null,
+      "T_flange_hand_root": null,
+      "T_hand_root_grasp_tcp": null,
+      "state_channel_names": null,
+      "command_channel_names": null,
+      "actuator_to_joint_mapping": null,
+      "control_units_and_limits": null
+    }
+  },
+  "adapter": {
+    "nominal_length_m": 0.04,
+    "value_source": "user approximate description, not video metrology",
+    "mass_kg": null,
+    "inertia_kg_m2": null,
+    "collision_mesh": null
+  },
+  "camera_candidates": {
+    "overhead": {
+      "presence": "confirmed; user authorizes a generic simulation camera",
+      "model": "generic_pinhole_rgb",
+      "calibration_source": "synthetic design; not measured real-camera calibration",
+      "parent_frame": "world",
+      "T_parent_optical": null,
+      "resolution_wh": [640, 480],
+      "intrinsics_K": [[600.0, 0.0, 319.5], [0.0, 600.0, 239.5], [0.0, 0.0, 1.0]],
+      "distortion_model_and_coefficients": {"model": "ideal_pinhole", "coefficients": [0.0, 0.0, 0.0, 0.0, 0.0]},
+      "stream_profiles": {"color": {"format": "rgb8", "fps": 30, "source": "synthetic design initial profile"}}
+    },
+    "wrist_left": {
+      "presence": "underside camera assembly visible; D405 identity supplied by user",
+      "model": "RealSense D405",
+      "parent_frame": "left_wrist_mount_assembly",
+      "T_mount_camera_housing": null,
+      "T_housing_color_optical": null,
+      "T_housing_depth_optical": null,
+      "T_parent_color_optical": null,
+      "T_parent_depth_optical": null,
+      "resolution_wh": null,
+      "intrinsics_K": null,
+      "distortion_model_and_coefficients": null,
+      "stream_profiles": null
+    },
+    "wrist_right": {
+      "presence": "user confirmed installed D405 on both hands on 2026-09-22",
+      "model": "RealSense D405",
+      "parent_frame": "right_wrist_mount_assembly",
+      "T_mount_camera_housing": null,
+      "T_housing_color_optical": null,
+      "T_housing_depth_optical": null,
+      "T_parent_color_optical": null,
+      "T_parent_depth_optical": null,
+      "resolution_wh": null,
+      "intrinsics_K": null,
+      "distortion_model_and_coefficients": null,
+      "stream_profiles": null
+    }
+  },
+  "object": {
+    "requested_asset_name": "card_box",
+    "verified_library_relative_path": null,
+    "asset_library_version": null,
+    "sha256": null,
+    "nominal_size_xyz_m": null,
+    "nominal_mass_kg": null,
+    "collision_validation": null,
+    "license_and_redistribution_review": null,
+    "rigidity_assumption": "V1 rigid body pending confirmation; reference shows wrinkled packaging but does not prove compliance"
+  },
+  "task": {
+    "name": "dual_arm_table_relay_to_bin",
+    "handoff_mode": "tabletop_release_then_regrasp",
+    "requirements_confirmed_on": "2026-09-22",
+    "stages": ["left_pick_from_left_table", "left_place_in_table_relay_zone", "left_release_and_retreat", "relay_stability_and_clearance_check", "right_regrasp_from_relay_zone", "right_place_in_bin_outside_right_table_edge", "right_release_and_retreat", "stable_bin_placement_check"],
+    "active_arm_policy": "sequential; inactive arm remains modeled with necessary collisions",
+    "source_region_geometry": null,
+    "relay_region_geometry": null,
+    "relay_gate": {
+      "required_conditions": ["same_object_identity", "left_hand_object_contact_released", "object_supported_by_table", "object_footprint_inside_relay_region", "object_stable_for_dwell", "left_arm_clear_of_right_approach"],
+      "max_linear_speed_m_s": null,
+      "max_angular_speed_rad_s": null,
+      "stable_dwell_s": null,
+      "release_dwell_s": null,
+      "minimum_left_arm_clearance_m": null,
+      "timeout_s": null,
+      "sidecar_evidence_fields": ["object_id", "stage", "simulation_step", "left_contact_released", "on_table_support", "footprint_inside", "linear_speed_m_s", "angular_speed_rad_s", "left_arm_clearance_m", "stable_duration_s", "release_duration_s"],
+      "failure_reasons": ["object_identity_changed", "left_contact_not_released", "relay_not_supported", "relay_outside_region", "relay_not_stable", "left_arm_not_clear", "relay_timeout"]
+    },
+    "bin_world_pose": null,
+    "bin_inner_size_xyz_m": null,
+    "bin_wall_thickness_m": null,
+    "bin_support_height_m": null,
+    "right_arm_bin_reachability_validation": null,
+    "final_success": "same object passed through released stable table relay and ends released, contained and stable inside the external right bin",
+    "require_real_contact_grasp": true,
+    "allow_object_teleport_or_attachment_cheat": false
+  },
+  "timing_initial_test_proposal": {
+    "physics_hz": 240,
+    "control_hz": 30,
+    "rgb_hz": 30,
+    "status": "starting point for benchmarking, not measured hardware rates"
+  },
+  "dataset": {
+    "format": "LeRobotDataset v3.0",
+    "lerobot_package_version_or_commit": null,
+    "robot_type": "airbot_play_omnihand2025_dual",
+    "freeze_camera_schema_before_collection": true,
+    "observation_state": "measured runtime channel vector, units fixed in robot manifest",
+    "action": "hardware-feasible command vector for interval starting at observation timestamp",
+    "depth_enabled": false,
+    "depth": "optional lossless sidecar; no lossy RGB video representation",
+    "privileged_state": "sidecar only by default; excluded from deployable policy observations",
+    "auto_upload_to_hub": false
+  }
+}

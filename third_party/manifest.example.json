@@ -1,0 +1,6 @@
+{
+  "status": "TEMPLATE_ONLY_NO_DEPENDENCIES_BOUND",
+  "dependencies": [],
+  "required_entry_fields": ["name", "upstream_url", "pinned_revision", "license", "purpose", "local_path_key", "redistribution_review"],
+  "local_path_policy": "machine paths belong in ignored .local configuration; do not embed them here"
+}

@@ -1,0 +1,7 @@
+# Template: review and merge into local .codex/config.toml, do not overwrite it.
+# Verify support in the installed client; this file has not spawned any agents.
+[agents]
+enabled = true
+max_concurrent_threads_per_session = 3
+default_subagent_model = "gpt-5.6-luna"
+default_subagent_reasoning_effort = "max"
