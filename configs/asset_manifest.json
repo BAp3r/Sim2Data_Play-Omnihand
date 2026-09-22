@@ -1,8 +1,30 @@
 {
   "schema_version": 1,
   "manifest_id": "sim2data-assets-m1-2026-09-22",
-  "status": "STATIC_AUDIT_COMPLETE_PHYSICAL_VALIDATION_PENDING",
+  "status": "STATIC_EVIDENCE_INDEXED_PHYSICAL_VALIDATION_PENDING",
   "production_collection_allowed": false,
+  "audit_evidence": {
+    "status": "PARTIAL_STATIC_EVIDENCE_INDEXED",
+    "card_box_usd_parse": {
+      "private_path": ".local/evidence/m1/card_box_usd_parse_20260922.json",
+      "status": "READ_ONLY_SINGLE_FILE_EXECUTED_THIS_TURN",
+      "scope": "named USD plus explicitly named dependency files; no directory scan",
+      "runtime": "existing Isaac Sim 6.1 candidate interpreter",
+      "raw_asset_root": "private server mount recorded in .local/paths.json"
+    },
+    "airbot_urdf_snapshots": {
+      "private_root": ".local/worktrees/a-assets/reports",
+      "status": "REUSED_FROM_PRIOR_A_AUDIT; HASHES RECHECKED THIS TURN",
+      "official_commit_binding": "pinned URLs in manifest; repository objects were not refetched in this turn"
+    },
+    "omnihand_sdk_table": {
+      "private_path": null,
+      "status": "UNVERIFIED_SOURCE_CLAIM_PENDING_FETCH",
+      "expected_source": "API_PYTHON_O10.md at sdk_commit",
+      "official_archive_hash_binding": "NOT_ESTABLISHED",
+      "note": "The nearby D evidence is LeRobot-only and is not evidence for the OmniHand SDK table."
+    }
+  },
   "units": {
     "length": "m",
     "angle": "rad",
@@ -26,6 +48,7 @@
       "id": "isaacsim_5_1_simple_warehouse_cardbox_a_01",
       "requested_name": "card_box",
       "status": "STATIC_VERIFIED_PHYSICAL_PENDING",
+      "task_binding_status": "PROP_CANDIDATE_NOT_DESKTOP_TARGET_BOUND",
       "library": "Isaac Sim official asset package",
       "library_version": "5.1.0",
       "root_config_key": "official_asset_root",
@@ -36,6 +59,12 @@
         "version_evidence": "asset package directory 5.1.0 and Isaac/5.1 namespace",
         "license_evidence": "PACKAGE-LICENSES/isaac-sim-assets-LICENSE.txt",
         "redistribution": "external_private_storage_only_pending NVIDIA Omniverse terms review"
+      },
+      "evidence": {
+        "usd_parse_report": ".local/evidence/m1/card_box_usd_parse_20260922.json",
+        "parse_status": "read-only pxr parse executed against one named file",
+        "dependency_scope": "four direct USD asset paths plus three MDL resource tokens",
+        "runtime_contact_status": "not run"
       },
       "usd": {
         "opened_read_only": true,
@@ -59,7 +88,8 @@
         "physics_mesh_collision_api": true,
         "collision_enabled": true,
         "approximation": "boundingCube",
-        "cooked_data_present": true,
+        "cooked_data_present": null,
+        "cooked_data_status": "NOT_CAPTURED_IN_CURRENT_READ_ONLY_PARSE",
         "physical_contact_validation": "pending Isaac Sim/PhysX runtime test"
       },
       "rigid_body": {
@@ -74,6 +104,7 @@
           "relative_path": "5.1.0/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/Materials/MI_LampCeilingA.mdl",
           "kind": "MDL",
           "referenced_as": "../Materials/MI_LampCeilingA.mdl",
+          "sha256": "14af0a60278973bbbf7dc28fb0838f4e29c7743320b21ce9c6927755160ba78d",
           "present_on_audit": true
         },
         {
@@ -98,9 +129,34 @@
           "present_on_audit": true
         }
       ],
+      "transitive_material_dependencies": [
+        {
+          "relative_path": "5.1.0/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/Materials/Textures/Alum_Anodized_roughness.png",
+          "kind": "MDL_resource_texture",
+          "referenced_by": "MI_LampCeilingA.mdl",
+          "sha256": "78fbda4ad9fc3ceabd3286580b99829cb7bdad420cd9db37b24c91f641504d79",
+          "present_on_audit": true
+        },
+        {
+          "relative_path": "5.1.0/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/Materials/Textures/T_Floor_01_D.png",
+          "kind": "MDL_resource_texture",
+          "referenced_by": "MI_LampCeilingA.mdl",
+          "sha256": "e1c2dce6aa3438248ad3c960cba22c4160d9a86c152a978f6f228b8a99770834",
+          "present_on_audit": true
+        },
+        {
+          "relative_path": "5.1.0/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/Materials/Textures/T_Floor_01_N.png",
+          "kind": "MDL_resource_texture",
+          "referenced_by": "MI_LampCeilingA.mdl",
+          "sha256": "4ab1797de4aad446a31ee70f7e5ebe29afabafe4bda17d203c2a01e286f71fc7",
+          "present_on_audit": true
+        }
+      ],
+      "dependency_closure_status": "explicit direct and MDL token resources checked; shader module resolution still pending",
       "missing_or_blocking_inputs": [
         "approved mass and inertia",
         "whether the physical target is rigid enough for this rigid mesh",
+        "whether this warehouse prop is the intended physical task box",
         "contact approximation acceptance for grasping",
         "runtime proof that the MDL shader resolves in the selected Isaac Sim environment"
       ]
@@ -117,7 +173,13 @@
         "raw_url": "https://raw.githubusercontent.com/foiegreis/ros2_quadrupeds_and_humanoids/7792960fb60f3118d9827b641dcc441e9ae2d06f/manipulator/Airbot/airbot_play_description/urdf/airbot_play.urdf",
         "commit": "7792960fb60f3118d9827b641dcc441e9ae2d06f",
         "license": "Apache-2.0",
-        "license_review": "repository LICENSE snapshot reviewed; mesh redistribution and package-level notices still require review"
+        "license_review": "repository LICENSE snapshot reviewed; mesh redistribution and package-level notices still require review",
+        "evidence": {
+          "urdf_snapshot": ".local/worktrees/a-assets/reports/github_urdf/foiegreis_airbot_play.urdf",
+          "license_snapshot": ".local/worktrees/a-assets/reports/github_urdf/foiegreis_LICENSE",
+          "license_evidence_status": "Apache-2.0 repository license snapshot retained",
+          "retrieval_status": "reused prior A audit; pinned URL and commit recorded, remote object not refetched this turn"
+        }
       },
       "urdf": {
         "sha256": "08cce00b5be18ca3f828aae5f41a5acd7b7b0607f6a0fce27bd0994048772cc3",
@@ -143,7 +205,11 @@
           {"name": "joint6", "lower_rad": -3.14, "upper_rad": 3.14, "effort": 300.0, "velocity_rad_s": 6.28}
         ],
         "command_channel_names": ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"],
-        "mapping_status": "URDF joint names only; hardware actuator IDs, zero offsets, sign and mode pending"
+        "mapping_status": "URDF candidate names only; hardware actuator IDs, zero offsets, sign, mode and action binding pending",
+        "joint_count_status": "URDF_REVISION_CANDIDATE_NOT_HARDWARE_MOTOR_COUNT",
+        "command_channel_status": "URDF_NAME_CANDIDATES_NOT_HARDWARE_ACTION_MAPPING",
+        "hardware_motor_ids": null,
+        "hardware_action_dim": null
       },
       "original_end_effector_boundary": {
         "parent_link": "link6",
@@ -179,7 +245,13 @@
         "raw_url": "https://raw.githubusercontent.com/discoverse-dev/DISCOVERSE/d67f47c084aba0e0cf422a8725235f8b9238655a/models/urdf/airbot_play_v3_gripper_fixed.urdf",
         "commit": "d67f47c084aba0e0cf422a8725235f8b9238655a",
         "license": "MIT",
-        "license_review": "repository LICENSE snapshot reviewed; mesh redistribution and package-level notices still require review"
+        "license_review": "repository LICENSE snapshot reviewed; mesh redistribution and package-level notices still require review",
+        "evidence": {
+          "urdf_snapshot": ".local/worktrees/a-assets/reports/github_urdf/discoverse_airbot_play_v3_gripper_fixed.urdf",
+          "license_snapshot": null,
+          "license_evidence_status": "MIT claim reused from prior A audit; raw repository license snapshot not retained",
+          "retrieval_status": "reused prior A audit; pinned URL and commit recorded, remote object not refetched this turn"
+        }
       },
       "urdf": {
         "sha256": "dc4fe8b37a6668a4432fba698aa3ef8207fe31a00d74c587988f58cf0f7a4b55",
@@ -206,7 +278,11 @@
           {"name": "joint6", "lower_rad": -3.14, "upper_rad": 3.14, "effort": 3.0, "velocity_rad_s": 6.28}
         ],
         "command_channel_names": ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"],
-        "mapping_status": "URDF joint names only; hardware actuator IDs, zero offsets, sign and mode pending"
+        "mapping_status": "URDF candidate names only; hardware actuator IDs, zero offsets, sign, mode and action binding pending",
+        "joint_count_status": "URDF_REVISION_CANDIDATE_NOT_HARDWARE_MOTOR_COUNT",
+        "command_channel_status": "URDF_NAME_CANDIDATES_NOT_HARDWARE_ACTION_MAPPING",
+        "hardware_motor_ids": null,
+        "hardware_action_dim": null
       },
       "original_end_effector_boundary": {
         "parent_link": "link6",
@@ -241,7 +317,7 @@
     {
       "id": "omnihand_2025_o10",
       "role": "OmniHand 2025 灵动款 / O10",
-      "status": "STATIC_VERIFIED_SNAPSHOT_PHYSICAL_PENDING",
+      "status": "STATIC_SNAPSHOT_SOURCE_UNVERIFIED_PHYSICAL_PENDING",
       "variant": "O10",
       "hardware_revision": null,
       "anatomical_sides": ["left", "right"],
@@ -256,7 +332,16 @@
         "sdk_commit": "026740d9fdd8ba32b0605fa702a992b322076f1b",
         "sdk_version": "1.1.8",
         "license": "Mulan PSL v2",
-        "license_review": "SDK README and private URDF license snapshot reviewed; exact model archive redistribution terms remain pending"
+        "license_review": "private URDF license snapshot retained; exact model archive redistribution terms remain pending",
+        "evidence": {
+          "left_urdf_snapshot": ".local/worktrees/a-assets/reports/remote_omnihand_left.urdf",
+          "right_urdf_snapshot": ".local/worktrees/a-assets/reports/remote_omnihand_right.urdf",
+          "license_snapshot": ".local/worktrees/a-assets/reports/remote_omnihand_LICENSE",
+          "sdk_api_document": null,
+          "sdk_source_status": "UNVERIFIED_SOURCE_CLAIM_PENDING_FETCH",
+          "official_archive_hash_binding": false,
+          "retrieval_status": "URDF and license snapshots reused from prior A audit; official model archives were not fetched or hash-bound this turn"
+        }
       },
       "geometry_snapshot": {
         "left_urdf_sha256": "3254940d243eae8490879163b462d7b92cd295658cf79a98d4df0d856010e0c3",
@@ -270,7 +355,9 @@
         "active_motor_count": 10,
         "passive_mimic_count": 6,
         "mesh_package": "omnihand_description",
-        "mesh_resolution_status": "model archive remains private and is not copied into this repository"
+        "mesh_resolution_status": "model archive remains private and is not copied into this repository",
+        "snapshot_source_status": "PRIVATE_URDF_SNAPSHOT_HASHED; OFFICIAL_ARCHIVE_HASH_NOT_BOUND",
+        "official_download_hash_bound": false
       },
       "active_motor_channels": {
         "left": ["L_thumb_roll_joint", "L_thumb_abad_joint", "L_thumb_mcp_joint", "L_index_abad_joint", "L_index_pip_joint", "L_middle_pip_joint", "L_ring_abad_joint", "L_ring_pip_joint", "L_pinky_abad_joint", "L_pinky_pip_joint"],
@@ -296,7 +383,9 @@
       },
       "sdk_control": {
         "angle_unit": "rad",
-        "active_angle_limits_source": "agillink SDK API_PYTHON_O10.md at sdk_commit",
+        "active_angle_limits_source": "claimed agillink SDK API_PYTHON_O10.md at sdk_commit; source file not retained",
+        "evidence_status": "UNVERIFIED_SOURCE_CLAIM_PENDING_FETCH",
+        "values_binding_status": "CANDIDATE_ONLY_NOT_FOR_ACTUATOR_OR_OBSERVATION_BINDING",
         "active_angle_limits_rad": {
           "left": [[-1.12, 0.03], [-0.05, 1.64], [-0.84, 0.0], [0.0, 0.16], [0.0, 1.48], [0.0, 1.48], [-0.17, 0.0], [0.0, 1.48], [-0.19, 0.0], [0.0, 1.48]],
           "right": [[-0.03, 1.12], [-1.64, 0.05], [0.0, 0.84], [-0.16, 0.0], [0.0, 1.48], [0.0, 1.48], [0.0, 0.17], [0.0, 1.48], [0.0, 0.19], [0.0, 1.48]]
@@ -307,8 +396,12 @@
         "mixed_control_current_range_mA": [0, 1000],
         "pure_torque_control": false,
         "command_channel_count": 10,
+        "command_channel_count_status": "UNVERIFIED_SOURCE_CLAIM_PENDING_FETCH",
         "state_channel_count_before_tactile": 16,
-        "mapping_status": "SDK active order is static; hardware identity and simulator actuator calibration pending"
+        "state_channel_count_status": "UNVERIFIED_SDK_LAYOUT_COUNT_NOT_OBSERVATION_DIMENSION",
+        "state_observation_dimension": null,
+        "observability_status": "PENDING_PHYSICAL_FEEDBACK_AND_DERIVATION_AUDIT",
+        "mapping_status": "claimed SDK active order only; hardware identity, motor feedback observability and simulator actuator calibration pending"
       },
       "urdf_sdk_reconciliation": {
         "matches_exactly": false,
