@@ -19,7 +19,7 @@
 
 ## 公开与私有存储
 
-此前两个远端已同步 M0 公开安全快照；本轮实施提交尚未推送。NAS 有足够容量也不表示所有文件都应进 Git LFS：官方全集留外部，数据集/实录/标定放私有文件存储；自建或获授权的 USD 才进入版本库。若未来内网 Git 需要包含私有资产，使用独立私有资产仓库或专门发布流程，避免把带私有历史的分支直接推到公有 GitHub。
+两个远端已同步实施分支的已审阅提交；实际发布 SHA 以交付及私有发布记录为准。NAS 有足够容量也不表示所有文件都应进 Git LFS：官方全集留外部，数据集/实录/标定放私有文件存储；自建或获授权的 USD 才进入版本库。若未来内网 Git 需要包含私有资产，使用独立私有资产仓库或专门发布流程，避免把带私有历史的分支直接推到公有 GitHub。
 
 `third_party/IsaacLab` 与 `third_party/lerobot` 已作为官方固定提交的 Git submodule 纳入；其他外部内容继续忽略。版本和独立环境见 `PACKAGING.md`。`.gitignore` 不会自动取消已跟踪文件，也不是保密审计。每次公开发布只选已审阅文件，不推送临时 worktree 中尚未完成的 A/D/E 内容。
 
@@ -45,4 +45,6 @@
 
 新synthetic profile的 `arm_model.urdf_sha256` 绑定用户 `play` 包；组合工具拒绝旧arm文件，防止错误复用安装变换。`robots.*.preview_joint_positions` 仅控制静态FK显示，缺省取限位内最接近零并应用mimic。`table.asset_id/source_meters_per_unit/source_up_axis/T_world_asset` 与私有 `--table-usd` 共同绑定Thor桌；无源绑定会失败，不回退方块桌。`--wrist-closeups` 只增加审阅视角，不增加训练通道。
 
-逐侧 `robots.*.hand_model.urdf_sha256` 防止误绑手侧。`camera_symmetry` 明确中心对称、右optical滚转π、无负scale/无像素翻转；`T_mount_camera_housing` 右侧为 `[.038,-.011,.012]`、RPY `[π,-π/2,0]`。配色入口为 `configs/appearance.reference.json` 和预览 `--appearance`，Blender `--material-mode reference --symmetry-views` 保留参考材质并增加审阅图，三路训练通道不增加。
+逐侧 `robots.*.hand_model.urdf_sha256` 防止误绑手侧。`camera_symmetry` 明确中心对称、右optical滚转π、无负scale/无像素翻转；`T_mount_camera_housing` 右侧为 `[.038,-.031,.012]`、RPY `[π,-π/2,0]`。配色入口为 `configs/appearance.reference.json` 和预览 `--appearance`，Blender `--material-mode reference --symmetry-views` 保留参考材质并增加审阅图，三路训练通道不增加。
+
+用户追加的外移20 mm仅作用synthetic安装：左housing从mount Y=+.011改为+.031 m，右从-.011改为-.031 m，X/Z及RPY保持不变。在当前预览姿态中分别约对应world X=-.020/+.020 m的增量（URDF近似角造成微小离轴分量）；它不写入生产标定。

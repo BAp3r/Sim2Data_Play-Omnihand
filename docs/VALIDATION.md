@@ -174,3 +174,13 @@ Astra xhigh实际检查独立左右手URDF及36个源mesh；右实体D405滚转�
 CPU测试89项，85通过、4跳过；日志 `.local/evidence/m4/cpu_tests.txt`。新增回归验证名义外壳与光心对称，以及右optical X/Y反向、Z同向。误将左手URDF绑定右侧的失败注入被SHA校验拒绝，未创建输出目录。USD新旧54个机器人mesh的points/counts/indices逐字节哈希一致，变换和材质按设计更新；参考色不是重建几何或原厂纹理。
 
 远端CPU生成带材质分区的静态USD，本机Blender实际渲染三路静态相机、左右近景、双腕正面和俯视共7张审阅图。首次单子集导入缺少base fallback，已改显式完整材质partition并重新渲染；不改变网格。精确命令和证据在 `.local/evidence/m4/COMMANDS.md`。本轮未执行物理、接触、动态任务覆盖或数据导出，生产保持关闭。
+
+## 实录外观与D405外移复验（2026-09-22）
+
+同一Astra xhigh在基线388382b上修正显示材质和synthetic位置。输入继续使用已绑定用户play、独立左右OmniHand、官方D405及Thor；新实录只支持外观观察，不提供机械标定。左右housing的mount Y分别从±.011到±.031 m，保留旋转与内部光学链。实际FK世界X增量为左-0.01999999999964、右+0.01999999999964 m；源URDF近似角产生约0.119微米Y和0.0054微米Z分量，属于模型代数结果而非实测精度。
+
+当前姿态重新核验相机与全部既有visual AABB分离，中心射线畅通，315条自身遮挡采样左20条、右16条；旧18/20结果只对应前次安装。未提供的支架/线缆、动态全行程及PhysX不在检查范围。
+
+最终USD与前版对比54个机器人网格的points/counts/indices完全一致；只新增显示法线、UV和材质。新增4项CPU USD外观检查已实际运行通过，覆盖平滑/锐边角点法线、掌壳单材质、连续UV及贴图资产。首轮Blender因纹理传输尚未完成显示紫色，未通过；工具现检查依赖存在与SHA并将实际贴图打包。第二轮7张静态图完成，主会话实际查看总体、左右近景及对比图，颜色正确。证据位于私有 `.local/evidence/m5/astra/`，中文图例位于 `.local/evidence/m5/delivery/`。本次没有运行机器人动力学、接触回合、传感器数据或LeRobot导出；生产采集关闭。
+
+集成后执行 `uv run --frozen --offline --no-python-downloads python -m unittest discover -s tests -v`：93项，85通过、8跳过；其中新增4项因轻量环境无USD依赖而跳过，但已在上述独立CPU USD环境实际4/4通过。日志 `.local/evidence/m5/cpu_tests.txt`。`uv run --frozen --offline --no-python-downloads python -m compileall -q packages scripts tests` 与 `git diff --check` 通过。完整机器命令见 `.local/evidence/m5/astra/COMMANDS.md` 和主会话 `.local/evidence/m5/COMMANDS.md`。
