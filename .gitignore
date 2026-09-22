@@ -24,4 +24,7 @@ wandb/
 third_party/*
 !third_party/README.md
 !third_party/manifest.example.json
+!third_party/manifest.json
+!third_party/IsaacLab
+!third_party/lerobot
 *.egg-info/
