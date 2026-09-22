@@ -36,11 +36,16 @@ class SceneParameterRequirement:
         return self.status in {"approved_manifest", "measured", "runtime_discovery", "synthetic_design"}
 
 
-# The key names mirror the frame names in DESIGN.md and deliberately do not
-# contain guessed dimensions, poses, serial numbers or stream profiles.
+# The key names mirror the public draft and frame names in DESIGN.md.  They
+# deliberately do not contain guessed dimensions, poses, serial numbers or
+# stream profiles.  The approved observation contributes topology only; it
+# never resolves a metric transform, camera calibration, or physical model.
+APPROVED_OBSERVATION_ID = "OBS-M1-20260922-ROOT-01"
+
+
 B_SCENE_REQUIREMENTS: tuple[SceneParameterRequirement, ...] = (
     SceneParameterRequirement(
-        "table.size_xyz_m", "missing", True, "not provided", "Measure tabletop extents and surface height."
+        "table.size_xyz_m", "missing", True, "not provided", "Measure tabletop extents and floor-to-surface height; world z=0 remains the tabletop surface."
     ),
     SceneParameterRequirement(
         "robots.left.T_world_base", "missing", True, "not provided", "Survey left base pose in the tabletop world frame."
@@ -79,43 +84,61 @@ B_SCENE_REQUIREMENTS: tuple[SceneParameterRequirement, ...] = (
         "robots.right.T_hand_root_grasp_tcp", "missing", True, "not measured", "Define and measure the grasp TCP relative to hand_root."
     ),
     SceneParameterRequirement(
-        "adapter.mass_inertia_collision", "missing", True, "only nominal length supplied", "The approximately 4 cm description is not a 6D transform or inertial model; transforms are specified per robot."
+        "adapter.nominal_length_m", "user_specified", False, "user approximate description", "The approximately 0.04 m length is a nominal description only; it must not be expanded into a translation or rotation."
     ),
     SceneParameterRequirement(
-        "cameras.wrist_left.model", "user_specified", False, "user update", "RealSense D405 identity supplied; image evidence alone is not used to infer it."
+        "adapter.mass_kg", "missing", True, "not measured", "Measure the complete adapter and camera-mount mass carried by each arm."
     ),
     SceneParameterRequirement(
-        "cameras.wrist_right.model", "user_specified", False, "user update", "RealSense D405 identity supplied; image evidence alone is not used to infer it."
+        "adapter.inertia_kg_m2", "missing", True, "not measured", "Measure or derive the installation inertia from an approved CAD/physical model."
     ),
     SceneParameterRequirement(
-        "cameras.wrist_left.T_mount_housing", "missing", True, "not measured", "Measure the complete left wrist camera housing pose."
+        "adapter.collision_mesh", "missing", True, "not supplied", "Provide collision geometry for the adapter and camera mount; do not replace it with a visual-only approximation."
     ),
     SceneParameterRequirement(
-        "cameras.wrist_right.T_mount_housing", "missing", True, "not measured", "Measure the complete right wrist camera housing pose."
+        "scene.approved_observation_package", "layout_observed", False, APPROVED_OBSERVATION_ID, "Approved topology only: same-side dual arms, separate adapter, underside wrist camera housing and elevated independent camera support."
     ),
     SceneParameterRequirement(
-        "cameras.wrist_left.T_housing_color_optical", "missing", True, "not measured", "Measure the D405 color optical frame pose."
+        "camera_candidates.wrist_left.model", "user_specified", False, "user update", "RealSense D405 identity supplied; image evidence alone is not used to infer it."
     ),
     SceneParameterRequirement(
-        "cameras.wrist_left.T_housing_depth_optical", "missing", False, "not measured", "Required only if depth is enabled; RGB baseline does not use depth."
+        "camera_candidates.wrist_right.model", "user_specified", False, "user update", "RealSense D405 identity supplied; image evidence alone is not used to infer it."
     ),
     SceneParameterRequirement(
-        "cameras.wrist_right.T_housing_color_optical", "missing", True, "not measured", "Measure the D405 color optical frame pose."
+        "camera_candidates.wrist_left.T_mount_camera_housing", "missing", True, "not measured", "Measure the complete left wrist mount-assembly to camera-housing transform."
     ),
     SceneParameterRequirement(
-        "cameras.wrist_right.T_housing_depth_optical", "missing", False, "not measured", "Required only if depth is enabled; RGB baseline does not use depth."
+        "camera_candidates.wrist_right.T_mount_camera_housing", "missing", True, "not measured", "Measure the complete right wrist mount-assembly to camera-housing transform."
     ),
     SceneParameterRequirement(
-        "cameras.wrist_left_and_right.rgb_profiles_intrinsics_distortion", "missing", True, "camera config absent", "Read enabled RGB resolutions, profiles, K and distortion; depth requires a separate schema extension when enabled."
+        "camera_candidates.wrist_left.T_housing_color_optical", "missing", True, "not measured", "Measure the left D405 housing to color-optical transform."
     ),
     SceneParameterRequirement(
-        "cameras.stream_count_and_timestamps", "missing", True, "runtime not connected", "Freeze actual stream count and timestamp alignment before collection."
+        "camera_candidates.wrist_left.T_housing_depth_optical", "missing", False, "not measured", "Required only if depth is enabled; RGB baseline keeps depth disabled."
+    ),
+    SceneParameterRequirement(
+        "camera_candidates.wrist_right.T_housing_color_optical", "missing", True, "not measured", "Measure the right D405 housing to color-optical transform."
+    ),
+    SceneParameterRequirement(
+        "camera_candidates.wrist_right.T_housing_depth_optical", "missing", False, "not measured", "Required only if depth is enabled; RGB baseline keeps depth disabled."
+    ),
+    SceneParameterRequirement(
+        "camera_candidates.wrist_left.rgb_profile_and_intrinsics", "missing", True, "camera config absent", "Read the enabled left D405 RGB resolution, profile, K, distortion and crop/resize contract."
+    ),
+    SceneParameterRequirement(
+        "camera_candidates.wrist_right.rgb_profile_and_intrinsics", "missing", True, "camera config absent", "Read the enabled right D405 RGB resolution, profile, K, distortion and crop/resize contract."
+    ),
+    SceneParameterRequirement(
+        "camera_candidates.stream_count_and_timestamps", "missing", True, "runtime not connected", "Freeze actual stream count and timestamp alignment before collection."
     ),
     SceneParameterRequirement(
         "camera_candidates.overhead.T_parent_optical", "missing", True, "authorized synthetic design; pose not selected", "A generic camera is allowed but its explicit pose and coverage must still be configured."
     ),
     SceneParameterRequirement(
         "camera_candidates.overhead.rgb_profile_and_intrinsics", "synthetic_design", False, "scene draft design values", "640x480, 30 Hz and declared ideal-pinhole K are design values, not measured calibration."
+    ),
+    SceneParameterRequirement(
+        "camera_candidates.overhead.coverage_validation", "missing", True, "not checked", "Validate that the selected overhead pose covers the source, relay and external-bin regions without relying on the phone reference view."
     ),
     SceneParameterRequirement(
         "task.shared_transfer_region.pose_size_support_height", "missing", True, "not measured", "Define the surface region reachable by both arms for tabletop transfer."
@@ -128,6 +151,9 @@ B_SCENE_REQUIREMENTS: tuple[SceneParameterRequirement, ...] = (
     ),
     SceneParameterRequirement(
         "task.left_source_object_pose_size_mass", "missing", True, "not measured", "Measure source placement and object geometry/mass before contact planning."
+    ),
+    SceneParameterRequirement(
+        "task.source_object_rigidity_model", "missing", True, "not confirmed", "Confirm whether the wrinkled cuboid packaging can be modeled as a rigid body before contact validation."
     ),
     SceneParameterRequirement(
         "scene.initial_penetration_and_occlusion_check", "missing", True, "Isaac scene not opened", "Verify no initial penetration and inspect real camera occlusion after asset binding."

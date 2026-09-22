@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "status": "ASSEMBLY_INPUTS_REQUIRED_NOT_CALIBRATED",
+  "approved_observation": {
+    "observation_id": "OBS-M1-20260922-ROOT-01",
+    "approval_status": "approved_topology_only",
+    "reviewer": "primary session",
+    "approved_topology": [
+      "both arms occupy the same table side",
+      "flange adapter is separate from the hand root",
+      "an underside wrist camera housing is visible in the reviewed near-side frame",
+      "overhead camera support is independent of the wrists"
+    ],
+    "not_inferable": [
+      "metric dimensions",
+      "SE3 transforms",
+      "hardware revision or anatomical hand side",
+      "intrinsics",
+      "mass and inertia",
+      "motor mapping",
+      "successful grasp"
+    ],
+    "user_confirmed": [
+      "AIRBOT Play + OmniHand 2025",
+      "two underside D405 cameras",
+      "generic overhead camera permitted",
+      "table relay then outside right bin"
+    ]
+  },
+  "world_frame": {
+    "origin": "tabletop_center",
+    "x": "operator_right",
+    "y": "away_from_operator",
+    "z": "up",
+    "length_unit": "m",
+    "angle_unit": "rad",
+    "quaternion_serialization": "wxyz"
+  },
+  "table": {
+    "size_xyz_m": null,
+    "surface_height_m": null,
+    "surface_height_reference": "floor"
+  },
+  "robots": {
+    "left": {
+      "arm_revision": null,
+      "arm_asset": null,
+      "hand_variant_and_revision": null,
+      "hand_asset": null,
+      "anatomical_hand_side": null,
+      "T_world_base": null,
+      "T_flange_mount": null,
+      "T_mount_hand_root": null,
+      "T_hand_root_grasp_tcp": null
+    },
+    "right": {
+      "arm_revision": null,
+      "arm_asset": null,
+      "hand_variant_and_revision": null,
+      "hand_asset": null,
+      "anatomical_hand_side": null,
+      "T_world_base": null,
+      "T_flange_mount": null,
+      "T_mount_hand_root": null,
+      "T_hand_root_grasp_tcp": null
+    }
+  },
+  "adapter_installation": {
+    "nominal_length_m": 0.04,
+    "nominal_length_is_not_a_transform": true,
+    "mass_kg": null,
+    "inertia_kg_m2": null,
+    "collision_mesh": null
+  },
+  "camera_candidates": {
+    "overhead": {
+      "model": "generic_pinhole_rgb",
+      "calibration_source": "synthetic_design",
+      "T_parent_optical": null,
+      "resolution_wh": [640, 480],
+      "intrinsics_K": [[600.0, 0.0, 319.5], [0.0, 600.0, 239.5], [0.0, 0.0, 1.0]],
+      "distortion_model_and_coefficients": {"model": "ideal_pinhole", "coefficients": [0.0, 0.0, 0.0, 0.0, 0.0]},
+      "coverage_validation": null
+    },
+    "wrist_left": {
+      "model": "RealSense D405",
+      "T_mount_camera_housing": null,
+      "T_housing_color_optical": null,
+      "T_housing_depth_optical": null,
+      "rgb_profile_and_intrinsics": null,
+      "stream_timestamps": null
+    },
+    "wrist_right": {
+      "model": "RealSense D405",
+      "T_mount_camera_housing": null,
+      "T_housing_color_optical": null,
+      "T_housing_depth_optical": null,
+      "rgb_profile_and_intrinsics": null,
+      "stream_timestamps": null
+    },
+    "depth_enabled": false
+  },
+  "task": {
+    "source_region_geometry": null,
+    "relay_region_geometry": null,
+    "right_outer_bin": {
+      "world_pose": null,
+      "inner_size_xyz_m": null,
+      "wall_thickness_m": null,
+      "support_height_m": null
+    },
+    "right_arm_bin_reachability_validation": null,
+    "source_object": {
+      "pose": null,
+      "size_xyz_m": null,
+      "mass_kg": null,
+      "rigidity_model": null
+    }
+  }
+}

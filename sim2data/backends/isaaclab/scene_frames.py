@@ -216,6 +216,42 @@ def compose_frame_chain(*edges: FrameTransform) -> FrameTransform:
     return result
 
 
+def _frame_tokens(frame: str) -> frozenset[str]:
+    """Return conservative semantic tokens used by assembly-chain guards."""
+    return frozenset(frame.replace("-", "_").lower().split("_"))
+
+
+def _require_frame_role(frame: str, role: str, *tokens: str) -> None:
+    frame_tokens = _frame_tokens(frame)
+    if not all(token in frame_tokens for token in tokens):
+        expected = "_".join(tokens)
+        raise ValueError(f"{role} frame {frame!r} must identify {expected}")
+
+
+def compose_hand_chain(
+    world_from_flange: FrameTransform,
+    flange_from_mount: FrameTransform,
+    mount_from_hand_root: FrameTransform,
+) -> FrameTransform:
+    """Compose the arm flange to hand-root assembly chain.
+
+    The three arguments are the atomic edges
+    ``T_world_flange``, ``T_flange_mount`` and ``T_mount_hand_root``.  The
+    labels are checked by :func:`compose_frame_chain`, so accidentally
+    replacing the mount edge with a disconnected finger link is rejected
+    before a scene builder can consume it.  No transform is inferred from a
+    nominal adapter length.
+    """
+    _require_frame_role(world_from_flange.child_frame, "flange", "flange")
+    _require_frame_role(flange_from_mount.child_frame, "mount", "mount")
+    _require_frame_role(mount_from_hand_root.child_frame, "hand-root", "hand", "root")
+    return compose_frame_chain(
+        world_from_flange,
+        flange_from_mount,
+        mount_from_hand_root,
+    )
+
+
 class OpticalConvention(str, Enum):
     """Supported camera local axes.
 
@@ -272,6 +308,63 @@ def adapt_optical_transform(
     return parent_from_source @ optical_basis_transform(source, target)
 
 
+def compose_mount_optical_chain(
+    mount_from_housing: FrameTransform,
+    housing_from_optical: FrameTransform,
+    *,
+    target_convention: OpticalConvention | str | None = None,
+    source_convention: OpticalConvention | str = OpticalConvention.OPENCV,
+) -> FrameTransform:
+    """Compose ``T_mount_camera_housing × T_housing_optical``.
+
+    This is the camera-side atomic chain for either wrist.  Keeping it
+    separate from the hand chain makes the physical installation explicit:
+    the camera is mounted from the rigid adapter assembly and does not move
+    with an arbitrary finger link.  ``target_convention`` adapts only the
+    optical basis; it never changes the housing pose.
+    """
+    _require_frame_role(mount_from_housing.parent_frame, "mount", "mount")
+    _require_frame_role(mount_from_housing.child_frame, "camera housing", "housing")
+    _require_frame_role(housing_from_optical.child_frame, "optical", "optical")
+    composed = compose_frame_chain(mount_from_housing, housing_from_optical)
+    if target_convention is None:
+        return composed
+    converted = adapt_optical_transform(
+        composed.transform,
+        source_convention,
+        target_convention,
+    )
+    return FrameTransform(composed.parent_frame, composed.child_frame, converted)
+
+
+def compose_wrist_camera_chain(
+    world_from_flange: FrameTransform,
+    flange_from_mount: FrameTransform,
+    mount_from_housing: FrameTransform,
+    housing_from_optical: FrameTransform,
+    *,
+    target_convention: OpticalConvention | str | None = None,
+    source_convention: OpticalConvention | str = OpticalConvention.OPENCV,
+) -> FrameTransform:
+    """Build the explicit world-to-wrist-optical chain from DESIGN.md.
+
+    The final edge is interpreted in ``source_convention``.  When a target
+    convention is supplied, only the final optical basis is adapted; the
+    physical housing and mounting transforms remain unchanged.
+    """
+    mount_to_optical = compose_mount_optical_chain(
+        mount_from_housing,
+        housing_from_optical,
+        target_convention=target_convention,
+        source_convention=source_convention,
+    )
+    return compose_frame_chain(
+        world_from_flange,
+        flange_from_mount,
+        mount_to_optical,
+    )
+
+
 def compose_camera_chain(
     world_from_flange: FrameTransform,
     flange_from_mount: FrameTransform,
@@ -281,26 +374,20 @@ def compose_camera_chain(
     target_convention: OpticalConvention | str | None = None,
     source_convention: OpticalConvention | str = OpticalConvention.OPENCV,
 ) -> FrameTransform:
-    """Build the explicit world-to-optical chain from DESIGN.md.
+    """Backward-compatible alias for :func:`compose_wrist_camera_chain`.
 
-    The final edge is interpreted in ``source_convention``.  When a target
-    convention is supplied, only the final optical basis is adapted; the
-    physical housing and mounting transforms remain unchanged.
+    Existing callers use ``compose_camera_chain``; the more explicit wrist
+    name documents that this helper is for the mounted RGB/depth camera path,
+    while preserving the original API.
     """
-    composed = compose_frame_chain(
+    return compose_wrist_camera_chain(
         world_from_flange,
         flange_from_mount,
         mount_from_housing,
         housing_from_optical,
+        target_convention=target_convention,
+        source_convention=source_convention,
     )
-    if target_convention is None:
-        return composed
-    converted = adapt_optical_transform(
-        composed.transform,
-        source_convention,
-        target_convention,
-    )
-    return FrameTransform(composed.parent_frame, composed.child_frame, converted)
 
 
 class MissingCalibrationError(ValueError):
