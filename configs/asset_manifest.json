@@ -18,11 +18,17 @@
       "official_commit_binding": "pinned URLs in manifest; repository objects were not refetched in this turn"
     },
     "omnihand_sdk_table": {
-      "private_path": null,
-      "status": "UNVERIFIED_SOURCE_CLAIM_PENDING_FETCH",
-      "expected_source": "API_PYTHON_O10.md at sdk_commit",
+      "private_path": ".local/evidence/m1/API_PYTHON_O10_026740d_20260922.md",
+      "status": "OFFICIAL_GITHUB_COMMIT_VERIFIED",
+      "repository": "https://github.com/AgibotTech/agillink_omnihand_sdk.git",
+      "head_ref": "refs/heads/main",
+      "commit": "026740d9fdd8ba32b0605fa702a992b322076f1b",
+      "path": "doc/en/API_PYTHON_O10.md",
+      "git_blob": "d479e89cff3e2b38b33ba2d5a5f0747f3107a72d",
+      "raw_sha256": "44df6abf37de24ebdfa81d96f0471cff92f3612c69a10eee18149b418fd9875d",
       "official_archive_hash_binding": "NOT_ESTABLISHED",
-      "note": "The nearby D evidence is LeRobot-only and is not evidence for the OmniHand SDK table."
+      "readme_sha256": "e7186a39e797fec40d339a69ad31573c078d92bfac7a1c93b44b39b38d671afd",
+      "evidence_index": ".local/evidence/m1/omnihand_sdk_source_audit_20260922.json"
     }
   },
   "units": {
@@ -317,7 +323,7 @@
     {
       "id": "omnihand_2025_o10",
       "role": "OmniHand 2025 灵动款 / O10",
-      "status": "STATIC_SNAPSHOT_SOURCE_UNVERIFIED_PHYSICAL_PENDING",
+      "status": "STATIC_SNAPSHOT_OFFICIAL_SDK_VERIFIED_MODEL_ARCHIVE_PENDING",
       "variant": "O10",
       "hardware_revision": null,
       "anatomical_sides": ["left", "right"],
@@ -330,15 +336,22 @@
         "right_model_download": "https://www.agibot.com.cn/file/ueditor/php/upload/file/20260827/1787813704317306.zip",
         "sdk_repository": "https://github.com/AgibotTech/agillink_omnihand_sdk",
         "sdk_commit": "026740d9fdd8ba32b0605fa702a992b322076f1b",
-        "sdk_version": "1.1.8",
+        "sdk_version": null,
+        "sdk_version_status": "NOT_STATED_IN_VERIFIED_README_OR_API_DOCUMENT; TAG_QUERY_TIMEOUT",
         "license": "Mulan PSL v2",
         "license_review": "private URDF license snapshot retained; exact model archive redistribution terms remain pending",
         "evidence": {
           "left_urdf_snapshot": ".local/worktrees/a-assets/reports/remote_omnihand_left.urdf",
           "right_urdf_snapshot": ".local/worktrees/a-assets/reports/remote_omnihand_right.urdf",
           "license_snapshot": ".local/worktrees/a-assets/reports/remote_omnihand_LICENSE",
-          "sdk_api_document": null,
-          "sdk_source_status": "UNVERIFIED_SOURCE_CLAIM_PENDING_FETCH",
+          "sdk_api_document": ".local/evidence/m1/API_PYTHON_O10_026740d_20260922.md",
+          "sdk_source_status": "OFFICIAL_GITHUB_COMMIT_VERIFIED",
+          "sdk_commit": "026740d9fdd8ba32b0605fa702a992b322076f1b",
+          "sdk_api_git_blob": "d479e89cff3e2b38b33ba2d5a5f0747f3107a72d",
+          "sdk_api_sha256": "44df6abf37de24ebdfa81d96f0471cff92f3612c69a10eee18149b418fd9875d",
+          "official_page_capture": ".local/evidence/m1/agibot_omnihand_o10_page_20260922.html",
+          "official_page_sha256": "d3eb26c17c8152486b74d20fc605b7dfc13b1c99e89c224f62b745c26de80464",
+          "official_download_links_verified": true,
           "official_archive_hash_binding": false,
           "retrieval_status": "URDF and license snapshots reused from prior A audit; official model archives were not fetched or hash-bound this turn"
         }
@@ -357,7 +370,8 @@
         "mesh_package": "omnihand_description",
         "mesh_resolution_status": "model archive remains private and is not copied into this repository",
         "snapshot_source_status": "PRIVATE_URDF_SNAPSHOT_HASHED; OFFICIAL_ARCHIVE_HASH_NOT_BOUND",
-        "official_download_hash_bound": false
+        "official_download_hash_bound": false,
+        "sdk_dof_claim": "official README/API documents 10 active + 6 passive for O10"
       },
       "active_motor_channels": {
         "left": ["L_thumb_roll_joint", "L_thumb_abad_joint", "L_thumb_mcp_joint", "L_index_abad_joint", "L_index_pip_joint", "L_middle_pip_joint", "L_ring_abad_joint", "L_ring_pip_joint", "L_pinky_abad_joint", "L_pinky_pip_joint"],
@@ -383,9 +397,10 @@
       },
       "sdk_control": {
         "angle_unit": "rad",
-        "active_angle_limits_source": "claimed agillink SDK API_PYTHON_O10.md at sdk_commit; source file not retained",
-        "evidence_status": "UNVERIFIED_SOURCE_CLAIM_PENDING_FETCH",
-        "values_binding_status": "CANDIDATE_ONLY_NOT_FOR_ACTUATOR_OR_OBSERVATION_BINDING",
+        "active_angle_limits_source": "official agillink SDK API_PYTHON_O10.md at commit 026740d9fdd8ba32b0605fa702a992b322076f1b",
+        "evidence_path": ".local/evidence/m1/API_PYTHON_O10_026740d_20260922.md",
+        "evidence_status": "OFFICIAL_GITHUB_COMMIT_VERIFIED",
+        "values_binding_status": "SDK_DOCUMENTED_HARDWARE_IDENTITY_AND_SIMULATOR_MAPPING_PENDING",
         "active_angle_limits_rad": {
           "left": [[-1.12, 0.03], [-0.05, 1.64], [-0.84, 0.0], [0.0, 0.16], [0.0, 1.48], [0.0, 1.48], [-0.17, 0.0], [0.0, 1.48], [-0.19, 0.0], [0.0, 1.48]],
           "right": [[-0.03, 1.12], [-1.64, 0.05], [0.0, 0.84], [-0.16, 0.0], [0.0, 1.48], [0.0, 1.48], [0.0, 0.17], [0.0, 1.48], [0.0, 0.19], [0.0, 1.48]]
@@ -396,12 +411,13 @@
         "mixed_control_current_range_mA": [0, 1000],
         "pure_torque_control": false,
         "command_channel_count": 10,
-        "command_channel_count_status": "UNVERIFIED_SOURCE_CLAIM_PENDING_FETCH",
+        "command_channel_count_status": "SDK_DOCUMENTED_10_ACTIVE_VALUES_HARDWARE_ACTION_BINDING_PENDING",
         "state_channel_count_before_tactile": 16,
-        "state_channel_count_status": "UNVERIFIED_SDK_LAYOUT_COUNT_NOT_OBSERVATION_DIMENSION",
+        "state_channel_count_status": "SDK_DOCUMENTED_16_ACTIVE_PLUS_PASSIVE_ANGLE_VALUES_NOT_OBSERVATION_DIMENSION",
         "state_observation_dimension": null,
-        "observability_status": "PENDING_PHYSICAL_FEEDBACK_AND_DERIVATION_AUDIT",
-        "mapping_status": "claimed SDK active order only; hardware identity, motor feedback observability and simulator actuator calibration pending"
+        "observability_status": "SDK_ANGLE_READBACK_DOCUMENTED_PHYSICAL_FEEDBACK_AND_DERIVATION_AUDIT_PENDING",
+        "tactile_status": "SDK_DOCUMENTED_1D_TACTILE_READBACK_SIMULATOR_AND_REAL_SENSOR_BINDING_PENDING",
+        "mapping_status": "SDK active order and limits documented; hardware identity, motor feedback observability and simulator actuator calibration pending"
       },
       "urdf_sdk_reconciliation": {
         "matches_exactly": false,

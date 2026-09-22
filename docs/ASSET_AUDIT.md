@@ -13,7 +13,7 @@ deliberately `STATIC_EVIDENCE_INDEXED_PHYSICAL_VALIDATION_PENDING`, and
 | AIRBOT ROS2 candidate | `.local/worktrees/a-assets/reports/github_urdf/foiegreis_airbot_play.urdf` and `foiegreis_LICENSE`; pinned source commit `7792960fb60f3118d9827b641dcc441e9ae2d06f` | Snapshot and license were produced by the earlier A audit and reused read-only. Their SHA256 values were rechecked this turn with `Get-FileHash -Algorithm SHA256`. | The pinned URL identifies the claimed source revision; this turn did not refetch the Git object or resolve the mesh package. The six names are URDF candidate joints, not confirmed motor IDs or action channels. |
 | DISCOVERSE AIRBOT candidate | `.local/worktrees/a-assets/reports/github_urdf/discoverse_airbot_play_v3_gripper_fixed.urdf`; pinned source commit `d67f47c084aba0e0cf422a8725235f8b9238655a` | URDF snapshot and hash were reused from the earlier A audit and rechecked read-only. The earlier raw repository license snapshot was not retained. | `MIT` is a source claim carried from the earlier audit and remains license evidence pending. The fixed gripper and all arm names remain candidate geometry only. |
 | OmniHand private URDFs | `.local/worktrees/a-assets/reports/remote_omnihand_left.urdf`, `remote_omnihand_right.urdf`, and `remote_omnihand_LICENSE` | Snapshots and hashes were reused from the earlier A audit and rechecked read-only. | These are private URDF snapshots. The official model ZIP archives were not fetched or hash-bound, so the snapshot cannot be called an official archive match. |
-| OmniHand SDK table | Expected source is `API_PYTHON_O10.md` at commit `026740d9fdd8ba32b0605fa702a992b322076f1b`. No retained raw file or command output exists in this worktree. | No SDK fetch was performed in this correction. | All detailed SDK limits, ranges, channel counts and active order are marked `UNVERIFIED_SOURCE_CLAIM_PENDING_FETCH`; they are candidate notes only. The nearby D evidence is LeRobot-only and is not SDK evidence. |
+| OmniHand SDK table | `.local/evidence/m1/API_PYTHON_O10_026740d_20260922.md`; source index `.local/evidence/m1/omnihand_sdk_source_audit_20260922.json`; README path discovery is `.local/evidence/m1/agillink_README_026740d_20260922.md` | `git ls-remote --symref` resolved `refs/heads/main` to `026740d9fdd8ba32b0605fa702a992b322076f1b`. The README and `doc/en/API_PYTHON_O10.md` were fetched as small text; the official O10 page was fetched separately. | The official SDK/API claims are now source-verified. Hardware identity, official model ZIP hash binding, and simulator/observation mapping remain open. |
 
 The exact private connection command and captured output for the card box are
 kept under `.local/evidence/m1/`; public files refer to logical paths only and
@@ -30,6 +30,23 @@ Get-Content .local/evidence/m1/card_box_usd_parse_20260922.py -Raw |
 The private record contains the concrete host and interpreter values. The
 parser used `pxr.Usd`, `UsdGeom`, `UsdPhysics`, and `Sdf.AssetPath`; it did not
 modify the source stage.
+
+The SDK source commands and hashes are recorded in the private source index.
+The repository check returned `refs/heads/main` at
+`026740d9fdd8ba32b0605fa702a992b322076f1b`. README path discovery selected
+`doc/en/API_PYTHON_O10.md`; its Git blob is
+`d479e89cff3e2b38b33ba2d5a5f0747f3107a72d` and the decoded raw-file SHA256 is
+`44df6abf37de24ebdfa81d96f0471cff92f3612c69a10eee18149b418fd9875d`. The
+README and API document state O10 has 10 active plus 6 passive degrees of
+freedom, a 0--4096 motor-position range, ten active angle values, and sixteen
+total active-plus-passive angle values. The API table supplies the left/right
+joint order, angle limits, and velocity limits already listed in the manifest.
+The official O10 page capture verifies the four 20260827 URDF/model links;
+the ZIP files themselves were not downloaded or hashed. The verified README/API
+documents do not state an SDK release number, so the manifest leaves
+`sdk_version` null rather than retaining the earlier unverified `1.1.8` claim.
+A bounded tag listing was attempted with the same low-speed limit but timed out
+before refs were returned; that failure is retained in the private source index.
 
 ## Card box result
 
@@ -68,12 +85,15 @@ zero offsets, signs, modes, and action dimension remain null. The original
 gripper and any original camera frame are not reused for the OmniHand/D405
 assembly.
 
-The O10 records contain ten claimed active channels and six claimed mimic
-relationships per side in the private URDF snapshots. The
-`state_channel_count_before_tactile=16` entry is explicitly an unverified SDK
-layout claim, not an observation vector dimension. `state_observation_dimension`
-is null and physical feedback versus SDK-derived values still requires an
-observability audit. The CAD filename `play-zy-o10(1).stp` is not model or
+The O10 records contain ten active channels and six claimed mimic relationships
+per side in the private URDF snapshots. The official API confirms ten active
+values and sixteen total active-plus-passive angle values. The
+`state_channel_count_before_tactile=16` entry therefore describes the SDK
+angle-readback layout; it is explicitly not an observation vector dimension.
+`state_observation_dimension` is null because physical feedback versus
+SDK-derived passive values still requires an observability audit. The API also
+documents 1D tactile readback, but its simulator feature and real sensor
+binding remain open. The CAD filename `play-zy-o10(1).stp` is not model or
 hardware identity evidence; it cannot establish that both installed hands are
 O10.
 
@@ -85,8 +105,8 @@ actuator or contact scene is bound, it must receive:
 
 - an approved AIRBOT hardware/model revision and source asset package;
 - an O10/O12 badge and anatomical side confirmation for each hand;
-- a retained official OmniHand archive and `API_PYTHON_O10.md` evidence bound
-  to its commit;
+- a retained official OmniHand model archive, with its ZIP hash bound to the
+  official page links (the API document is now commit-bound);
 - the flange-to-mount-to-hand-root and camera-housing-to-optical transforms;
 - measured hand/mount/camera mass properties and card-box physical properties;
 - a Kit/PhysX scene-open, dependency, collision, and RGB check.
