@@ -1,6 +1,6 @@
 {
-  "status": "IDENTITY_RECHECKED_SMOKE_STARTUP_FAILED_PRODUCTION_UNBOUND",
-  "observed_on": "2026-09-22",
+  "status": "LOCAL_SYNTHETIC_PHYSICS_RGB_AND_STATIC_THREE_CAMERA_OBSERVED_PRODUCTION_UNBOUND",
+  "observed_on": "2026-09-23",
   "production_runtime": null,
   "candidate_environments": [
     {
@@ -48,6 +48,30 @@
       "inherits_system_site_packages": true,
       "isaaclab_source_release_file": null,
       "priority": "not selected: Isaac Lab absent"
+    },
+    {
+      "id": "local_windows_isolated",
+      "python": "3.11.14",
+      "isaacsim": "5.1.0.0",
+      "isaaclab_package_metadata": "0.47.2",
+      "isaaclab_source_release_file": "2.3.0",
+      "isaaclab_upstream_commit": "3c6e67bb5c7ada942a6d1884ab69338f57596f77",
+      "torch": "2.7.0+cu128",
+      "inherits_system_site_packages": false,
+      "environment_lock": "environments/local_windows/uv.lock",
+      "installed": true,
+      "production_validated": false,
+      "observed_gpu": "RTX 3080 Laptop 16 GB",
+      "smoke": {
+        "synthetic_cardbox_physics_rgb": true,
+        "complete_assembly_static_three_rgb": true,
+        "robot_articulation_validated": false,
+        "dynamic_camera_synchronization_validated": false,
+        "wrist_task_coverage_accepted": false,
+        "normal_shutdown": false,
+        "shutdown_diagnostic": "full extension cleanup access violation; external exit and stack retained",
+        "private_evidence": ".local/evidence/m7/"
+      }
     }
   ],
   "required_before_binding": [

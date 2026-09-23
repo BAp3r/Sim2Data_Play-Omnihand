@@ -1,5 +1,9 @@
 # Sim2Data 设计基线 v0.3
 
+2026-09-23 运行时补充：完整装配 USD 的静态 RTX smoke 与物理/驱动验收分开。场景加载和三路 RGB 只能证明视觉层可渲染；若 schema inventory 没有机器人 rigid body/articulation，不能进入接触任务。Kit 关闭退出码和 shutdown 栈单独记录，访问冲突不得记为正常关闭。
+
+用户随后授权一条规划运动样本：Pinocchio 使用真实 URDF 求解，Isaac 逐帧运动学回放并采集三路 RTX，官方 LeRobot 写入一 episode。该样本的 state/action 是规划配置及下一帧配置，不是真实反馈/控制命令；独立 synthetic 标记与 `task_success=null` 保持接触任务和生产门禁，详见 `MOTION_SAMPLE.md`。
+
 状态：**设计基线及分项实施，未通过机器人生产验收**。更新：2026-09-22。用户已恢复 A/B/D 和有条件的运行时 smoke；本轮不做接触任务 C 或批量采集。资产、装配、运行时和 SDK 小样分别记证，不互相替代。已运行范围见 `docs/VALIDATION.md`。
 
 ## 1. 技术选择

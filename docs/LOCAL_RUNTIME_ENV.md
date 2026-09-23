@@ -61,6 +61,8 @@ uv sync --project environments/local_windows --active --locked --check --no-pyth
 
 ## 当前边界
 
+2026-09-23 主会话复核版本与固定 Isaac Lab checkout，并运行完整装配静态三路 RTX smoke。`fast_shutdown=false` 的逐扩展清理暴露 `omni.usd` 卸载访问冲突，见 `VALIDATION.md` 和私有 m7 退出证据；产帧、关闭、机器人驱动分别判定，不能仅凭进程退出或已写 PNG 判通过。
+
 环境子任务只完成依赖解析、安装和身份检查，没有启动 Kit。主会话随后已运行本机 synthetic Cube physics/RGB smoke，实际结果见 `VALIDATION.md`；尚未验证机器人装配、三相机同步、抓取接触或完整数据回合。通过上述 CPU/metadata 检查不代表物理仿真或生产采集验收。
 
 完整命令输出和包含本机路径的身份 JSON 只保存在 worktree 的 `.local/evidence`，不应提交或发布。

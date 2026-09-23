@@ -1,5 +1,23 @@
 # Sim2Data 验证记录
 
+## 2026-09-23 完整装配静态 RTX smoke（M7 实施证据）
+
+新增入口 `scripts/isaac_scene_smoke.py`，在独立 Windows Isaac Sim 5.1.0.0 / Isaac Lab 0.47.2 环境中读取审阅过的双臂 USD、NAS cardbox 与 Thor 源 USD。脚本启动前校验 preview report、profile、纹理和 manifest SHA256；通过 session layer 重新绑定平台可读的 NAS 桌面路径，不修改源资产。结果写入 ignored `.local/evidence/m7/full_scene04/`，三路原相机均实际产生 `640×480×3` RTX RGB：`overhead.png`、`wrist_left.png`、`wrist_right.png`。主视角显示双臂、OmniHand、Thor 桌、纸盒和右侧框子；腕相机当前限位姿态只看到局部指尖/背景，覆盖不接受。
+
+静态装配的 schema inventory 为 0 个机器人 rigid body、0 个 articulation，Thor 引用含 1 个碰撞 prim；本 smoke 不推进 PhysX、不创建机器人 drive、不执行接力。纸盒仅作为静态视觉引用，盒子落体/质量 wrapper 的独立证据仍是 `.local/evidence/m6/cardbox04_nas_drive/`。因此本轮通过范围是“完整 USD 可打开 + 三路 RTX 帧可产出”，不是物理、机器人驱动、同步、标定或抓取验收。
+
+Kit 关闭采用 `fast_shutdown=false`、`skip_cleanup=false`，但在扩展清理阶段发生访问冲突，外部进程退出码 `-1073741819`（0xC0000005）；`full_scene04/shutdown_stack.txt` 和 `kit.log` 保留了关闭栈，定位到 stage 已关闭后 `omni.usd` 的扩展卸载。主会话根据外部退出证据给结果 JSON 补注 `shutdown=kit_close_access_violation`，不能写成正常退出。CPU 回归为 98 项，90 通过、8 跳过；compileall、`git diff --check` 和五项新增输入身份测试通过。
+
+## 2026-09-23 Pinocchio 规划运动与 LeRobot 单 episode
+
+用户选择先交付规划运动样本，不要求本轮伪造完整接力成功。远端现有环境实际导入 Pinocchio 4.0.0，用用户 play URDF 做六轴位置 IK：左腕上移 25 mm 后返回，右臂保持；121 帧、30 Hz、4 秒，IK 残差 `7.997e-8 m`，峰值有限差分速度 `0.08311 rad/s`。初始超速度候选被拒绝。没有安装或调用 cuRobo；没有把零 effort/velocity 改成控制限值。
+
+本机独立 Isaac 5.1 / RTX 3080 以每帧 FK 更新真实 USD 并渲染三路 `320×240` RGB。输出 `capture01/capture.json` 共 121 帧，三路均 121 个不同图像；Pinocchio→USD 世界变换最大误差 `7.77e-16`。没有推进 PhysX，没有机器人 articulation/drive、碰撞或抓取成功判定。证据与对照图在 ignored `.local/evidence/m8/`。
+
+复用已审计的现有 Linux 解释器与私有官方 SDK overlay（并非新建独立数据 venv），使用 LeRobot 0.6.2、codebase v3.0 writer：`dataset02` 恰好 1 episode/121 帧，三路视频各 121 帧，state/action 12 维，训练 batch 形状分别 `[2,12]` 与 `[2,3,240,320]`。官方 loader 对全部 121 帧回读后，state/action 最大误差 `2.97e-8`、时间戳最大误差 `1.11e-7 s`，视频逐帧解码；各流最大全帧平均 RGB 压缩误差为 1.14～1.34/255。完整报告为 `.local/evidence/m8/full_readback.json`，SDK 原始报告为 `.local/evidence/m8/export_report02.remote.json`。sidecar 保持 `task_success=null`、`physics_validated=false` 和 synthetic adapter timeline 语义。
+
+最终轻量测试103项、95通过、8跳过；compileall通过。新增五项输入身份测试与五项运动导出门禁测试均通过。静态 `full_scene05` 释放 Python USD 引用后仍在扩展清理访问冲突，运动 `capture01` 写完也以同一码退出；两者的 `process_exit.json` 与关闭栈单独保留，正常关闭尚未修复。实际启动两名 GPT-6 Luna Max：一名只读 smoke 审查，一名独立 worktree 导出实现；导出原提交 `bf4a3819e8f2927e7f14bebcd45404c3cd817143` 按文件审阅集成，实际 SDK 执行由主会话完成。
+
 ## 2026-09-22 本轮集成结果
 
 输入为已发布 M0 基线；本地实施分支 `work/m1-implementation-20260922`，未推送。包迁移提交 `b42eb75`；A 官方 API 取证集成为 `38a873b`；Astra CAD 审查原提交 `44bb93c`、集成为 `e1e4427`。后续文档提交见 Git 历史，不把未提交状态填作 SHA。

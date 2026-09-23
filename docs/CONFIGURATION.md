@@ -1,11 +1,15 @@
 # 本机与服务器还需要配置什么
 
+2026-09-23 已新增 `scripts/isaac_scene_smoke.py` 作为私有静态运行时入口。它只接受已审阅的 assembly/profile、manifest 对齐的 Thor/cardbox 路径，使用 session layer 绑定 NAS，不写源 USD；输出三路 RGB 到 ignored `.local/evidence/m7/`。该入口不绑定生产机器人 articulation、驱动、标定或数据根，`production_collection_allowed` 永远为 false。
+
+可选 `--trajectory <Pinocchio-plan.json>` 进入用户授权的运动学回放采集，输出 `capture.json` 和三路 PNG；`scripts/export_motion_sample.py --capture-dir <capture> --output-root <new-dataset> --report <private-report>` 用官方 SDK 写入/回读。准确机器命令在 `.local/evidence/m8/COMMANDS.md`。其 12 维规划配置 schema 只属于这条 synthetic 样本，不冻结生产 state/action 维度。
+
 `assets/` 和 `third_party/` 只解决文件放在哪里。实际采集还需要路径绑定、独立环境、机器人/标定、任务/数据契约和写入目录。下列“待配置”均不是已完成的运行时绑定。
 
 | 配置项 | 位置或入口 | 当前状态与用途 |
 |---|---|---|
 | 机器路径与 NAS 挂载 | ignored `.local/paths.json`；公开说明 `configs/paths.example.json` | 已记录部分私有盘点路径，生产数据根和运行时未绑定。Windows UNC 与 Linux 挂载分别填写；符号链接不能代替网络挂载 |
-| 仿真环境 | `configs/runtime_candidates.json`、`scripts/runtime_identity.py`、`docs/RUNTIME_BINDING.md` | 三套候选已复核；5.1 synthetic 启动失败，生产绑定仍为空。`environments/sim/uv.lock` 已实际解析；未完整安装或验收，不把共享环境 freeze 当闭包 |
+| 仿真环境 | `configs/runtime_candidates.json`、`scripts/runtime_identity.py`、`docs/LOCAL_RUNTIME_ENV.md` | 远端三套候选保留历史结果；本机 Windows 隔离 5.1 已安装并完成单盒物理/RGB、完整装配静态三路 RGB，正常关闭和生产绑定仍未通过。Linux sim 锁不代表已安装 |
 | 导出环境 | `environments/data/pyproject.toml` + `uv.lock` | 与仿真环境隔离；固定官方 LeRobot SDK/视频编码依赖。根 `uv.lock` 仅覆盖无重依赖的 M0 工具 |
 | 机器人与资产 manifest | `configs/asset_manifest.json` | 官方来源/版本/hash/许可、arm 与 hand 的真实驱动映射、单位和限位；已有静态审计 manifest，尚未生产绑定 |
 | 标定与装配 | 原件放 `.local/calibration/` 或 ignored `calibration/`；`configs/assembly_inputs.template.json`、`docs/ASSEMBLY_INPUTS.md` | 已提供逐侧原子链和安装刚体输入模板；它不是可直接合并的场景配置。实测值仍为空；主相机位姿及覆盖也必须核查 |
