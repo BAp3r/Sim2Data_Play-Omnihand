@@ -25,6 +25,12 @@ def capture_trajectory(stage, rep, cameras, args, result):
         raise ValueError("expected multi-frame 30 Hz motion plan")
     operations = {}
     base_world = {}
+    demo = None
+    demo_base_scale = 1.0
+    if args.three_box_demo:
+        demo = json.loads(args.three_box_demo.read_text(encoding="utf-8"))
+        if demo["domain_randomization"].get("instance_scale_mode") != "source_extent_direct":
+            raise ValueError("three-box plan must use direct source-extent scaling")
     for side in ("left", "right"):
         path = f"/World/{side}/{side}_arm__base_link"
         base_world[side] = np.asarray(UsdGeom.Xformable(stage.GetPrimAtPath(path)).ComputeLocalToWorldTransform(0)).T
@@ -67,6 +73,16 @@ def capture_trajectory(stage, rep, cameras, args, result):
             max_fk_error = max(max_fk_error, error)
             if error > 1e-8:
                 raise RuntimeError("USD FK readback differs from Pinocchio plan")
+        if demo is not None:
+            state = demo["frames"][index % len(demo["frames"])]
+            for box in state["boxes"]:
+                node = UsdGeom.Xformable(stage.GetPrimAtPath(f"/World/ThreeBoxDemo/{box['id']}"))
+                ops = node.GetOrderedXformOps()
+                ops[0].Set(Gf.Vec3d(float(box["x"]), float(box["y"]), float(box["z"])))
+                ops[1].Set(float(box.get("yaw_rad", 0.0) * 180.0 / 3.141592653589793))
+                ops[2].Set(Gf.Vec3f(demo_base_scale * float(box["scale_x"]),
+                                     demo_base_scale * float(box["scale_y"]),
+                                     demo_base_scale * float(box.get("scale_z", 1.0))))
         # Every rendered triple follows one common FK update. Physics stays
         # paused; the dataset timestamp is this explicit playback clock.
         rep.orchestrator.step(rt_subframes=4, pause_timeline=True, delta_time=0.0)

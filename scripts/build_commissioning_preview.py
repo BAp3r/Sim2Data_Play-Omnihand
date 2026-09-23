@@ -16,7 +16,7 @@ import zlib
 
 import numpy as np
 import trimesh
-from pxr import Gf, Sdf, Usd, UsdGeom, UsdLux, UsdShade, Vt
+from pxr import Gf, Sdf, Usd, UsdGeom, UsdLux, UsdPhysics, UsdShade, Vt
 from sim2data.backends.isaaclab.preview_pose import resolve_preview_positions
 
 
@@ -199,13 +199,16 @@ def reference_style(name, geometry, appearance):
     return {"primary": base, "accent": accent, "weights": weights, "corner_normals": normals}
 
 
-def cube(stage, path, size, centre, colour):
+def cube(stage, path, size, centre, colour, collision=False):
     item = UsdGeom.Cube.Define(stage, path)
     item.CreateSizeAttr(1)
     item.AddTranslateOp().Set(Gf.Vec3d(*centre))
     item.AddScaleOp().Set(Gf.Vec3f(*size))
     item.CreateDisplayColorAttr([Gf.Vec3f(*colour)])
     material(stage, item.GetPrim(), colour)
+    if collision:
+        UsdPhysics.CollisionAPI.Apply(item.GetPrim())
+    return item
 
 
 def flat_ground(stage, path, size_xy, z, colour=(0.12, 0.14, 0.16)):
@@ -217,6 +220,7 @@ def flat_ground(stage, path, size_xy, z, colour=(0.12, 0.14, 0.16)):
     mesh_prim.CreateFaceVertexIndicesAttr([0, 1, 2, 3])
     mesh_prim.CreateDisplayColorAttr([Gf.Vec3f(*colour)])
     material(stage, mesh_prim.GetPrim(), colour)
+    UsdPhysics.CollisionAPI.Apply(mesh_prim.GetPrim())
     return mesh_prim
 
 
@@ -352,7 +356,8 @@ def build(args):
         cube(stage, "/World/Table", table["size_xyz_m"], table["center_xyz_m"], (0.22, 0.25, 0.28))
     # The floor is a continuous plane below the official Thor table. It is
     # separate from the tabletop and carries no guessed slab thickness.
-    flat_ground(stage, "/World/FullFlatGround", (4.0, 4.0), float(table.get("ground_z_m", -0.7947)))
+    ground_z = float(table.get("ground_z_m", -0.7947))
+    flat_ground(stage, "/World/FullFlatGround", (4.0, 4.0), ground_z)
     box = profile["box"]
     cube(stage, "/World/SyntheticBox", box["size_xyz_m"], box["center_xyz_m"], (0.6, 0.35, 0.14))
     relay = profile["relay_region"]
@@ -361,13 +366,14 @@ def build(args):
     x, y, z = bin_["bottom_center_xyz_m"]
     sx, sy, sz = bin_["inner_size_xyz_m"]
     t = bin_["wall_thickness_m"]
-    cube(stage, "/World/Bin/Bottom", (sx+2*t, sy+2*t, t), (x,y,z), (0.2,0.35,0.65))
+    cube(stage, "/World/Bin/Bottom", (sx+2*t, sy+2*t, t), (x,y,z), (0.2,0.35,0.65), collision=True)
+    wall_center_z = float(bin_["top_z_m"]) - sz / 2.0
     for label, size, pos in [
-        ("Left", (t,sy+2*t,sz), (x-(sx+t)/2,y,z+(sz+t)/2)),
-        ("Right", (t,sy+2*t,sz), (x+(sx+t)/2,y,z+(sz+t)/2)),
-        ("Near", (sx,t,sz), (x,y-(sy+t)/2,z+(sz+t)/2)),
-        ("Far", (sx,t,sz), (x,y+(sy+t)/2,z+(sz+t)/2))]:
-        cube(stage, "/World/Bin/"+label, size, pos, (0.2,0.35,0.65))
+        ("Left", (t,sy+2*t,sz), (x-(sx+t)/2,y,wall_center_z)),
+        ("Right", (t,sy+2*t,sz), (x+(sx+t)/2,y,wall_center_z)),
+        ("Near", (sx,t,sz), (x,y-(sy+t)/2,wall_center_z)),
+        ("Far", (sx,t,sz), (x,y+(sy+t)/2,wall_center_z))]:
+        cube(stage, "/World/Bin/"+label, size, pos, (0.2,0.35,0.65), collision=True)
     robots = {}
     for side, urdf in [("left", args.left), ("right", args.right)]:
         robots[side] = add_robot(stage, "/World/" + side, urdf, profile["robots"][side], appearance)
@@ -415,7 +421,19 @@ def build(args):
     cameras = [str(p.GetPath()) for p in reopened.Traverse() if p.IsA(UsdGeom.Camera)]
     if len(cameras) != 3:
         raise RuntimeError("Preview must contain three cameras")
+    bin_bottom_top = z + t / 2.0
     result.update(passed=True, robots=robots, camera_paths=cameras,
+                  scene_geometry={
+                      "ground": {"prim": "/World/FullFlatGround", "prim_type": "Mesh", "z_m": ground_z,
+                                 "collision_api": True, "full_flat_ground": True},
+                      "thor_table": {"visual_top_z_m": 0.0, "collision_top_z_m": -0.0155,
+                                     "visual_collision_delta_m": 0.0155, "source_geometry_preserved": True,
+                                     "collision_validation": "static source audit only"},
+                      "bin": {"bottom_prim": "/World/Bin/Bottom", "wall_prims": ["/World/Bin/Left", "/World/Bin/Right", "/World/Bin/Near", "/World/Bin/Far"],
+                              "bottom_center_z_m": z, "bottom_top_z_m": bin_bottom_top,
+                              "top_z_m": float(bin_["top_z_m"]), "wall_collision_api": True,
+                              "height_relation": "synthetic_top_rim_equal_to_thor_visual_top"},
+                      "ground_cube_prims": [], "synthetic_height_assumptions": True},
                   appearance_sha256=None if args.appearance is None else hashlib.sha256(args.appearance.read_bytes()).hexdigest(),
                   appearance_scope=None if appearance is None else appearance["source_status"],
                   texture_dependencies=texture_dependencies,

@@ -7,7 +7,9 @@
     "Scene left uses anatomical left O10 and scene right uses anatomical right O10 as a synthetic choice",
     "Flange and hand roots aligned by synthetic fixed joints; mating side and overlap unverified",
     "D405 nominal body and color optical centers symmetric; right is rotated 180deg around optical direction with bottom-screw translation compensation; mounting support and calibrated extrinsics unknown",
-    "User-requested outward camera shift: left mount Y +0.020 m, right mount Y -0.020 m from M4; reviewed arm pose maps these to world X outward by 0.020 m"
+    "User-requested outward camera shift: left mount Y +0.020 m, right mount Y -0.020 m from M4; reviewed arm pose maps these to world X outward by 0.020 m",
+    "Thor visual tabletop z=0 and collision upper bound z=-0.0155 m are separate synthetic scene datums; no measured correction is implied",
+    "Full flat ground is a synthetic zero-thickness Mesh at ground_z_m; bin top, bottom and wall heights are synthetic and not measured assembly values"
   ],
   "table": {
     "asset_id": "isaac_5_1_thorlabs_table",
@@ -26,7 +28,11 @@
       ]
     },
     "ground_z_m": -0.7947,
-    "placement_status": "synthetic XY bounding-box centering; native top z=0; original dimensions preserved"
+    "placement_status": "synthetic XY bounding-box centering; native visual top z=0; original dimensions preserved",
+    "visual_top_z_m": 0.0,
+    "collision_top_z_m": -0.0155,
+    "visual_collision_delta_m": 0.0155,
+    "height_relation_status": "synthetic_datums_only"
   },
   "robots": {
     "left": {

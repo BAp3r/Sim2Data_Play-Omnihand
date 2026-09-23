@@ -15,7 +15,19 @@
   },
   "table": {
     "size_xyz_m": null,
-    "surface": "dark tabletop, observed in reference video"
+    "surface": "dark tabletop, observed in reference video",
+    "visual_top_z_m": 0.0,
+    "collision_top_z_m": -0.0155,
+    "visual_collision_delta_m": 0.0155,
+    "height_status": "synthetic_audit_datum_not_measured"
+  },
+  "ground": {
+    "geometry": "full_flat_plane_mesh",
+    "prim_type": "Mesh",
+    "z_m": -0.7947,
+    "collision_required": true,
+    "synthetic": true,
+    "large_cube_forbidden": true
   },
   "robots": {
     "left": {

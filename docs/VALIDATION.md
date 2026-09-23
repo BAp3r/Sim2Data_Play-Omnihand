@@ -222,6 +222,6 @@ CPU测试89项，85通过、4跳过；日志 `.local/evidence/m4/cpu_tests.txt`�
 
 本轮没有真实手指闭合、PhysX articulation、物理接触、盒子抬离或证据视频；现有 m7/m8 仍是静态/运动学证据。下一次运行需在 GPU 可用时执行真实 articulation smoke，并把启动/关闭状态与产帧分别记录。
 
-场景修正：preview 与 bounded card-box smoke 均改用连续 flat ground；synthetic 外框 rim 顶高设为桌面 `z=0`，配置底面为 `z=-0.2 m`。尚未用 Isaac PhysX 对框壁、底面和 Thor 桌面的接触上界做动态验证。
+场景修正：preview 与 bounded card-box smoke 均使用带 `UsdPhysics.CollisionAPI` 的连续 `UsdGeom.Mesh` flat ground（不再用缩放 Cube 冒充地面）；结构化报告记录 ground prim type=`Mesh`、`z=-0.7947 m`、Thor visual top=`0 m`、Thor collision top=`-0.0155 m` 及其 15.5 mm 差异。框底和四面框壁均显式带碰撞，墙顶按 synthetic `top_z=0 m` 对齐桌面视觉顶面，配置底面中心为 `z=-0.2 m`。这些高度是 synthetic 假设，尚未用 Isaac PhysX 对框壁、底面和 Thor 桌面的接触上界做动态验证；报告中的 physics_validated 仍为 false。
 
 内网 teleop 仓库只读审阅确认其 O10 `tripod/pinch` 端点和 `gripper_1d` 展开逻辑；未运行真实机器人命令，仓库也未提供抓取视频。

@@ -4,7 +4,7 @@
 
 ## 实际输入与规划
 
-输入仍是审阅过的用户 play 六轴 URDF、独立左右 OmniHand、D405 与 Thor 装配。arm URDF SHA256 为 `b02c7ac6fd1dd6a65f355ef6650c2a7584fdbd56ccfc497b767292010ce4e0b0`，synthetic profile SHA256 为 `04c688263bd4b00ecba693f10ae991526e5a6345705538f934f771c2561d9736`。私有机器路径只保存在 `.local`。
+输入仍是审阅过的用户 play 六轴 URDF、独立左右 OmniHand、D405 与 Thor 装配。arm URDF SHA256 为 `b02c7ac6fd1dd6a65f355ef6650c2a7584fdbd56ccfc497b767292010ce4e0b0`，synthetic profile SHA256 为 `40d96e8fbb7a9745792d646c17c442ed28737717eaa5d5dc403be9ff79f3d33b`。私有机器路径只保存在 `.local`。
 
 `scripts/plan_kinematic_motion.py` 实际使用现有 CPU 环境的 **Pinocchio 4.0.0**，从该 URDF 构建模型。位置 Jacobian 的阻尼最小二乘 IK 将左 link6 目标上移 25 mm，再用 Pinocchio `interpolate` 和五次时间曲线生成往返轨迹。右臂保持原姿态，双手保持审阅过的张开姿态。这里没有使用 cuRobo，也没有将 IK/插值称为避障规划。
 
