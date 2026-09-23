@@ -74,6 +74,17 @@ class MotionExportInputTests(unittest.TestCase):
         self.assertEqual(len(result.frames[0].state), 12)
         self.assertEqual(result.provenance["capture_alignment"], "fixture provenance")
 
+    def test_preserves_optional_camera_poses_and_rejects_partial_sequence(self):
+        matrix = [[1.0 if row == col else 0.0 for col in range(4)] for row in range(4)]
+        pose = {name: matrix for name in ("overhead", "wrist_left", "wrist_right")}
+        self.manifest["frames"][0]["camera_T_world_usd"] = pose
+        self.write()
+        with self.assertRaisesRegex(ValueError, "every frame"):
+            load_capture(self.root)
+        self.manifest["frames"][1]["camera_T_world_usd"] = pose
+        self.write()
+        self.assertEqual(load_capture(self.root).provenance["camera_frame_poses"], [pose, pose])
+
     def test_rejects_forged_claims(self):
         forged_claims = (
             ("task_success", True),

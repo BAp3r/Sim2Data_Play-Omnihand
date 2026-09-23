@@ -16,7 +16,7 @@
 
 所有流在同一次 FK 更新后以 RTX 渲染，获得 121×3 张真实 `320×240` RGB。没有复制单张静态图来充当运动视频；纸盒保持原位，没有粘手或抓取声明。相机与轨迹共用显式回放时钟，PhysX 没有推进，因此不能声称动态传感器延迟或物理同步已验证。
 
-证据为 ignored `.local/evidence/m8/trajectory02.json`、`capture01/capture.json`、`capture01/images/`。主会话实际查看起点、最高点和腕部图；腕相机仍主要看到指尖/背景，当前运动不是任务视野验收。带图例的起点/最高点对照及三路 GIF 位于 `.local/evidence/m8/delivery/`，不公开第三方派生图。
+证据为 ignored `.local/evidence/m8/trajectory02.json`、`capture02/capture.json`、`capture02/images/`。主会话实际查看起点、最高点和腕部图；腕相机仍主要看到指尖/背景，当前运动不是任务视野验收。带图例的起点/最高点对照及三路 GIF 位于 `.local/evidence/m8/delivery/`，不公开第三方派生图。
 
 ## 数据语义与导出接口
 
@@ -24,7 +24,7 @@
 
 现有适配器的 `i*8` 时钟标签只用于格式接口，sidecar 明确说明其为 synthetic adapter timeline，不表示发生了 240 Hz 物理步进。成功与物理字段不会被升级；SDK 生成正式格式元数据，不手拼元数据。
 
-已实际完成官方 LeRobot 0.6.2（固定 commit `b64fe1ed9f11eeac53ee821356d2797601701054`）写入、finalize、回读与训练 batch：1 episode / 121帧；三路 MP4 各121帧。全部帧的 state/action 误差小于 `3e-8`，时间戳误差小于 `1.2e-7 s`，编码图像与输入逐帧平均像素误差均小于5/255。数据已下载到 `.local/evidence/m8/dataset02/`，压缩包 `.local/evidence/m8/exported02.tar.gz`；未上传 Hub 或公开 Git。SDK 使用先前已审核的私有 overlay，未修改共享环境。
+已实际完成官方 LeRobot 0.6.2（固定 commit `b64fe1ed9f11eeac53ee821356d2797601701054`）写入、finalize、回读与训练 batch：1 episode / 121帧；三路 MP4 各121帧。全部帧的 state/action 误差小于 `3e-8`，时间戳误差小于 `1.2e-7 s`，编码图像与输入逐帧平均像素误差均小于5/255。最终带每帧相机位姿的结果已下载到 `.local/evidence/m8/dataset03/`，压缩包 `.local/evidence/m8/exported03.tar.gz`，回读报告为 `full_readback03.json`；未上传 Hub 或公开 Git。SDK 使用先前已审核的私有 overlay，未修改共享环境。
 
 ## 仍未通过
 

@@ -147,7 +147,8 @@ def load_capture(capture_dir: str | Path) -> MotionCapture:
         raise ValueError("capture.json frames must contain at least one frame")
     frames = []
     for index, item in enumerate(items):
-        if not isinstance(item, dict) or set(item) != {"index", "timestamp", "state", "action", "images"}:
+        allowed_frame_fields = {"index", "timestamp", "state", "action", "images", "camera_T_world_usd"}
+        if not isinstance(item, dict) or not {"index", "timestamp", "state", "action", "images"} <= set(item) or not set(item) <= allowed_frame_fields:
             raise ValueError(f"frame {index} fields do not match the approved manifest")
         if type(item["index"]) is not int or item["index"] != index:
             raise ValueError("frame indices must be contiguous and start at zero")
@@ -165,6 +166,24 @@ def load_capture(capture_dir: str | Path) -> MotionCapture:
             images={camera: _image_path(root, images[camera], camera, index) for camera in CAMERAS},
         ))
     provenance = {key: value for key, value in manifest.items() if key not in _CAPTURE_FIELDS}
+    if any("camera_T_world_usd" in item for item in items):
+        poses = []
+        for item in items:
+            pose = item.get("camera_T_world_usd")
+            if not isinstance(pose, dict) or set(pose) != set(CAMERAS):
+                raise ValueError("every frame must provide all camera poses when enabled")
+            for matrix in pose.values():
+                if not isinstance(matrix, list) or len(matrix) != 4:
+                    raise ValueError("camera poses must be 4x4 matrices")
+                for row in matrix:
+                    if not isinstance(row, list) or len(row) != 4:
+                        raise ValueError("camera poses must be 4x4 matrices")
+                    for value in row:
+                        _number(value, "camera pose")
+            poses.append(pose)
+        if "camera_frame_poses" in provenance and provenance["camera_frame_poses"] != poses:
+            raise ValueError("per-frame camera poses disagree with provenance")
+        provenance["camera_frame_poses"] = poses
     return MotionCapture(root=root, frames=tuple(frames), provenance=provenance)
 
 

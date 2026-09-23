@@ -12,11 +12,11 @@ Kit 关闭采用 `fast_shutdown=false`、`skip_cleanup=false`，但在扩展清�
 
 用户选择先交付规划运动样本，不要求本轮伪造完整接力成功。远端现有环境实际导入 Pinocchio 4.0.0，用用户 play URDF 做六轴位置 IK：左腕上移 25 mm 后返回，右臂保持；121 帧、30 Hz、4 秒，IK 残差 `7.997e-8 m`，峰值有限差分速度 `0.08311 rad/s`。初始超速度候选被拒绝。没有安装或调用 cuRobo；没有把零 effort/velocity 改成控制限值。
 
-本机独立 Isaac 5.1 / RTX 3080 以每帧 FK 更新真实 USD 并渲染三路 `320×240` RGB。输出 `capture01/capture.json` 共 121 帧，三路均 121 个不同图像；Pinocchio→USD 世界变换最大误差 `7.77e-16`。没有推进 PhysX，没有机器人 articulation/drive、碰撞或抓取成功判定。证据与对照图在 ignored `.local/evidence/m8/`。
+本机独立 Isaac 5.1 / RTX 3080 以每帧 FK 更新真实 USD 并渲染三路 `320×240` RGB。最终输出 `capture02/capture.json` 共 121 帧，三路均 121 个不同图像，并保留每帧相机位姿与 synthetic K；Pinocchio→USD 世界变换最大误差 `7.77e-16`。没有推进 PhysX，没有机器人 articulation/drive、碰撞或抓取成功判定。证据与对照图在 ignored `.local/evidence/m8/`。
 
-复用已审计的现有 Linux 解释器与私有官方 SDK overlay（并非新建独立数据 venv），使用 LeRobot 0.6.2、codebase v3.0 writer：`dataset02` 恰好 1 episode/121 帧，三路视频各 121 帧，state/action 12 维，训练 batch 形状分别 `[2,12]` 与 `[2,3,240,320]`。官方 loader 对全部 121 帧回读后，state/action 最大误差 `2.97e-8`、时间戳最大误差 `1.11e-7 s`，视频逐帧解码；各流最大全帧平均 RGB 压缩误差为 1.14～1.34/255。完整报告为 `.local/evidence/m8/full_readback.json`，SDK 原始报告为 `.local/evidence/m8/export_report02.remote.json`。sidecar 保持 `task_success=null`、`physics_validated=false` 和 synthetic adapter timeline 语义。
+复用已审计的现有 Linux 解释器与私有官方 SDK overlay（并非新建独立数据 venv），使用 LeRobot 0.6.2、codebase v3.0 writer：最终 `dataset03` 恰好 1 episode/121 帧，三路视频各 121 帧，state/action 12 维，训练 batch 形状分别 `[2,12]` 与 `[2,3,240,320]`。官方 loader 对全部 121 帧回读后，state/action 最大误差 `2.97e-8`、时间戳最大误差 `1.11e-7 s`，视频逐帧解码；各流最大全帧平均 RGB 压缩误差为 1.14～1.36/255。完整报告为 `.local/evidence/m8/full_readback03.json`，SDK 原始报告为 `.local/evidence/m8/export_report03.json`。sidecar 保持 `task_success=null`、`physics_validated=false` 和 synthetic adapter timeline 语义；首轮不含逐帧相机位姿的 dataset02 保留为诊断产物。
 
-最终轻量测试103项、95通过、8跳过；compileall通过。新增五项输入身份测试与五项运动导出门禁测试均通过。静态 `full_scene05` 释放 Python USD 引用后仍在扩展清理访问冲突，运动 `capture01` 写完也以同一码退出；两者的 `process_exit.json` 与关闭栈单独保留，正常关闭尚未修复。实际启动两名 GPT-6 Luna Max：一名只读 smoke 审查，一名独立 worktree 导出实现；导出原提交 `bf4a3819e8f2927e7f14bebcd45404c3cd817143` 按文件审阅集成，实际 SDK 执行由主会话完成。
+最终轻量测试104项、96通过、8跳过；compileall通过。新增五项输入身份测试与六项运动导出门禁测试均通过。静态 `full_scene05` 释放 Python USD 引用后仍在扩展清理访问冲突，运动 `capture02` 写完也以同一码退出；两者的 `process_exit.json` 与关闭栈单独保留，正常关闭尚未修复。实际启动两名 GPT-6 Luna Max：一名只读 smoke 审查，一名独立 worktree 导出实现；导出原提交 `bf4a3819e8f2927e7f14bebcd45404c3cd817143` 按文件审阅集成，实际 SDK 执行由主会话完成。
 
 ## 2026-09-22 本轮集成结果
 
