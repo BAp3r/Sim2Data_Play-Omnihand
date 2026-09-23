@@ -208,6 +208,18 @@ def cube(stage, path, size, centre, colour):
     material(stage, item.GetPrim(), colour)
 
 
+def flat_ground(stage, path, size_xy, z, colour=(0.12, 0.14, 0.16)):
+    """Create a full, zero-thickness ground plane; never a giant cube."""
+    mesh_prim = UsdGeom.Mesh.Define(stage, path)
+    hx, hy = float(size_xy[0]) / 2, float(size_xy[1]) / 2
+    mesh_prim.CreatePointsAttr([(-hx, -hy, z), (hx, -hy, z), (hx, hy, z), (-hx, hy, z)])
+    mesh_prim.CreateFaceVertexCountsAttr([4])
+    mesh_prim.CreateFaceVertexIndicesAttr([0, 1, 2, 3])
+    mesh_prim.CreateDisplayColorAttr([Gf.Vec3f(*colour)])
+    material(stage, mesh_prim.GetPrim(), colour)
+    return mesh_prim
+
+
 def load_geometry(node):
     item = node.find("mesh")
     if item is not None:
@@ -338,6 +350,9 @@ def build(args):
         if args.table_usd is not None:
             raise ValueError("Table binding supplied but no table asset selected in profile")
         cube(stage, "/World/Table", table["size_xyz_m"], table["center_xyz_m"], (0.22, 0.25, 0.28))
+    # The floor is a continuous plane below the official Thor table. It is
+    # separate from the tabletop and carries no guessed slab thickness.
+    flat_ground(stage, "/World/FullFlatGround", (4.0, 4.0), float(table.get("ground_z_m", -0.7947)))
     box = profile["box"]
     cube(stage, "/World/SyntheticBox", box["size_xyz_m"], box["center_xyz_m"], (0.6, 0.35, 0.14))
     relay = profile["relay_region"]

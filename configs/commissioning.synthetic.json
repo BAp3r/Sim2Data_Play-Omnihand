@@ -25,6 +25,7 @@
         0
       ]
     },
+    "ground_z_m": -0.7947,
     "placement_status": "synthetic XY bounding-box centering; native top z=0; original dimensions preserved"
   },
   "robots": {
@@ -219,8 +220,11 @@
     "bottom_center_xyz_m": [
       0.64,
       0.05,
-      -0.06
-    ]
+      -0.2
+    ],
+    "top_height_reference": "thor_tabletop_surface",
+    "top_z_m": 0.0,
+    "height_relation_status": "synthetic_top_rim_equal_to_tabletop"
   },
   "overhead": {
     "eye_xyz_m": [
@@ -286,53 +290,53 @@
       "active_joints": [
         {
           "name": "left_hand__l_thumb_roll_joint",
-          "open_rad": 0.035,
-          "close_rad": 0.9
-        },
-        {
-          "name": "left_hand__l_thumb_abad_joint",
-          "open_rad": 0.0,
-          "close_rad": -0.65
-        },
-        {
-          "name": "left_hand__l_thumb_mcp_joint",
-          "open_rad": 0.0,
-          "close_rad": 0.6
-        },
-        {
-          "name": "left_hand__l_index_abad_joint",
-          "open_rad": 0.0,
-          "close_rad": 0.05
-        },
-        {
-          "name": "left_hand__l_index_pip_joint",
-          "open_rad": 0.0,
-          "close_rad": -0.95
-        },
-        {
-          "name": "left_hand__l_middle_pip_joint",
-          "open_rad": 0.0,
-          "close_rad": -0.95
-        },
-        {
-          "name": "left_hand__l_ring_abad_joint",
-          "open_rad": 0.0,
+          "open_rad": -0.03,
           "close_rad": -0.03
         },
         {
+          "name": "left_hand__l_thumb_abad_joint",
+          "open_rad": 1.51,
+          "close_rad": 1.51
+        },
+        {
+          "name": "left_hand__l_thumb_mcp_joint",
+          "open_rad": -0.5,
+          "close_rad": -0.7
+        },
+        {
+          "name": "left_hand__l_index_abad_joint",
+          "open_rad": 0,
+          "close_rad": 0
+        },
+        {
+          "name": "left_hand__l_index_pip_joint",
+          "open_rad": 0.5,
+          "close_rad": 0.7
+        },
+        {
+          "name": "left_hand__l_middle_pip_joint",
+          "open_rad": 0.5,
+          "close_rad": 0.7
+        },
+        {
+          "name": "left_hand__l_ring_abad_joint",
+          "open_rad": 0,
+          "close_rad": 0
+        },
+        {
           "name": "left_hand__l_ring_pip_joint",
-          "open_rad": 0.0,
-          "close_rad": -0.95
+          "open_rad": 1.48,
+          "close_rad": 1.48
         },
         {
           "name": "left_hand__l_pinky_abad_joint",
-          "open_rad": 0.0,
-          "close_rad": 0.04
+          "open_rad": 0,
+          "close_rad": 0
         },
         {
           "name": "left_hand__l_pinky_pip_joint",
-          "open_rad": 0.0,
-          "close_rad": -0.95
+          "open_rad": 1.48,
+          "close_rad": 1.48
         }
       ],
       "mimic_joints": "URDF_mimic_only_do_not_command",
@@ -341,7 +345,9 @@
         "damping": 0.15,
         "max_force": 1.5,
         "max_velocity_rad_s": 1.0
-      }
+      },
+      "gesture": "tripod",
+      "source": "internal_repo_dual-arm-adapt-tactile_commit_67f1e3f6045bbf514e4cb4d7fec08b4d23695bb4"
     },
     "right": {
       "interface": "scalar_open_close_0_open_1_closed",
@@ -349,53 +355,53 @@
       "active_joints": [
         {
           "name": "right_hand__R_thumb_roll_joint",
-          "open_rad": -0.524,
-          "close_rad": 0.9
+          "open_rad": 0.03,
+          "close_rad": 0.03
         },
         {
           "name": "right_hand__R_thumb_abad_joint",
-          "open_rad": 0.0,
-          "close_rad": -0.55
+          "open_rad": -1.51,
+          "close_rad": -1.51
         },
         {
           "name": "right_hand__R_thumb_mcp_joint",
-          "open_rad": 0.0,
-          "close_rad": 0.6
+          "open_rad": 0.5,
+          "close_rad": 0.7
         },
         {
           "name": "right_hand__R_index_abad_joint",
-          "open_rad": 0.0,
-          "close_rad": -0.12
+          "open_rad": 0,
+          "close_rad": 0
         },
         {
           "name": "right_hand__R_index_pip_joint",
-          "open_rad": 0.05,
-          "close_rad": 0.95
+          "open_rad": 0.5,
+          "close_rad": 0.7
         },
         {
           "name": "right_hand__R_middle_pip_joint",
-          "open_rad": 0.05,
-          "close_rad": 0.95
+          "open_rad": 0.5,
+          "close_rad": 0.7
         },
         {
           "name": "right_hand__R_ring_abad_joint",
-          "open_rad": 0.0,
-          "close_rad": 0.1
+          "open_rad": 0,
+          "close_rad": 0
         },
         {
           "name": "right_hand__R_ring_pip_joint",
-          "open_rad": 0.05,
-          "close_rad": 0.95
+          "open_rad": 1.48,
+          "close_rad": 1.48
         },
         {
           "name": "right_hand__R_pinky_abad_joint",
-          "open_rad": 0.0,
-          "close_rad": 0.1
+          "open_rad": 0,
+          "close_rad": 0
         },
         {
           "name": "right_hand__R_pinky_pip_joint",
-          "open_rad": 0.05,
-          "close_rad": 0.95
+          "open_rad": 1.48,
+          "close_rad": 1.48
         }
       ],
       "mimic_joints": "URDF_mimic_only_do_not_command",
@@ -404,7 +410,9 @@
         "damping": 0.15,
         "max_force": 1.5,
         "max_velocity_rad_s": 1.0
-      }
+      },
+      "gesture": "tripod",
+      "source": "internal_repo_dual-arm-adapt-tactile_commit_67f1e3f6045bbf514e4cb4d7fec08b4d23695bb4"
     }
   }
 }

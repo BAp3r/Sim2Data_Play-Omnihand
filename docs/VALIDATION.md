@@ -221,3 +221,7 @@ CPU测试89项，85通过、4跳过；日志 `.local/evidence/m4/cpu_tests.txt`�
 新增 `tests/test_gripper_control.py`：3 项通过。测试从私有左右 URDF 读取独立关节，确认每侧 10 个主动目标、左右符号不相同、mimic/DIP 不进入命令，且生产采集仍关闭。这是 XML/映射单元验证。
 
 本轮没有真实手指闭合、PhysX articulation、物理接触、盒子抬离或证据视频；现有 m7/m8 仍是静态/运动学证据。下一次运行需在 GPU 可用时执行真实 articulation smoke，并把启动/关闭状态与产帧分别记录。
+
+场景修正：preview 与 bounded card-box smoke 均改用连续 flat ground；synthetic 外框 rim 顶高设为桌面 `z=0`，配置底面为 `z=-0.2 m`。尚未用 Isaac PhysX 对框壁、底面和 Thor 桌面的接触上界做动态验证。
+
+内网 teleop 仓库只读审阅确认其 O10 `tripod/pinch` 端点和 `gripper_1d` 展开逻辑；未运行真实机器人命令，仓库也未提供抓取视频。

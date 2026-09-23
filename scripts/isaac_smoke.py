@@ -91,12 +91,16 @@ def main() -> None:
         UsdGeom.SetStageUpAxis(stage, UsdGeom.Tokens.z)
         world = UsdGeom.Xform.Define(stage, "/World")
         stage.SetDefaultPrim(world.GetPrim())
-        table = UsdGeom.Cube.Define(stage, "/World/Table")
-        table.CreateSizeAttr(1.0)
-        table.AddTranslateOp().Set(Gf.Vec3d(0, 0, -0.025))
-        table.AddScaleOp().Set(Gf.Vec3f(1.2, 0.8, 0.05))
-        table.CreateDisplayColorAttr([Gf.Vec3f(0.12, 0.15, 0.18)])
-        UsdPhysics.CollisionAPI.Apply(table.GetPrim())
+        # Use a continuous ground plane instead of a large cube pretending to
+        # be a table. The official Thor tabletop is supplied by the full-scene
+        # recipe; this bounded card-box smoke only needs a support plane.
+        ground = UsdGeom.Mesh.Define(stage, "/World/FullFlatGround")
+        ground.CreatePointsAttr([(-2.0, -2.0, 0.0), (2.0, -2.0, 0.0),
+                                 (2.0, 2.0, 0.0), (-2.0, 2.0, 0.0)])
+        ground.CreateFaceVertexCountsAttr([4])
+        ground.CreateFaceVertexIndicesAttr([0, 1, 2, 3])
+        ground.CreateDisplayColorAttr([Gf.Vec3f(0.12, 0.15, 0.18)])
+        UsdPhysics.CollisionAPI.Apply(ground.GetPrim())
         prim = stage.DefinePrim("/World/CardBox", "Xform")
         # Do not override the referenced default prim's concrete type (a Cube
         # fixture would otherwise become an empty Xform with invalid bounds).

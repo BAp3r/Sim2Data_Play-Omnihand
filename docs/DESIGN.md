@@ -215,3 +215,5 @@ NAS仓库纸盒headless调试采用显式synthetic wrapper：均匀缩放0.12（
 本轮新增 `sim2data.control.gripper.GripperMap` 作为合成调试接口。输入一个 `[0,1]` 开合量，分别展开为左右 OmniHand 各 10 个独立主动关节目标；6 个 URDF mimic 关节不写命令，由 PhysX articulation 耦合。左右映射、符号和开合端点独立声明，不能镜像复制。驱动刚度、阻尼、力和速度只是 commissioning 假设，必须在无物体响应试验中核对。
 
 外侧框子下一版 synthetic 布局将其有效底面/支撑顶面设为与 Thor 桌面顶面同高；框壁仍有碰撞厚度，物体必须落在框内底面，不能用穿透隐藏高度差。这个布局值不等于实测硬件尺寸。
+
+场景地面采用独立连续 flat plane（`/World/FullFlatGround`），位置低于 Thor 桌体底面；它不是用来替代桌面，也不通过巨大 Cube 的厚度制造支撑。
