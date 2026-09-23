@@ -70,3 +70,5 @@ ROS2 完整包已闭合并用于 `combined02` / `assembly_preview02`，此前 mi
 ## 实录外观和相机外移增量
 
 当前synthetic profile继续使用用户单臂、独立左右OmniHand和官方D405。按用户要求，左右相机从前次对称候选各向场景外侧增加20 mm；其安装旋转、内部光学链与源几何不变。掌壳银白材质与臂侧平滑着色参考用户实录；静态显示修正不解决支架、承力、驱动约束、标定或接触验收。生产配置保持未标定且采集关闭。
+
+2026-09-23：本机直接从NAS卡盒运行synthetic wrapper smoke通过，证据 `.local/evidence/m6/cardbox04_nas_drive/`；远端GPU满载未干预。此结果仅是纸盒物理/RGB和MDL闭包检查，不是双臂场景或接触抓取验收。

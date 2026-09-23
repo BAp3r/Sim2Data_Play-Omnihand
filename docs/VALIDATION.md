@@ -184,3 +184,15 @@ CPU测试89项，85通过、4跳过；日志 `.local/evidence/m4/cpu_tests.txt`�
 最终USD与前版对比54个机器人网格的points/counts/indices完全一致；只新增显示法线、UV和材质。新增4项CPU USD外观检查已实际运行通过，覆盖平滑/锐边角点法线、掌壳单材质、连续UV及贴图资产。首轮Blender因纹理传输尚未完成显示紫色，未通过；工具现检查依赖存在与SHA并将实际贴图打包。第二轮7张静态图完成，主会话实际查看总体、左右近景及对比图，颜色正确。证据位于私有 `.local/evidence/m5/astra/`，中文图例位于 `.local/evidence/m5/delivery/`。本次没有运行机器人动力学、接触回合、传感器数据或LeRobot导出；生产采集关闭。
 
 集成后执行 `uv run --frozen --offline --no-python-downloads python -m unittest discover -s tests -v`：93项，85通过、8跳过；其中新增4项因轻量环境无USD依赖而跳过，但已在上述独立CPU USD环境实际4/4通过。日志 `.local/evidence/m5/cpu_tests.txt`。`uv run --frozen --offline --no-python-downloads python -m compileall -q packages scripts tests` 与 `git diff --check` 通过。完整机器命令见 `.local/evidence/m5/astra/COMMANDS.md` 和主会话 `.local/evidence/m5/COMMANDS.md`。
+
+## 2026-09-23 NAS cardbox headless smoke
+
+远端 RTX PRO 6000 查询为约 73.6/97.9 GiB、GPU 100%，没有干预该进程。切换本机 RTX 3080 Laptop（16 GiB，启动前约1.4 GiB占用），复用隔离 venv：Python 3.11.14、Isaac Sim 5.1.0.0、Isaac Lab 0.47.2、Torch 2.7.0+cu128、Isaac Lab commit `3c6e67bb5c7ada942a6d1884ab69338f57596f77`。
+
+直接引用 NAS 官方 `SM_CardBoxA_01.usd` 初次物理/RGB结果 `cardbox01` 证明 480 步可完成，但 UNC MDL 编译失败且图像变红，故不作为材质通过。仅复制已审计的8个文件到私有子集 `cardbox02` 后，材质依赖仍缺失 `OmniUe4Base`，同样不作为最终结果。
+
+随后把该隔离 venv 的 Isaac 资产根设置到 NAS，并保留原扩展设置备份；Windows MDL 对 UNC 模块名编码不兼容，使用同一NAS共享的会话盘符路径。最终 `cardbox04_nas_drive/result.json`：直接从 NAS 盘符加载，`passed=true`，asset dimensions `[0.0839999962,0.0599999973,0.0599999973] m`，uniform scale `0.12`，synthetic mass `0.08 kg`，初始 z `0.2494890541` m，最终 z `-2.05e-8` m，末速度范数约 `1.4e-4 m/s`，RGB `240×320×3`、std `39.6128`。图像 `rgb.png` 实际查看为纸盒棕色材质；该结果只证明合成wrapper下纸盒落体/桌面支撑/RGB和NAS材质解析，不证明机器人、抓取、三路同步或生产质量。
+
+实现入口：`scripts/isaac_smoke.py --asset <NAS-cardbox.usd> --asset-role selected_card_box --synthetic-cardbox-wrapper --graphics-api d3d12 --out <private-dir>`。wrapper明确缩放0.12、质量0.08 kg，惯性由PhysX推导，源USD只读；无该开关仍拒绝无刚体的生产prop。Kit正常关闭曾等待，最终由本次自有 smoke 进程终止并记录；关闭正常返回尚未验收，未用跳过清理来宣称正常关闭通过。
+
+轻量回归：93项，85通过、8跳过；compileall与diff检查通过。生产采集仍关闭。

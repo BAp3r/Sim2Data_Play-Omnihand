@@ -53,6 +53,30 @@
     "card_box": {
       "id": "isaacsim_5_1_simple_warehouse_cardbox_a_01",
       "requested_name": "card_box",
+      "runtime_smoke": {
+        "observed_on": "2026-09-23",
+        "scope": "synthetic scale 0.12, mass 0.08 kg; existing source boundingCube collision",
+        "physics_and_rgb": true,
+        "nas_material_resolution": "passed using Windows mapped NAS path; direct UNC MDL failed",
+        "normal_shutdown": false,
+        "robot_grasp_validated": false,
+        "production_collection_allowed": false,
+        "private_evidence": ".local/evidence/m6/cardbox04_nas_drive/result.json"
+      },
+      "mdl_import_dependencies": [
+        {
+          "relative_path": "5.1.0/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/Materials/OmniUe4Base.mdl",
+          "sha256": "5ca22bdae198012f2fa285de0c1b6c7041c8c539c76671a19e471f021b99370d",
+          "kind": "MDL_import_module",
+          "present_on_audit": true
+        },
+        {
+          "relative_path": "5.1.0/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/Materials/OmniUe4Function.mdl",
+          "sha256": "9217e09bfd17109af755e4a1910c8c6fa7fca3f859b9081ff28e75167795bd85",
+          "kind": "MDL_import_module",
+          "present_on_audit": true
+        }
+      ],
       "status": "STATIC_VERIFIED_PHYSICAL_PENDING",
       "task_binding_status": "PROP_CANDIDATE_NOT_DESKTOP_TARGET_BOUND",
       "library": "Isaac Sim official asset package",

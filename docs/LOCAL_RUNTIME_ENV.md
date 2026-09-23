@@ -64,3 +64,7 @@ uv sync --project environments/local_windows --active --locked --check --no-pyth
 环境子任务只完成依赖解析、安装和身份检查，没有启动 Kit。主会话随后已运行本机 synthetic Cube physics/RGB smoke，实际结果见 `VALIDATION.md`；尚未验证机器人装配、三相机同步、抓取接触或完整数据回合。通过上述 CPU/metadata 检查不代表物理仿真或生产采集验收。
 
 完整命令输出和包含本机路径的身份 JSON 只保存在 worktree 的 `.local/evidence`，不应提交或发布。
+
+## 2026-09-23 NAS直读配置
+
+用户授权将本环境的Isaac默认资产根切到NAS完整5.1库；实际包设置已备份后原子替换（不原地写共享硬链接）。`<venv>/sim2data_nas.json`提供进程级MDL路径与资产根；smoke消费该文件。Windows下MDL原始UNC模块名出现编码错误，使用会话映射盘符直接读取同一NAS。映射与绝对机器路径在私有证据，不写入公开模板。虚拟环境包设置因此有一项明确记录的本地配置修改，不能声称安装内容完全未修改；Isaac Lab源码仍为干净固定commit。

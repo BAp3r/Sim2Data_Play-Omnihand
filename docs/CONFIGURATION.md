@@ -48,3 +48,7 @@
 逐侧 `robots.*.hand_model.urdf_sha256` 防止误绑手侧。`camera_symmetry` 明确中心对称、右optical滚转π、无负scale/无像素翻转；`T_mount_camera_housing` 右侧为 `[.038,-.031,.012]`、RPY `[π,-π/2,0]`。配色入口为 `configs/appearance.reference.json` 和预览 `--appearance`，Blender `--material-mode reference --symmetry-views` 保留参考材质并增加审阅图，三路训练通道不增加。
 
 用户追加的外移20 mm仅作用synthetic安装：左housing从mount Y=+.011改为+.031 m，右从-.011改为-.031 m，X/Z及RPY保持不变。在当前预览姿态中分别约对应world X=-.020/+.020 m的增量（URDF近似角造成微小离轴分量）；它不写入生产标定。
+
+`scripts/isaac_smoke.py --asset <reviewed-cardbox.usd> --asset-role selected_card_box --synthetic-cardbox-wrapper --graphics-api d3d12 --out <new-private-directory>` 在新内存场景中加入0.12倍缩放、0.08 kg刚体wrapper；保留源碰撞。没有该显式选项时仍要求输入自身已有单刚体。素材及七个显式依赖可按已审manifest哈希建立私有本地子集，以验证Windows UNC材质解析问题；不复制资产全集。输出不进入生产数据集。模型模板默认改为 `gpt-6-luna`，专项Sol使用 `gpt-6-sol`，不覆盖用户配置或改写历史执行记录。
+
+2026-09-23 用户要求独立venv默认资产指向完整NAS。实际修改该环境 `isaacsim.storage.native/config/extension.toml` 的 `/persistent/isaac/asset_root/default`，先备份再原子替换以避免修改uv缓存硬链接。私有 `<venv>/sim2data_nas.json` 保存asset_root和MDL搜索目录；smoke在启动Kit前读取它并设置进程级MDL_SYSTEM_PATH/MDL_USER_PATH以及明确的Kit资产根设置。Windows UNC在MDL模块编码中失败时使用同一NAS共享的会话盘符，保留盘符而不resolve回UNC。该设置不改源资产或全局环境；uv重装包可能覆盖，需从私有profile重新应用。机器路径/盘符和还原备份仅存私有证据。

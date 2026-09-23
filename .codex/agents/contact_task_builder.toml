@@ -1,7 +1,7 @@
 # Template for a local Codex client; not executed by this chat.
 name = "contact_task_builder"
 description = "盒状物接触抓取状态机"
-model = "gpt-5.6-luna"
+model = "gpt-6-luna"
 model_reasoning_effort = "max"
 sandbox_mode = "workspace-write"
 developer_instructions = """
