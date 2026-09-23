@@ -214,3 +214,10 @@ CPU测试89项，85通过、4跳过；日志 `.local/evidence/m4/cpu_tests.txt`�
 实现入口：`scripts/isaac_smoke.py --asset <NAS-cardbox.usd> --asset-role selected_card_box --synthetic-cardbox-wrapper --graphics-api d3d12 --out <private-dir>`。wrapper明确缩放0.12、质量0.08 kg，惯性由PhysX推导，源USD只读；无该开关仍拒绝无刚体的生产prop。Kit正常关闭曾等待，最终由本次自有 smoke 进程终止并记录；关闭正常返回尚未验收，未用跳过清理来宣称正常关闭通过。
 
 轻量回归：93项，85通过、8跳过；compileall与diff检查通过。生产采集仍关闭。
+
+
+## 2026-09-23 低维夹爪接口（M9 前置）
+
+新增 `tests/test_gripper_control.py`：3 项通过。测试从私有左右 URDF 读取独立关节，确认每侧 10 个主动目标、左右符号不相同、mimic/DIP 不进入命令，且生产采集仍关闭。这是 XML/映射单元验证。
+
+本轮没有真实手指闭合、PhysX articulation、物理接触、盒子抬离或证据视频；现有 m7/m8 仍是静态/运动学证据。下一次运行需在 GPU 可用时执行真实 articulation smoke，并把启动/关闭状态与产帧分别记录。

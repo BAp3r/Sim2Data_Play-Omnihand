@@ -278,5 +278,133 @@
       0.021
     ],
     "production_calibration": false
+  },
+  "gripper_commissioning": {
+    "left": {
+      "interface": "scalar_open_close_0_open_1_closed",
+      "mapping_status": "synthetic_assumption_pending_physx_response",
+      "active_joints": [
+        {
+          "name": "left_hand__l_thumb_roll_joint",
+          "open_rad": 0.035,
+          "close_rad": 0.9
+        },
+        {
+          "name": "left_hand__l_thumb_abad_joint",
+          "open_rad": 0.0,
+          "close_rad": -0.65
+        },
+        {
+          "name": "left_hand__l_thumb_mcp_joint",
+          "open_rad": 0.0,
+          "close_rad": 0.6
+        },
+        {
+          "name": "left_hand__l_index_abad_joint",
+          "open_rad": 0.0,
+          "close_rad": 0.05
+        },
+        {
+          "name": "left_hand__l_index_pip_joint",
+          "open_rad": 0.0,
+          "close_rad": -0.95
+        },
+        {
+          "name": "left_hand__l_middle_pip_joint",
+          "open_rad": 0.0,
+          "close_rad": -0.95
+        },
+        {
+          "name": "left_hand__l_ring_abad_joint",
+          "open_rad": 0.0,
+          "close_rad": -0.03
+        },
+        {
+          "name": "left_hand__l_ring_pip_joint",
+          "open_rad": 0.0,
+          "close_rad": -0.95
+        },
+        {
+          "name": "left_hand__l_pinky_abad_joint",
+          "open_rad": 0.0,
+          "close_rad": 0.04
+        },
+        {
+          "name": "left_hand__l_pinky_pip_joint",
+          "open_rad": 0.0,
+          "close_rad": -0.95
+        }
+      ],
+      "mimic_joints": "URDF_mimic_only_do_not_command",
+      "synthetic_drive": {
+        "stiffness": 4.0,
+        "damping": 0.15,
+        "max_force": 1.5,
+        "max_velocity_rad_s": 1.0
+      }
+    },
+    "right": {
+      "interface": "scalar_open_close_0_open_1_closed",
+      "mapping_status": "synthetic_assumption_pending_physx_response",
+      "active_joints": [
+        {
+          "name": "right_hand__R_thumb_roll_joint",
+          "open_rad": -0.524,
+          "close_rad": 0.9
+        },
+        {
+          "name": "right_hand__R_thumb_abad_joint",
+          "open_rad": 0.0,
+          "close_rad": -0.55
+        },
+        {
+          "name": "right_hand__R_thumb_mcp_joint",
+          "open_rad": 0.0,
+          "close_rad": 0.6
+        },
+        {
+          "name": "right_hand__R_index_abad_joint",
+          "open_rad": 0.0,
+          "close_rad": -0.12
+        },
+        {
+          "name": "right_hand__R_index_pip_joint",
+          "open_rad": 0.05,
+          "close_rad": 0.95
+        },
+        {
+          "name": "right_hand__R_middle_pip_joint",
+          "open_rad": 0.05,
+          "close_rad": 0.95
+        },
+        {
+          "name": "right_hand__R_ring_abad_joint",
+          "open_rad": 0.0,
+          "close_rad": 0.1
+        },
+        {
+          "name": "right_hand__R_ring_pip_joint",
+          "open_rad": 0.05,
+          "close_rad": 0.95
+        },
+        {
+          "name": "right_hand__R_pinky_abad_joint",
+          "open_rad": 0.0,
+          "close_rad": 0.1
+        },
+        {
+          "name": "right_hand__R_pinky_pip_joint",
+          "open_rad": 0.05,
+          "close_rad": 0.95
+        }
+      ],
+      "mimic_joints": "URDF_mimic_only_do_not_command",
+      "synthetic_drive": {
+        "stiffness": 4.0,
+        "damping": 0.15,
+        "max_force": 1.5,
+        "max_velocity_rad_s": 1.0
+      }
+    }
   }
 }

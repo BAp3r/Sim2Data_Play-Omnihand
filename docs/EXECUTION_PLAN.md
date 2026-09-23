@@ -101,3 +101,10 @@ GitHub 只发布经审阅的代码、公开文档和允许再分发的文件。�
 完整装配的下一接口已实际运行：`scripts/isaac_scene_smoke.py` 校验审阅 USD/profile/纹理/manifest 身份后，从 NAS 直接重绑定 Thor 和 cardbox，使用三台审阅相机生成 RTX RGB。该 smoke 只证明静态场景打开和三路帧产出；inventory 显示机器人无 rigid body、articulation 或 drive，未推进 PhysX。腕相机在当前静态姿态下未覆盖桌面/纸盒，故 B 视觉覆盖未验收。Kit 逐扩展清理在 Windows 5.1.0.0 出现访问冲突，关闭栈与退出证据单独保留。C 和 E 扩量均未启动，生产采集继续阻断。证据目录 m7 是实施序号，不是里程碑验收。
 
 后续窄实现指定GPT-6 Luna Max，复杂适配指定GPT-6 Sol High，替代5.6对应角色；历史启动记录保留。模板ID更新不等于账号或当前工具已实际支持，启动前核对。该轮由主会话运行既有隔离环境，不另下载Isaac。远端PRO 6000满载时切换本机，先对选定NAS纸盒进行明确synthetic的缩放/质量wrapper、落体支撑和RGB检查，再据结果评估装配场景验证。仍不启动接触接力或批量采集。
+
+
+## 2026-09-23 接触验证前置变更
+
+已落实低维夹爪控制的公共接口和逐侧 synthetic 映射，但尚未导入 PhysX articulation。下一项必须在独立新输出目录执行：加载真实 arm+left/right hand URDF，建立固定连接、关节 drive 与 mimic，先记录空载开合的 commanded/measured joint values，再加入合成刚体纸盒。桌外框的 synthetic 支撑顶面与桌面顶面共高；物理验证前仍需核对 Thor 实际碰撞上界约 15.5 mm。
+
+未完成 articulation 前不得启动接触状态机、录制成功视频或开放生产采集。

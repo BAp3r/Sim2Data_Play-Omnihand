@@ -56,3 +56,10 @@
 `scripts/isaac_smoke.py --asset <reviewed-cardbox.usd> --asset-role selected_card_box --synthetic-cardbox-wrapper --graphics-api d3d12 --out <new-private-directory>` 在新内存场景中加入0.12倍缩放、0.08 kg刚体wrapper；保留源碰撞。没有该显式选项时仍要求输入自身已有单刚体。素材及七个显式依赖可按已审manifest哈希建立私有本地子集，以验证Windows UNC材质解析问题；不复制资产全集。输出不进入生产数据集。模型模板默认改为 `gpt-6-luna`，专项Sol使用 `gpt-6-sol`，不覆盖用户配置或改写历史执行记录。
 
 2026-09-23 用户要求独立venv默认资产指向完整NAS。实际修改该环境 `isaacsim.storage.native/config/extension.toml` 的 `/persistent/isaac/asset_root/default`，先备份再原子替换以避免修改uv缓存硬链接。私有 `<venv>/sim2data_nas.json` 保存asset_root和MDL搜索目录；smoke在启动Kit前读取它并设置进程级MDL_SYSTEM_PATH/MDL_USER_PATH以及明确的Kit资产根设置。Windows UNC在MDL模块编码中失败时使用同一NAS共享的会话盘符，保留盘符而不resolve回UNC。该设置不改源资产或全局环境；uv重装包可能覆盖，需从私有profile重新应用。机器路径/盘符和还原备份仅存私有证据。
+
+
+## 2026-09-23 合成夹爪 commissioning 配置
+
+`configs/commissioning.synthetic.json.gripper_commissioning` 为左右独立开合映射。`amount=0` 是张开，`amount=1` 是闭合；每侧 10 个 active joint 目标按各自 URDF limit 限幅，mimic joint 由模型耦合。`synthetic_drive` 的 stiffness/damping/max_force/max_velocity_rad_s 是明确假设，不覆盖 manifest 中生产参数的 null。
+
+框子顶面与桌面平齐是 synthetic 场景约束，待官方资产/尺寸绑定后再验证，当前不会写入生产标定。
