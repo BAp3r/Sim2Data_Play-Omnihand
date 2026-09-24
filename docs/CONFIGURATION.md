@@ -73,3 +73,5 @@
 2026-09-24 M11：profile的gripper_commissioning端点现明确标记source_urdf_joint_radians，不是硬件发送角度。probe的--mimic-frequency/--mimic-damping仅覆盖session layer约束参数并记录before/after；通过的空载参数为10000/1、每amount480步。isaac_contact_trial.py必须读取左右通过的response报告并核对USD/profile SHA，私有plan提供限位内synthetic arm/hand目标和动态盒参数。CPU接触报告显式开启，失败只保存结构化数据和真实PNG，不写成功视频。机器命令仍只在私有证据中。
 
 接触physics_dt默认1/240秒，限制为[1/2000, 1/240]秒；RGB按最接近30 Hz的整数步采样，保持门禁使用实际dt。contact07为1/1000秒对照，非生产时钟绑定。质量、摩擦、手势、驱动及fixture尺寸仍是synthetic；机器人源惯性没有覆盖。
+
+2026-09-24 M12：场景约定为官方 Thor、/World/FullFlatGround 连续 Mesh 和 uniform scale 0.12 的官方 cardbox。Thor visual/collision 顶面差 15.5 mm；所有盒子质量、摩擦、驱动和位置仍 synthetic。

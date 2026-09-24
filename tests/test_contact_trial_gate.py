@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 import unittest
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
-from isaac_contact_trial import contact_lift_gate, state_is_bounded
+from isaac_contact_trial import contact_lift_gate, state_is_bounded, validate_planned_scene
 
 
 class ContactGateTests(unittest.TestCase):
@@ -42,3 +42,19 @@ class ContactGateTests(unittest.TestCase):
     def test_hold_uses_actual_physics_rate(self):
         self.assertFalse(contact_lift_gate([self.row()]*240, .1, 1/1000)["passed"])
         self.assertTrue(contact_lift_gate([self.row()]*1000, .1, 1/1000)["passed"])
+
+    def test_rejected_or_stale_plan_cannot_execute(self):
+        with self.assertRaises(ValueError):
+            validate_planned_scene({}, "current")
+        plan = dict(scene_kind="thor_cardbox", coordinate_frame="world", profile_sha256="current",
+                    execution_allowed=False)
+        with self.assertRaises(ValueError):
+            validate_planned_scene(plan, "current")
+        validate_planned_scene(plan, "current", scene_only=True)
+        plan["execution_allowed"] = True
+        validate_planned_scene(plan, "current")
+        with self.assertRaises(ValueError):
+            validate_planned_scene(plan, "changed")
+        plan["coordinate_frame"] = "base"
+        with self.assertRaises(ValueError):
+            validate_planned_scene(plan, "current", scene_only=True)

@@ -261,3 +261,11 @@ contact07沿用contact06低力方案，仅将dt从1/240秒改为1/1000秒，实�
 contact07完成后Kit close未返回，主会话终止本任务进程；wrapper也被终止，Python自然退出码未取得，外部记录为owner_terminated且exit_code=null。contact05/06外部退出码-1也为强制结束，不是正常关闭。GPU资源、Kit日志、PhysX轨迹与外部进程状态分别保存；没有成功relay或生产验收。
 
 最终回归命令仍为上述unittest discover、compileall和git diff --check。新增接触门禁测试覆盖地面支撑、抛掷、非有限/异常状态、连续保持和实际dt；端点测试直接检查原始profile以免clamp掩盖符号错误。测试仅证明判据实现，不替代物理验收。
+
+2026-09-24 M12：全局规划器已实际运行左右候选；IK 可收敛但左右 geometry/path gate 均失败，execution_allowed=false。scene05 主视角/近景 robot 与 cardbox 语义像素均非零；这只验证可见性，不验证接触。Roboflywheel 27_26_0000 优先作为 NAS candidate，未做 PhysX contact。
+
+2026-09-24 M12补充：left_response05 在 fresh USD 上完成 1920 个 CPU PhysX 步，SingleArticulation 初始化、10 个 active drive target、mimic 只读读回和 q/qd/effort/limits/gains 均有报告，finger_target_response=true、contact=false；生成 main/hand_close 两路 320×240 RGB PNG/MP4。Kit close 未返回，owner 终止并保留退出证据，不能将其称为正常关闭。右侧沿用 right_response01 的真实 articulation 通过记录；两侧都没有物体接触。
+
+M12 right_response02 fresh USD 亦完成 1920 个 CPU PhysX 步，real_articulation=true、finger_target_response=true、contact=false；新相机运行因 Kit cleanup hang owner-terminated，报告保留。左右均未添加物体。
+
+最终回归：轻量 unittest 共119项，110通过、9跳过；仿真解释器下规划器专用8项通过；compileall、git diff --check 通过。最终左右空载结果为 left_response06/right_response02，各1920 PhysX步，amount=0/0.5/1/0，真实q/qd/effort读回通过。视频为诊断视角，白色模型曝光高，不作为物体接触或抬升证据。

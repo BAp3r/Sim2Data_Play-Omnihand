@@ -45,10 +45,47 @@ def contact_lift_gate(rows, initial_z, dt=1/240):
             "required_hold_seconds": 1, "clearance_m": .025, "max_linear_speed_m_s": .05}
 
 
+def validate_planned_scene(plan, profile_sha, scene_only=False):
+    """Keep failed or stale global-state plans out of the physics action loop."""
+    if plan.get("scene_kind") != "thor_cardbox":
+        raise ValueError("contact commissioning requires the Thor/cardbox scene")
+    if plan.get("coordinate_frame") != "world" or plan.get("profile_sha256") != profile_sha:
+        raise ValueError("Thor plan must bind current profile and world coordinates")
+    if not scene_only and plan.get("execution_allowed") is not True:
+        raise ValueError("global-state geometry/IK gate failed; action execution blocked")
+
+
+def camera_content(camera):
+    """Record visible labelled pixel counts, not merely non-black backgrounds."""
+    import numpy as np
+    frame = camera.get_current_frame()
+    # Read the same renderer frame as get_rgba(), including paused scene review.
+    annotator = getattr(camera, "_custom_annotators", {}).get("semantic_segmentation")
+    annotation = annotator.get_data() if annotator is not None else frame.get("semantic_segmentation")
+    counts = {"robot": 0, "cardbox": 0}
+    if isinstance(annotation, dict) and annotation.get("data") is not None:
+        labels = annotation.get("info", {}).get("idToLabels", annotation.get("idToLabels", {}))
+        if isinstance(labels, str):
+            labels = json.loads(labels)
+        pixels = np.asarray(annotation["data"])
+        for index, fields in labels.items():
+            kind = fields.get("class") if isinstance(fields, dict) else fields
+            if kind in counts:
+                counts[kind] += int(np.count_nonzero(pixels == int(index)))
+    return {"class_pixels": counts, "frame_keys": list(frame),
+            "semantic_info": _json(annotation.get("info", {})) if isinstance(annotation, dict) else None,
+            "rendering_time": _json(frame.get("rendering_time")),
+            "robot_and_box_visible": counts["robot"] > 20 and counts["cardbox"] > 20}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for key in ("usd", "profile", "plan", "response", "other-response", "out"):
         parser.add_argument("--" + key, type=Path, required=True)
+    parser.add_argument("--table", type=Path)
+    parser.add_argument("--cardbox", type=Path)
+    parser.add_argument("--manifest", type=Path, default=Path("configs/asset_manifest.json"))
+    parser.add_argument("--scene-only", action="store_true", help="Scene visibility review with render warmup; no action trajectory or grasp claim")
     args = parser.parse_args()
     if args.out.exists():
         raise SystemExit("fresh output required")
@@ -61,8 +98,8 @@ def main():
     _write(args.out / "result.json", report)
     app = None
     try:
-        response = json.loads(args.response.read_text())
-        other = json.loads(args.other_response.read_text())
+        response = json.loads(args.response.read_text(encoding="utf-8"))
+        other = json.loads(args.other_response.read_text(encoding="utf-8"))
         for gate in (response, other):
             if not gate.get("passed") or not gate.get("gates", {}).get("contact_trial_allowed"):
                 raise ValueError("both real hand-response gates must pass")
@@ -72,7 +109,15 @@ def main():
             raise ValueError("USD identity mismatch")
         if any(r["inputs"]["profile_sha256"] != sha256(args.profile) for r in (response, other)):
             raise ValueError("profile changed after response acceptance")
-        plan = json.loads(args.plan.read_text())
+        plan = json.loads(args.plan.read_text(encoding="utf-8"))
+        validate_planned_scene(plan, sha256(args.profile), args.scene_only)
+        if not args.scene_only:
+            if (plan.get("side") != response["inputs"]["side"]
+                    or plan.get("urdf_sha256") != response["inputs"]["urdf_sha256"]
+                    or plan.get("manifest_sha256") != sha256(args.manifest)):
+                raise ValueError("plan side/source URDF/manifest identity mismatch")
+        if plan.get("scene_kind") == "thor_cardbox" and not (args.table and args.cardbox):
+            raise ValueError("Thor contact requires explicit table and cardbox source files")
         report["inputs"] = {k: {"path": str(getattr(args, k).resolve()), "sha256": sha256(getattr(args, k))}
                             for k in ("usd", "profile", "plan", "response", "other_response")}
         report["synthetic_plan"] = plan
@@ -94,11 +139,16 @@ def main():
         from isaacsim.core.prims import SingleArticulation, RigidPrim
         from isaacsim.core.utils.types import ArticulationAction
         from isaacsim.sensors.camera import Camera
+        from isaacsim.core.utils.semantics import add_update_semantics
         from PIL import Image
 
         context = omni.usd.get_context()
         context.open_stage(str(args.usd.resolve()))
         stage = context.get_stage()
+        if stage is None:
+            raise RuntimeError("fresh articulation stage did not open")
+        for _ in range(10):
+            app.update()
         stage.SetEditTarget(stage.GetSessionLayer())
         for item in response["mimic_constraint_override"]:
             prim = stage.GetPrimAtPath(item["prim"])
@@ -106,38 +156,31 @@ def main():
                 prim.CreateAttribute(f"physxMimicJoint:{item['axis']}:{key}", Sdf.ValueTypeNames.Float).Set(value["after"])
         root_path = response["physics"]["root_path"]
         root = stage.GetPrimAtPath(root_path)
+        robot_parent = root_path.rsplit("/", 1)[0]
         PhysxSchema.PhysxArticulationAPI.Apply(root).CreateSolverPositionIterationCountAttr(32)
         PhysxSchema.PhysxArticulationAPI(root).CreateSolverVelocityIterationCountAttr(8)
-        material = UsdShade.Material.Define(stage, "/Trial/ContactMaterial")
-        mat = UsdPhysics.MaterialAPI.Apply(material.GetPrim())
-        mat.CreateStaticFrictionAttr(plan["friction"])
-        mat.CreateDynamicFrictionAttr(plan["friction"])
-        mat.CreateRestitutionAttr(0)
-
-        def cube(path, center, size, dynamic=False):
-            shape = UsdGeom.Cube.Define(stage, path)
-            shape.CreateSizeAttr(1)
-            shape.AddTranslateOp().Set(Gf.Vec3d(*center))
-            shape.AddScaleOp().Set(Gf.Vec3f(*size))
-            UsdPhysics.CollisionAPI.Apply(shape.GetPrim())
-            UsdShade.MaterialBindingAPI.Apply(shape.GetPrim()).Bind(material, materialPurpose="physics")
-            if dynamic:
-                UsdPhysics.RigidBodyAPI.Apply(shape.GetPrim())
-                UsdPhysics.MassAPI.Apply(shape.GetPrim()).CreateMassAttr(plan["mass_kg"])
-                shape.CreateDisplayColorAttr([(0.65, 0.32, 0.08)])
-            return shape
-
-        center = plan["box_center"]
-        size = plan["box_size"]
-        top = center[2] - size[2] / 2
-        cube("/Trial/Support", [center[0], center[1], top - 0.015], [.22, .22, .03])
-        cube("/Trial/Box", center, size, True)  # Initial placement only, before simulation.
-        ground = UsdGeom.Mesh.Define(stage, "/Trial/Ground")
-        ground.CreatePointsAttr([(-2,-2,0),(2,-2,0),(2,2,0),(-2,2,0)])
-        ground.CreateFaceVertexCountsAttr([4]); ground.CreateFaceVertexIndicesAttr([0,1,2,3])
-        ground.CreateSubdivisionSchemeAttr("none")
-        UsdPhysics.CollisionAPI.Apply(ground.GetPrim())
+        from physx_contact_scene import build_scene
+        scene = build_scene(stage, table_path=args.table, cardbox_path=args.cardbox,
+                            profile=json.loads(args.profile.read_text(encoding="utf-8")), plan=plan,
+                            robot_parent_path=robot_parent, side=response["inputs"]["side"],
+                            manifest=json.loads(args.manifest.read_text(encoding="utf-8")))
+        report["scene"] = scene
+        box_path = scene["box_prim_path"]
+        support_path = scene["support_filter_path"]
+        ground_path = scene["ground_prim_path"]
+        center = scene["box_center_world_m"]
         UsdLux.DomeLight.Define(stage, "/Trial/Light").CreateIntensityAttr(1200)
+        add_update_semantics(stage.GetPrimAtPath(robot_parent), "robot")
+        add_update_semantics(stage.GetPrimAtPath(box_path), "cardbox")
+        # Label each renderable descendant, including native USD instances.
+        from pxr import Usd
+        for parent_path, label in ((robot_parent, "robot"), (box_path, "cardbox")):
+            for prim in list(Usd.PrimRange(stage.GetPrimAtPath(parent_path))):
+                if prim.IsInstance():
+                    prim.SetInstanceable(False)
+            for prim in Usd.PrimRange(stage.GetPrimAtPath(parent_path)):
+                if prim.IsA(UsdGeom.Mesh) and UsdGeom.Imageable(prim).ComputePurpose() != "guide":
+                    add_update_semantics(prim, label)
         carb.settings.get_settings().set_bool("/isaaclab/render/offscreen", True)
         rgb_stride=max(1,round(1/(30*dt)))
         report["dt"]=dt
@@ -148,15 +191,15 @@ def main():
         report["cpu_contact_processing_enabled"] = True
         robot = SingleArticulation(root_path, name="contact_robot")
         # Ordered filter groups distinguish support from all hand/arm body contacts.
-        robot_parent = root_path.rsplit("/", 1)[0]
         bodies = [str(p.GetPath()) for p in stage.TraverseAll() if p.HasAPI(UsdPhysics.RigidBodyAPI)
                   and str(p.GetPath()).startswith(robot_parent + "/")]
-        filters = ["/Trial/Support", "/Trial/Ground"] + bodies
-        box = RigidPrim("/Trial/Box", name="trial_box", track_contact_forces=True,
+        filters = [support_path, ground_path] + bodies
+        box = RigidPrim(box_path, name="trial_box", track_contact_forces=True,
                         contact_filter_prim_paths_expr=filters, max_contact_count=4096,
                         disable_stablization=False, reset_xform_properties=False)
         cameras = []
-        for name, eye in (("main", [1.05,-.8,.85]), ("close", [center[0]+.26,center[1]-.32,center[2]+.21])):
+        camera_eyes = (("main", [.65,-1.05,.9]), ("close", [center[0]+.26,center[1]-.32,center[2]+.21]))
+        for name, eye in camera_eyes:
             camera = Camera("/Trial/Camera_" + name, resolution=(640,480))
             matrix = Gf.Matrix4d().SetLookAt(Gf.Vec3d(*eye), Gf.Vec3d(*center), Gf.Vec3d(0,0,1)).GetInverse()
             q = matrix.ExtractRotationQuat()
@@ -167,6 +210,38 @@ def main():
         sim.reset(); robot.initialize(); box.initialize()
         for _, camera in cameras:
             camera.initialize()
+            camera.add_semantic_segmentation_to_frame()
+        report["base_pose_after_initialize"] = _json(robot.get_world_pose())
+        from pxr import Usd
+        robot_prims = [p for p in Usd.PrimRange.Stage(stage, Usd.TraverseInstanceProxies())
+                       if str(p.GetPath()).startswith(robot_parent + "/") and p.IsA(UsdGeom.Mesh)]
+        report["robot_visual_inventory"] = [{"path": str(p.GetPath()),
+            "points_count": len(UsdGeom.Mesh(p).GetPointsAttr().Get() or []),
+            "world_bounds": _json([list(UsdGeom.BBoxCache(0, ["default", "render"]).ComputeWorldBound(p).ComputeAlignedRange().GetMin()),
+                                   list(UsdGeom.BBoxCache(0, ["default", "render"]).ComputeWorldBound(p).ComputeAlignedRange().GetMax())]),
+            "visibility": str(UsdGeom.Imageable(p).ComputeVisibility()),
+            "purpose": str(UsdGeom.Imageable(p).ComputePurpose())} for p in robot_prims]
+        report["usd_layers"] = [{"path": layer.realPath, "sha256": sha256(Path(layer.realPath))}
+                                for layer in stage.GetUsedLayers() if layer.realPath and Path(layer.realPath).is_file()]
+        if args.scene_only:
+            snapshots = {}
+            for _ in range(20):
+                sim.render()
+                app.update()
+            for name, camera in cameras:
+                rgba = np.asarray(camera.get_rgba())
+                if rgba.shape != (480,640,4):
+                    raise RuntimeError(f"missing scene-review RGB: {name}")
+                path = args.out / f"scene_{name}.png"
+                Image.fromarray(rgba[...,:3].astype(np.uint8)).save(path)
+                snapshots[name] = {"file": path.name, "std": float(rgba[...,:3].std()),
+                                   **camera_content(camera)}
+            report.update(phase="scene_review_only", passed=False,
+                          explicit_physics_steps=0, physics_steps=None,
+                          scene_snapshots=snapshots, trajectory_executed=False,
+                          warmup_note="Kit updates may advance PhysX during renderer warmup; no commanded trajectory or contact acceptance")
+            _write(args.out / "result.json", report)
+            return 0
         dofs = list(robot.dof_names)
         active = response["mapping"]["active_hand"]
         arm = response["mapping"]["arm_hold_names"]
@@ -192,6 +267,11 @@ def main():
         report["drives"]={"gains":_json(controller.get_gains()),"effort_limits":_json(controller.get_max_efforts()),
                           "velocity_limits":_json(view.get_joint_max_velocities()),"synthetic":True}
         qstart=np.asarray(robot.get_joint_positions()).reshape(-1)[indices]
+        start = plan.get("start_configuration", {})
+        expected_start = np.asarray(list(start.get("arm", [])) + list(start.get("hand", [])), dtype=float)
+        if (expected_start.shape != qstart.shape or not np.isfinite(expected_start).all()
+                or np.max(np.abs(expected_start-qstart)) > .02):
+            raise ValueError("measured reset joints differ from collision-screened trajectory start")
         hand_open = plan.get("hand_open", [x["open_rad"] for x in active])
         hand_close = plan.get("hand_close", [x["close_rad"] for x in active])
         if len(hand_open) != len(active) or len(hand_close) != len(active):
@@ -257,15 +337,19 @@ def main():
                             if rgb is not None and np.asarray(rgb).shape==(480,640,4):
                                 path=rgbroot/f"{name}_{step:06d}.png"
                                 Image.fromarray(np.asarray(rgb)[...,:3].astype(np.uint8)).save(path)
-                                images.append({"step":step,"camera":name,"file":str(path.relative_to(args.out))})
+                                images.append({"step":step,"phase":phase,"camera":name,
+                                               "file":str(path.relative_to(args.out)), **camera_content(cam)})
                     step+=1
                 qstart=end
                 report["phase"]="completed_"+phase
                 _write(args.out/"result.json",report)
         gate=contact_lift_gate(records, center[2], dt=dt)
+        visual_gate = any(frame["camera"] == "main" and frame["phase"] == "hold"
+                          and frame["robot_and_box_visible"] for frame in images)
         report.update(phase="completed", steps=step, trace="trace.jsonl", images=images,
                       max_box_lift_m=max(r["box_position"][2] for r in records)-center[2],
-                      contact_lift_gate=gate, passed=gate["passed"],
+                      contact_lift_gate=gate, visual_evidence_gate=visual_gate,
+                      passed=gate["passed"] and visual_gate,
                       box_final_position=records[-1]["box_position"],
                       contact_observed=any(r["robot_contact_force_N"]>.02 for r in records))
         if report["passed"]:

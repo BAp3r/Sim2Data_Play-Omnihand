@@ -159,17 +159,49 @@ def _close_writers(writers: dict[str, Any]) -> dict[str, str]:
 
 
 def _camera_setup(stage: Any, Camera: Any, UsdGeom: Any, out: Path) -> tuple[list[tuple[str, Any]], dict[str, Any]]:
+    from pxr import Gf, UsdLux
+    import numpy as np
     cameras: list[tuple[str, Any]] = []
     inventory = [str(prim.GetPath()) for prim in stage.TraverseAll() if prim.IsA(UsdGeom.Camera)]
-    for index, path in enumerate(inventory[:2]):
-        name = "main" if index == 0 else "hand_close"
-        try:
-            camera = Camera(path, resolution=(320, 240), name="finger_response_" + name)
-            camera.initialize()
-            cameras.append((name, camera))
-        except Exception:
-            continue
-    return cameras, {"camera_prims": inventory, "streams": [name for name, _ in cameras], "png_root": "rgb"}
+    palms = [p for p in stage.Traverse() if p.GetName().endswith("_palm")]
+    if len(palms) != 1:
+        raise ValueError("one palm frame required for diagnostic hand camera")
+    palm = np.array(UsdGeom.Xformable(palms[0]).ComputeLocalToWorldTransform(0).ExtractTranslation())
+    UsdLux.DomeLight.Define(stage, "/ResponseReview/Light").CreateIntensityAttr(1200)
+    poses = {}
+    for name, delta in (("main", [.65,-.8,.55]), ("hand_close", [.20,-.28,.16])):
+        eye = palm + delta
+        camera = Camera("/ResponseReview/" + name, resolution=(320,240), name="finger_response_"+name)
+        matrix = Gf.Matrix4d().SetLookAt(Gf.Vec3d(*eye), Gf.Vec3d(*palm), Gf.Vec3d(0,0,1)).GetInverse()
+        q = matrix.ExtractRotationQuat()
+        camera.set_world_pose(eye, np.array([q.GetReal(), *q.GetImaginary()]), camera_axes="usd")
+        camera.set_focal_length(18); camera.set_horizontal_aperture(24); camera.set_vertical_aperture(18)
+        camera.set_clipping_range(.01,10)
+        camera.initialize()
+        cameras.append((name, camera))
+        poses[name] = {"eye_m": eye.tolist(), "look_at_m": palm.tolist(), "synthetic": True}
+    return cameras, {"source_camera_prims": inventory, "review_camera_poses": poses,
+                     "streams": [name for name, _ in cameras], "png_root": "rgb"}
+
+
+def _aim_review_cameras(stage, cameras):
+    """Track measured hand geometry; cameras only, never robot/body state."""
+    from pxr import Gf, UsdGeom
+    import numpy as np
+    cache = UsdGeom.BBoxCache(0, ["default", "render"])
+    bounds = Gf.Range3d()
+    for prim in stage.Traverse():
+        if "_hand__" in str(prim.GetPath()) and prim.IsA(UsdGeom.Mesh) and "/visuals/" in str(prim.GetPath()):
+            bounds.UnionWith(cache.ComputeWorldBound(prim).ComputeAlignedRange())
+    if bounds.IsEmpty():
+        raise ValueError("rendered hand geometry unavailable")
+    target = np.array(bounds.GetMidpoint())
+    for name, camera in cameras:
+        delta = np.array([.65,-.8,.55] if name == "main" else [.25,-.32,.20])
+        eye = target + delta
+        matrix = Gf.Matrix4d().SetLookAt(Gf.Vec3d(*eye), Gf.Vec3d(*target), Gf.Vec3d(0,0,1)).GetInverse()
+        q = matrix.ExtractRotationQuat()
+        camera.set_world_pose(eye, np.array([q.GetReal(),*q.GetImaginary()]), camera_axes="usd")
 
 
 def _capture(cameras: list[tuple[str, Any]], out: Path, index: int, writers: dict[str, Any], records: list[dict[str, Any]]) -> None:
@@ -242,7 +274,14 @@ def run(args: argparse.Namespace, report: dict[str, Any]) -> int:
         stage = context.get_stage()
         if stage is None:
             raise RuntimeError("USD stage failed to open")
+        for _ in range(10):
+            app.update()
         stage.SetEditTarget(stage.GetSessionLayer())
+        report["render_session_deinstanced"] = []
+        for prim in list(stage.Traverse()):
+            if prim.IsInstance():
+                report["render_session_deinstanced"].append(str(prim.GetPath()))
+                prim.SetInstanceable(False)
         report["stage_inventory"] = {
             "colliders": [str(p.GetPath()) for p in Usd.PrimRange.Stage(stage, Usd.TraverseInstanceProxies())
                           if p.HasAPI(UsdPhysics.CollisionAPI)]}
@@ -465,6 +504,8 @@ def run(args: argparse.Namespace, report: dict[str, Any]) -> int:
                 targets = [float(q0[index]) for index in arm_indices] + hand_targets
                 for _ in range(args.steps_per_amount):
                     articulation.apply_action(_action(ArticulationAction, command_indices, targets))
+                    if cameras and frame_index % args.rgb_stride == 0:
+                        _aim_review_cameras(stage, cameras)
                     simulation.step(render=bool(cameras))
                     q = np.asarray(articulation.get_joint_positions(), dtype=float).reshape(-1)
                     qd = np.asarray(articulation.get_joint_velocities(), dtype=float).reshape(-1)
