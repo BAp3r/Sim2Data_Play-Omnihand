@@ -217,3 +217,5 @@ NAS仓库纸盒headless调试采用显式synthetic wrapper：均匀缩放0.12（
 外侧框子下一版 synthetic 布局将其有效底面/支撑顶面设为与 Thor 桌面顶面同高；框壁仍有碰撞厚度，物体必须落在框内底面，不能用穿透隐藏高度差。这个布局值不等于实测硬件尺寸。
 
 场景地面采用独立连续 flat plane（`/World/FullFlatGround`），位置低于 Thor 桌体底面；它不是用来替代桌面，也不通过巨大 Cube 的厚度制造支撑。
+
+2026-09-24 M10 更新：独立 fresh USD 的左右 SingleArticulation 已初始化并各执行480步空载驱动，但整体响应门禁失败（左侧目标裁剪归零、两侧四指mimic残差超限，inventory无collider）。这仅推进运行时诊断，不表示完成装配、抓取或接力验收。接触录制保持阻断；详见 VALIDATION.md。

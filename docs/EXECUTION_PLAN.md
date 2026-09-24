@@ -108,3 +108,5 @@ GitHub 只发布经审阅的代码、公开文档和允许再分发的文件。�
 已落实低维夹爪控制的公共接口和逐侧 synthetic 映射，但尚未导入 PhysX articulation。下一项必须在独立新输出目录执行：加载真实 arm+left/right hand URDF，建立固定连接、关节 drive 与 mimic，先记录空载开合的 commanded/measured joint values，再加入合成刚体纸盒。桌外框的 synthetic 支撑顶面与桌面顶面共高；物理验证前仍需核对 Thor 实际碰撞上界约 15.5 mm。
 
 未完成 articulation 前不得启动接触状态机、录制成功视频或开放生产采集。
+
+2026-09-24 下一接口：已审阅集成真实 articulation response 探针并完成左右空载测试，失败证据见 VALIDATION.md。先解决目标坐标/限位映射、USD mimic reference axis与耦合、转换后的collision/visual依赖，再重跑空载。两侧通过且collider可用后才进入用户授权的单臂接触录制；C接力与E扩量仍未启动。

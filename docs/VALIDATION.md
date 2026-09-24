@@ -225,3 +225,15 @@ CPU测试89项，85通过、4跳过；日志 `.local/evidence/m4/cpu_tests.txt`�
 场景修正：preview 与 bounded card-box smoke 均使用带 `UsdPhysics.CollisionAPI` 的连续 `UsdGeom.Mesh` flat ground（不再用缩放 Cube 冒充地面）；结构化报告记录 ground prim type=`Mesh`、`z=-0.7947 m`、Thor visual top=`0 m`、Thor collision top=`-0.0155 m` 及其 15.5 mm 差异。框底和四面框壁均显式带碰撞，墙顶按 synthetic `top_z=0 m` 对齐桌面视觉顶面，配置底面中心为 `z=-0.2 m`。这些高度是 synthetic 假设，尚未用 Isaac PhysX 对框壁、底面和 Thor 桌面的接触上界做动态验证；报告中的 physics_validated 仍为 false。
 
 内网 teleop 仓库只读审阅确认其 O10 `tripod/pinch` 端点和 `gripper_1d` 展开逻辑；未运行真实机器人命令，仓库也未提供抓取视频。
+
+## 2026-09-24 M10 空载 articulation 实测
+
+本轮从 b921993 继续，审阅并复用 finger-response worktree 脚本，保留旧 worktree。右侧 fresh URDF conversion 已运行；左侧使用已有 fresh USD。两侧实际初始化 SingleArticulation，各23 DOF、28 bodies，均用 ArticulationAction 完成480步 CPU PhysX；没有逐帧写关节状态。amount=0/0.5/1/0 的四阶段分开记录 commanded q、measured q/qd/effort、limits、gains 和6个只读 USD mimic relationship/gearing/offset。
+
+左侧失败：原候选端点与 URDF 限位符号冲突，三个预期活动关节裁剪后跨度均为0；四指 mimic 最大残差约0.88～0.90 rad。右侧拇指MCP、食指PIP、中指PIP实测从约0.45到0.70再回0.50 rad，证明部分主动关节有驱动响应；但四指 mimic 残差约0.66～1.54 rad，整体失败。不能将部分关节响应称为完成手指闭合或抓取验收。
+
+两侧 composed-stage inventory 未发现 CollisionAPI prim；转换日志含 color_optical 缺 visual/collider、unresolved visual reference 等警告，完整日志保留。没有新增物体、接触试验、盒子抬升、RGB或视频。空载门禁失败，接触录制阻断，生产开关未改变。动力学/装配/驱动/阈值均为 synthetic，生产实测参数仍未绑定。
+
+首次运行暴露 Torch gains / list max-effort API类型错误，修复后才得到480步证据。转换 close返回与进程退出分开：右转换close返回后wrapper未结束；响应运行写完结果后在清理阶段由主会话终止自有进程，均不记正常关闭。准确命令、结果、完整stdout/Kit日志和外部退出状态在 ignored `.local/evidence/m10/COMMANDS.md` 与各侧 response 目录，不能以缓冲stdout替代最终JSON。
+
+回归：111项，103通过、8因可选依赖跳过；新增4项只验证失败门禁，不证明物理。已运行 `uv run --frozen --offline --no-python-downloads python -m unittest discover -s tests -v`、`uv run --frozen --offline --no-python-downloads python -m compileall -q packages scripts tests`、`git diff --check`。指定gpt-6-luna/max启动被客户端拒绝，无子代理实际执行，无模型替换。

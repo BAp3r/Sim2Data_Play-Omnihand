@@ -67,3 +67,5 @@
 框子顶面与桌面平齐是 synthetic 场景约束，待官方资产/尺寸绑定后再验证，当前不会写入生产标定。
 
 场景几何已改为连续的 `/World/FullFlatGround` 平面；不再用大方块冒充地面。Thor 桌面仍通过官方 table USD 引用，外侧框子 rim 的 synthetic `top_z_m=0` 与桌面基准平齐，底面高度由配置显式给出。
+
+2026-09-24 新入口：`scripts/convert_physx_commissioning.py --urdf <private-urdf> --out <fresh-dir>` 与 `scripts/isaac_finger_response.py --usd <fresh-usd> --urdf <private-urdf> --profile <synthetic-profile> --side <left|right> --out <fresh-dir>`。精确解释器/Kit命令只见私有m10 COMMANDS。当前teleop候选端点不等于URDF关节空间；左侧裁剪后零跨度已实测失败，未擅改为生产标定。max force/velocity在converter中仅为metadata；response脚本另用运行时API施加并记录。右侧部分主动关节响应存在，但整体mimic失败，禁止接触与采集。
