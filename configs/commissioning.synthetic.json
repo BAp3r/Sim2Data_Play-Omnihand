@@ -296,18 +296,18 @@
       "active_joints": [
         {
           "name": "left_hand__l_thumb_roll_joint",
-          "open_rad": -0.03,
-          "close_rad": -0.03
+          "open_rad": 0.05,
+          "close_rad": 0.05
         },
         {
           "name": "left_hand__l_thumb_abad_joint",
-          "open_rad": 1.51,
-          "close_rad": 1.51
+          "open_rad": -1.51,
+          "close_rad": -1.51
         },
         {
           "name": "left_hand__l_thumb_mcp_joint",
-          "open_rad": -0.5,
-          "close_rad": -0.7
+          "open_rad": 0.5,
+          "close_rad": 0.7
         },
         {
           "name": "left_hand__l_index_abad_joint",
@@ -316,13 +316,13 @@
         },
         {
           "name": "left_hand__l_index_pip_joint",
-          "open_rad": 0.5,
-          "close_rad": 0.7
+          "open_rad": -0.5,
+          "close_rad": -0.7
         },
         {
           "name": "left_hand__l_middle_pip_joint",
-          "open_rad": 0.5,
-          "close_rad": 0.7
+          "open_rad": -0.5,
+          "close_rad": -0.7
         },
         {
           "name": "left_hand__l_ring_abad_joint",
@@ -331,8 +331,8 @@
         },
         {
           "name": "left_hand__l_ring_pip_joint",
-          "open_rad": 1.48,
-          "close_rad": 1.48
+          "open_rad": -1.48,
+          "close_rad": -1.48
         },
         {
           "name": "left_hand__l_pinky_abad_joint",
@@ -341,8 +341,8 @@
         },
         {
           "name": "left_hand__l_pinky_pip_joint",
-          "open_rad": 1.48,
-          "close_rad": 1.48
+          "open_rad": -1.48,
+          "close_rad": -1.48
         }
       ],
       "mimic_joints": "URDF_mimic_only_do_not_command",
@@ -353,7 +353,9 @@
         "max_velocity_rad_s": 1.0
       },
       "gesture": "tripod",
-      "source": "internal_repo_dual-arm-adapt-tactile_commit_67f1e3f6045bbf514e4cb4d7fec08b4d23695bb4"
+      "source": "legacy tripod intent adapted to official O10 20260827 URDF coordinates; synthetic, not hardware commands",
+      "coordinate_space": "source_urdf_joint_radians",
+      "mapping_notes": "Left five bend axes differ in sign from legacy hardware; thumb roll 0.05 rad is an explicit in-limit synthetic choice. No source URDF modified."
     },
     "right": {
       "interface": "scalar_open_close_0_open_1_closed",
@@ -366,8 +368,8 @@
         },
         {
           "name": "right_hand__R_thumb_abad_joint",
-          "open_rad": -1.51,
-          "close_rad": -1.51
+          "open_rad": -1.4,
+          "close_rad": -1.4
         },
         {
           "name": "right_hand__R_thumb_mcp_joint",
@@ -418,7 +420,9 @@
         "max_velocity_rad_s": 1.0
       },
       "gesture": "tripod",
-      "source": "internal_repo_dual-arm-adapt-tactile_commit_67f1e3f6045bbf514e4cb4d7fec08b4d23695bb4"
+      "source": "legacy tripod intent adapted to official O10 20260827 URDF coordinates; synthetic, not hardware commands",
+      "coordinate_space": "source_urdf_joint_radians",
+      "mapping_notes": "Thumb abad -1.4 rad is an explicit in-limit synthetic choice. Legacy URDF and hardware polynomial coupling are not substituted for current source mimic."
     }
   }
 }

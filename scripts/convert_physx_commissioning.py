@@ -223,7 +223,7 @@ def inspect_usd(path: Path) -> dict[str, Any]:
     joints: list[str] = []
     drives: list[str] = []
     mimic_properties: list[str] = []
-    for prim in stage.TraverseAll():
+    for prim in Usd.PrimRange.Stage(stage, Usd.TraverseInstanceProxies()):
         path_text = str(prim.GetPath())
         if prim.HasAPI(UsdPhysics.RigidBodyAPI):
             rigid.append(path_text)

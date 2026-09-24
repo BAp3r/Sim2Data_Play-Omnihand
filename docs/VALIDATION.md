@@ -237,3 +237,27 @@ CPU测试89项，85通过、4跳过；日志 `.local/evidence/m4/cpu_tests.txt`�
 首次运行暴露 Torch gains / list max-effort API类型错误，修复后才得到480步证据。转换 close返回与进程退出分开：右转换close返回后wrapper未结束；响应运行写完结果后在清理阶段由主会话终止自有进程，均不记正常关闭。准确命令、结果、完整stdout/Kit日志和外部退出状态在 ignored `.local/evidence/m10/COMMANDS.md` 与各侧 response 目录，不能以缓冲stdout替代最终JSON。
 
 回归：111项，103通过、8因可选依赖跳过；新增4项只验证失败门禁，不证明物理。已运行 `uv run --frozen --offline --no-python-downloads python -m unittest discover -s tests -v`、`uv run --frozen --offline --no-python-downloads python -m compileall -q packages scripts tests`、`git diff --check`。指定gpt-6-luna/max启动被客户端拒绝，无子代理实际执行，无模型替换。
+
+## 2026-09-24 M11 纠正与接触调试（抓取未通过）
+
+对上一条M10结论作明确纠正：转换USD并非无collider，而是旧inventory漏遍历instance proxy。真实USD重新审计两侧各25个CollisionAPI prim。审计入口现使用Usd.PrimRange.Stage(stage, Usd.TraverseInstanceProxies())；原始warning仍保留，color_optical缺visual/collider的引用警告不被掩盖。
+
+用户指定旧团队仓库已由一个实际启动的只读子代理审阅，HEAD为67f1e3f6045bbf514e4cb4d7fec08b4d23695bb4。旧硬件左手五个弯曲关节符号与当前官方URDF相反，且旧mimic1.097、SDK多项式、当前URDF的±1.144444不能混用。修正的是synthetic控制端点，源URDF和生产参数未改动。thumb roll/abad另选当前限位内明确synthetic端点。
+
+两侧空载已实际各运行1920步（0/0.5/1/0各480步），保留原响应阈值与全程mimic残差阈值0.05rad。以显式synthetic mimic naturalFrequency=10000、dampingRatio=1覆盖运行时session layer后两侧passed=true；关系、gearing、offset和源文件不变，mimic不直接command。100频率对照未通过并保留。驱动参数不是实机标定或生产动力学验收。
+
+随后已实现并运行左臂独立synthetic台面动态盒子contact recorder。第一条4800步失败，接触读回为零，定位到Isaac Lab默认关闭CPU contact processing；第二条显式开启后读到真实接触点/力，但盒子下降接近阶段被推走，max lift约5.6mm，不通过。完整approach/close/lift/hold/lower/release/retreat仍记录，失败没有生成成功视频。主视角和近景为真实RTX帧，已由主会话审阅；无物体运行中位姿写入、无粘手或重力关闭。后续调整基于真实contact trace和当前源STL/FK，未用RGB推断生产标定。
+
+独立fixture不等于原Thor桌面装配接力；生产采集继续关闭。退出状态另存：运行结果写完后Windows Kit清理未完成，超时由主会话仅终止本次自有进程，不能记正常关闭。私有证据位于m11，包括旧仓库审阅、转换audit、两侧response、contact01/02与视觉观察包。
+
+2026-09-24 M11 接触03：基于几何对向候选的第三条轨迹在approach_lower阶段出现数值爆炸（最大盒速约266 m/s，主动/被动关节速度异常），未通过连续接触保持门禁，后续脚本新增异常速度即停；这不是盒子抬升，也不生成视频。contact01/02为真实RGB/接触失败，contact03保留trace和异常状态，接触任务仍未通过。
+
+最终复核：contact02后段关节读回同样出现极大异常值，不能把该条全程称为稳定物理运行。contact04/05/06分别在约5.21/6.65/8.01秒触发稳定性门禁；contact06最终index DIP速度约-56.1 rad/s。降驱动力未独立解决问题，高频mimic不是已证明的唯一根因。
+
+contact07沿用contact06低力方案，仅将dt从1/240秒改为1/1000秒，实际完成20000步/20秒和全部八阶段，未触发状态稳定性门禁。峰值手接触力约0.603 N，盒中心最大上移约1.18 mm，连续合格保持0步，盒子被推倒，passed=false。没有机器人质量/惯性覆盖，也没有成功视频。此对照表明该轨迹对步长敏感，不代表其他手势/接触条件已稳定。
+
+视觉边界：主会话抽查left_response03的main/hand_close输出为黑帧，既有MP4不接受为手指闭合视频；关节响应通过依赖真实q/qd/effort读回。contact02近景可见手和盒；contact07抽查帧可见盒子由直立变为倒伏，但机器人未出现在画面，不能证明手的接触过程。相机/机器人可见性仍待解决，原始文件和警告保留。
+
+contact07完成后Kit close未返回，主会话终止本任务进程；wrapper也被终止，Python自然退出码未取得，外部记录为owner_terminated且exit_code=null。contact05/06外部退出码-1也为强制结束，不是正常关闭。GPU资源、Kit日志、PhysX轨迹与外部进程状态分别保存；没有成功relay或生产验收。
+
+最终回归命令仍为上述unittest discover、compileall和git diff --check。新增接触门禁测试覆盖地面支撑、抛掷、非有限/异常状态、连续保持和实际dt；端点测试直接检查原始profile以免clamp掩盖符号错误。测试仅证明判据实现，不替代物理验收。

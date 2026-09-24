@@ -219,3 +219,9 @@ NAS仓库纸盒headless调试采用显式synthetic wrapper：均匀缩放0.12（
 场景地面采用独立连续 flat plane（`/World/FullFlatGround`），位置低于 Thor 桌体底面；它不是用来替代桌面，也不通过巨大 Cube 的厚度制造支撑。
 
 2026-09-24 M10 更新：独立 fresh USD 的左右 SingleArticulation 已初始化并各执行480步空载驱动，但整体响应门禁失败（左侧目标裁剪归零、两侧四指mimic残差超限，inventory无collider）。这仅推进运行时诊断，不表示完成装配、抓取或接力验收。接触录制保持阻断；详见 VALIDATION.md。
+
+2026-09-24 M11：M10的“缺collider”已纠正为instance proxy遍历漏报，两侧各25个collider。左右synthetic空载响应通过后已开始独立fixture的单臂真实接触调试，首次两条都失败且无成功视频。使用当前源URDF坐标，旧硬件手势仅作意图参考；保持原始生产参数null和采集关闭。详见VALIDATION.md最新条目。
+
+M11当前接触门禁仍失败：contact02有真实接触但推倒盒子，contact03数值失稳且未通过保持判据。新增稳定性界限，防止异常速度被误判为lift。
+
+M11最终对照：低力、1 ms的contact07完成20秒且未触发状态界限，但仍推倒盒子，连续接触抬升保持为0步。空载关节响应和接触力已有读回证据，成功抓取和有效闭合视频仍缺。源机器人惯性未覆盖；视觉与动力学验收分开。

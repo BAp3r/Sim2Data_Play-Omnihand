@@ -244,8 +244,24 @@ def run(args: argparse.Namespace, report: dict[str, Any]) -> int:
             raise RuntimeError("USD stage failed to open")
         stage.SetEditTarget(stage.GetSessionLayer())
         report["stage_inventory"] = {
-            "colliders": [str(p.GetPath()) for p in stage.TraverseAll()
+            "colliders": [str(p.GetPath()) for p in Usd.PrimRange.Stage(stage, Usd.TraverseInstanceProxies())
                           if p.HasAPI(UsdPhysics.CollisionAPI)]}
+        report["mimic_constraint_override"] = []
+        if args.mimic_frequency is not None:
+            from pxr import Sdf
+            for prim in stage.TraverseAll():
+                for schema in prim.GetAppliedSchemas():
+                    if schema.startswith("PhysxMimicJointAPI:"):
+                        axis = schema.split(":")[-1]
+                        changes = {}
+                        for key, value in (("naturalFrequency", args.mimic_frequency), ("dampingRatio", args.mimic_damping)):
+                            name = f"physxMimicJoint:{axis}:{key}"
+                            attr = prim.GetAttribute(name)
+                            previous = attr.Get() if attr else None
+                            prim.CreateAttribute(name, Sdf.ValueTypeNames.Float).Set(value)
+                            changes[key] = {"before": previous, "after": value}
+                        report["mimic_constraint_override"].append({"prim": str(prim.GetPath()), "axis": axis,
+                                                                  "synthetic": True, "changes": changes})
         root_paths = _roots(stage, args.side, UsdPhysics)
         report["stage"] = {"articulation_root_paths": root_paths, "usd_sha256": _sha(args.usd)}
         if len(root_paths) != 1:
@@ -551,6 +567,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--rgb-stride", type=int, default=8)
     parser.add_argument("--max-response-error", type=float, default=0.15)
     parser.add_argument("--dt", type=float, default=DEFAULT_DT)
+    parser.add_argument("--mimic-frequency", type=float, default=None)
+    parser.add_argument("--mimic-damping", type=float, default=1.0)
     return parser.parse_args(argv)
 
 
