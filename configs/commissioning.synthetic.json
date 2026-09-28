@@ -297,52 +297,112 @@
         {
           "name": "left_hand__l_thumb_roll_joint",
           "open_rad": 0.05,
-          "close_rad": 0.05
+          "close_rad": 0.05,
+          "legacy_name": "thumb_cm_roll",
+          "legacy_open_rad": -0.03,
+          "legacy_close_rad": -0.03,
+          "legacy_sign": -1,
+          "legacy_offset_rad": 0.02,
+          "allow_close": false
         },
         {
           "name": "left_hand__l_thumb_abad_joint",
           "open_rad": -1.51,
-          "close_rad": -1.51
+          "close_rad": -1.51,
+          "legacy_name": "thumb_cm_yaw",
+          "legacy_open_rad": 1.51,
+          "legacy_close_rad": 1.51,
+          "legacy_sign": -1,
+          "legacy_offset_rad": 0,
+          "allow_close": false
         },
         {
           "name": "left_hand__l_thumb_mcp_joint",
           "open_rad": 0.5,
-          "close_rad": 0.7
+          "close_rad": 0.7,
+          "legacy_name": "thumb_cm_pitch",
+          "legacy_open_rad": -0.5,
+          "legacy_close_rad": -0.7,
+          "legacy_sign": -1,
+          "legacy_offset_rad": 0,
+          "allow_close": true
         },
         {
           "name": "left_hand__l_index_abad_joint",
           "open_rad": 0,
-          "close_rad": 0
+          "close_rad": 0,
+          "legacy_name": "index_mp_yaw",
+          "legacy_open_rad": 0,
+          "legacy_close_rad": 0,
+          "legacy_sign": 1,
+          "legacy_offset_rad": 0,
+          "allow_close": false
         },
         {
           "name": "left_hand__l_index_pip_joint",
           "open_rad": -0.5,
-          "close_rad": -0.7
+          "close_rad": -0.7,
+          "legacy_name": "index_mp_pitch",
+          "legacy_open_rad": 0.5,
+          "legacy_close_rad": 0.7,
+          "legacy_sign": -1,
+          "legacy_offset_rad": 0,
+          "allow_close": true
         },
         {
           "name": "left_hand__l_middle_pip_joint",
           "open_rad": -0.5,
-          "close_rad": -0.7
+          "close_rad": -0.7,
+          "legacy_name": "middle_mp_pitch",
+          "legacy_open_rad": 0.5,
+          "legacy_close_rad": 0.7,
+          "legacy_sign": -1,
+          "legacy_offset_rad": 0,
+          "allow_close": true
         },
         {
           "name": "left_hand__l_ring_abad_joint",
           "open_rad": 0,
-          "close_rad": 0
+          "close_rad": 0,
+          "legacy_name": "ring_mp_yaw",
+          "legacy_open_rad": 0,
+          "legacy_close_rad": 0,
+          "legacy_sign": 1,
+          "legacy_offset_rad": 0,
+          "allow_close": false
         },
         {
           "name": "left_hand__l_ring_pip_joint",
           "open_rad": -1.48,
-          "close_rad": -1.48
+          "close_rad": -1.48,
+          "legacy_name": "ring_mp_pitch",
+          "legacy_open_rad": 1.48,
+          "legacy_close_rad": 1.48,
+          "legacy_sign": -1,
+          "legacy_offset_rad": 0,
+          "allow_close": false
         },
         {
           "name": "left_hand__l_pinky_abad_joint",
           "open_rad": 0,
-          "close_rad": 0
+          "close_rad": 0,
+          "legacy_name": "pinky_mp_yaw",
+          "legacy_open_rad": 0,
+          "legacy_close_rad": 0,
+          "legacy_sign": 1,
+          "legacy_offset_rad": 0,
+          "allow_close": false
         },
         {
           "name": "left_hand__l_pinky_pip_joint",
           "open_rad": -1.48,
-          "close_rad": -1.48
+          "close_rad": -1.48,
+          "legacy_name": "pinky_mp_pitch",
+          "legacy_open_rad": 1.48,
+          "legacy_close_rad": 1.48,
+          "legacy_sign": -1,
+          "legacy_offset_rad": 0,
+          "allow_close": false
         }
       ],
       "mimic_joints": "URDF_mimic_only_do_not_command",
@@ -353,9 +413,12 @@
         "max_velocity_rad_s": 1.0
       },
       "gesture": "tripod",
-      "source": "legacy tripod intent adapted to official O10 20260827 URDF coordinates; synthetic, not hardware commands",
+      "source": "legacy tripod intent mapped by explicit active joint name/sign/offset to current source URDF; synthetic, not hardware commands",
       "coordinate_space": "source_urdf_joint_radians",
-      "mapping_notes": "Left five bend axes differ in sign from legacy hardware; thumb roll 0.05 rad is an explicit in-limit synthetic choice. No source URDF modified."
+      "mapping_notes": "Legacy left tripod open/closed radians are recorded per channel. Current URDF sign and offset mapping is explicit; only thumb_mcp, index_pip, middle_pip may close. Thumb roll/abad and ring/pinky channels remain fixed.",
+      "legacy_gesture_source": ".local/evidence/m15/legacy_hand_semantics_20260928.md",
+      "command_policy": "all ten current URDF active non-mimic joints; mimic/passive read-only",
+      "reset_policy": "direct open gesture after articulation.initialize; arm reset recorded separately"
     },
     "right": {
       "interface": "scalar_open_close_0_open_1_closed",
@@ -364,52 +427,112 @@
         {
           "name": "right_hand__R_thumb_roll_joint",
           "open_rad": 0.03,
-          "close_rad": 0.03
+          "close_rad": 0.03,
+          "legacy_name": "thumb_cm_roll",
+          "legacy_open_rad": 0.03,
+          "legacy_close_rad": 0.03,
+          "legacy_sign": 1,
+          "legacy_offset_rad": 0,
+          "allow_close": false
         },
         {
           "name": "right_hand__R_thumb_abad_joint",
           "open_rad": -1.4,
-          "close_rad": -1.4
+          "close_rad": -1.4,
+          "legacy_name": "thumb_cm_yaw",
+          "legacy_open_rad": -1.51,
+          "legacy_close_rad": -1.51,
+          "legacy_sign": 1,
+          "legacy_offset_rad": 0.11,
+          "allow_close": false
         },
         {
           "name": "right_hand__R_thumb_mcp_joint",
           "open_rad": 0.5,
-          "close_rad": 0.7
+          "close_rad": 0.7,
+          "legacy_name": "thumb_cm_pitch",
+          "legacy_open_rad": 0.5,
+          "legacy_close_rad": 0.7,
+          "legacy_sign": 1,
+          "legacy_offset_rad": 0,
+          "allow_close": true
         },
         {
           "name": "right_hand__R_index_abad_joint",
           "open_rad": 0,
-          "close_rad": 0
+          "close_rad": 0,
+          "legacy_name": "index_mp_yaw",
+          "legacy_open_rad": 0,
+          "legacy_close_rad": 0,
+          "legacy_sign": 1,
+          "legacy_offset_rad": 0,
+          "allow_close": false
         },
         {
           "name": "right_hand__R_index_pip_joint",
           "open_rad": 0.5,
-          "close_rad": 0.7
+          "close_rad": 0.7,
+          "legacy_name": "index_mp_pitch",
+          "legacy_open_rad": 0.5,
+          "legacy_close_rad": 0.7,
+          "legacy_sign": 1,
+          "legacy_offset_rad": 0,
+          "allow_close": true
         },
         {
           "name": "right_hand__R_middle_pip_joint",
-          "open_rad": 0.5,
-          "close_rad": 0.7
+          "open_rad": 1.48,
+          "close_rad": 1.48,
+          "legacy_name": "middle_mp_pitch",
+          "legacy_open_rad": 1.48,
+          "legacy_close_rad": 1.48,
+          "legacy_sign": 1,
+          "legacy_offset_rad": 0,
+          "allow_close": false
         },
         {
           "name": "right_hand__R_ring_abad_joint",
           "open_rad": 0,
-          "close_rad": 0
+          "close_rad": 0,
+          "legacy_name": "ring_mp_yaw",
+          "legacy_open_rad": 0,
+          "legacy_close_rad": 0,
+          "legacy_sign": 1,
+          "legacy_offset_rad": 0,
+          "allow_close": false
         },
         {
           "name": "right_hand__R_ring_pip_joint",
           "open_rad": 1.48,
-          "close_rad": 1.48
+          "close_rad": 1.48,
+          "legacy_name": "ring_mp_pitch",
+          "legacy_open_rad": 1.48,
+          "legacy_close_rad": 1.48,
+          "legacy_sign": 1,
+          "legacy_offset_rad": 0,
+          "allow_close": false
         },
         {
           "name": "right_hand__R_pinky_abad_joint",
           "open_rad": 0,
-          "close_rad": 0
+          "close_rad": 0,
+          "legacy_name": "pinky_mp_yaw",
+          "legacy_open_rad": 0,
+          "legacy_close_rad": 0,
+          "legacy_sign": 1,
+          "legacy_offset_rad": 0,
+          "allow_close": false
         },
         {
           "name": "right_hand__R_pinky_pip_joint",
           "open_rad": 1.48,
-          "close_rad": 1.48
+          "close_rad": 1.48,
+          "legacy_name": "pinky_mp_pitch",
+          "legacy_open_rad": 1.48,
+          "legacy_close_rad": 1.48,
+          "legacy_sign": 1,
+          "legacy_offset_rad": 0,
+          "allow_close": false
         }
       ],
       "mimic_joints": "URDF_mimic_only_do_not_command",
@@ -419,10 +542,13 @@
         "max_force": 1.5,
         "max_velocity_rad_s": 1.0
       },
-      "gesture": "tripod",
-      "source": "legacy tripod intent adapted to official O10 20260827 URDF coordinates; synthetic, not hardware commands",
+      "gesture": "pinch",
+      "source": "legacy pinch intent mapped by explicit active joint name/sign/offset to current source URDF; synthetic, not hardware commands",
       "coordinate_space": "source_urdf_joint_radians",
-      "mapping_notes": "Thumb abad -1.4 rad is an explicit in-limit synthetic choice. Legacy URDF and hardware polynomial coupling are not substituted for current source mimic."
+      "mapping_notes": "Legacy right pinch open/closed radians are recorded per channel. Current URDF sign and thumb abad offset mapping is explicit; only thumb_mcp and index_pip may close. Middle/ring/pinky channels remain fixed.",
+      "legacy_gesture_source": ".local/evidence/m15/legacy_hand_semantics_20260928.md",
+      "command_policy": "all ten current URDF active non-mimic joints; mimic/passive read-only",
+      "reset_policy": "direct open gesture after articulation.initialize; arm reset recorded separately"
     }
   }
 }
