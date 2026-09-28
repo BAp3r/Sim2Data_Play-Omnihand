@@ -9,6 +9,7 @@ import traceback
 
 from convert_physx_commissioning import _start_kit, sha256
 from isaac_finger_response import _action, _json, _write
+from physx_scene_audit import audit_colliders, validate_contact_matrix
 
 
 def state_is_bounded(row):
@@ -86,6 +87,7 @@ def main():
     parser.add_argument("--cardbox", type=Path)
     parser.add_argument("--manifest", type=Path, default=Path("configs/asset_manifest.json"))
     parser.add_argument("--scene-only", action="store_true", help="Scene visibility review with render warmup; no action trajectory or grasp claim")
+    parser.add_argument("--support-only", action="store_true", help="Gravity/support force validation only; no robot action trajectory")
     args = parser.parse_args()
     if args.out.exists():
         raise SystemExit("fresh output required")
@@ -110,8 +112,11 @@ def main():
         if any(r["inputs"]["profile_sha256"] != sha256(args.profile) for r in (response, other)):
             raise ValueError("profile changed after response acceptance")
         plan = json.loads(args.plan.read_text(encoding="utf-8"))
-        validate_planned_scene(plan, sha256(args.profile), args.scene_only)
-        if not args.scene_only:
+        diagnostic_only = args.scene_only or args.support_only
+        if args.scene_only and args.support_only:
+            raise ValueError("choose scene-only or support-only")
+        validate_planned_scene(plan, sha256(args.profile), diagnostic_only)
+        if not diagnostic_only:
             if (plan.get("side") != response["inputs"]["side"]
                     or plan.get("urdf_sha256") != response["inputs"]["urdf_sha256"]
                     or plan.get("manifest_sha256") != sha256(args.manifest)):
@@ -197,6 +202,27 @@ def main():
         box = RigidPrim(box_path, name="trial_box", track_contact_forces=True,
                         contact_filter_prim_paths_expr=filters, max_contact_count=4096,
                         disable_stablization=False, reset_xform_properties=False)
+        # Capture composed collider ownership/material before stepping. This is
+        # read-only evidence and helps distinguish a real support failure from a
+        # contact-filter/readback failure.
+        report["scene_audit"] = audit_colliders(stage, roots=(box_path, "/World/RuntimeThor", ground_path, robot_parent))
+        def _view_count(name):
+            value = getattr(box._contact_view, name, None)
+            return int(value) if value is not None else None
+        if args.support_only:
+            # The reset arm can overlap the box before any action is sent. Isolate
+            # the static support check by disabling only robot collision shapes in
+            # this diagnostic session; the contact trial keeps all collisions.
+            support_disabled = []
+            for prim in Usd.PrimRange.Stage(stage, Usd.TraverseInstanceProxies()):
+                if str(prim.GetPath()).startswith(robot_parent + "/") and prim.HasAPI(UsdPhysics.CollisionAPI):
+                    UsdPhysics.CollisionAPI(prim).GetCollisionEnabledAttr().Set(False)
+                    support_disabled.append(str(prim.GetPath()))
+            report["support_only_collision_override"] = {
+                "robot_colliders_disabled": support_disabled,
+                "reason": "isolate box gravity/support from reset-pose robot overlap; not used for contact trial",
+                "synthetic_diagnostic_only": True,
+            }
         cameras = []
         camera_eyes = (("main", [.65,-1.05,.9]), ("close", [center[0]+.26,center[1]-.32,center[2]+.21]))
         for name, eye in camera_eyes:
@@ -208,6 +234,14 @@ def main():
             camera.set_clipping_range(.01,10)
             cameras.append((name,camera))
         sim.reset(); robot.initialize(); box.initialize()
+        report["contact_view"] = {
+            "num_shapes": _view_count("num_shapes"),
+            "num_filters": _view_count("num_filters"),
+            "filter_order": filters,
+        }
+        report["runtime_scene_audit"] = audit_colliders(
+            stage, roots=(box_path, "/World/RuntimeThor", ground_path, robot_parent))
+        _write(args.out / "result.json", report)
         for _, camera in cameras:
             camera.initialize()
             camera.add_semantic_segmentation_to_frame()
@@ -223,6 +257,49 @@ def main():
             "purpose": str(UsdGeom.Imageable(p).ComputePurpose())} for p in robot_prims]
         report["usd_layers"] = [{"path": layer.realPath, "sha256": sha256(Path(layer.realPath))}
                                 for layer in stage.GetUsedLayers() if layer.realPath and Path(layer.realPath).is_file()]
+        if args.support_only:
+            records = []
+            for step in range(round(1.0/dt)):
+                sim.step(render=False)
+                pos, quat = box.get_world_poses()
+                matrix = np.asarray(box.get_contact_force_matrix(dt=dt))
+                raw = box.get_contact_force_data(dt=dt)
+                raw_shapes = [list(np.shape(value)) for value in raw]
+                if step == 0:
+                    report["contact_buffer_shapes"] = {
+                        "matrix": list(matrix.shape), "raw": raw_shapes,
+                        "order": ["forces", "points", "normals", "distances", "counts", "starts"],
+                    }
+                    _write(args.out / "result.json", report)
+                matrix_meta = validate_contact_matrix(
+                    matrix, filters,
+                    sensor_count=_view_count("num_shapes"),
+                    filter_count=_view_count("num_filters"),
+                )
+                records.append({"step": step, "time_s": (step+1)*dt,
+                                "box_position": _json(pos[0]), "box_velocity": _json(box.get_velocities()[0]),
+                                "support_force_N": float(np.linalg.norm(matrix[0,0])),
+                                "ground_force_N": float(np.linalg.norm(matrix[0,1])),
+                                "robot_force_N": float(np.linalg.norm(matrix[0,2:],axis=1).sum()),
+                                "net_contact_force_N": _json(box.get_net_contact_forces(dt=dt)),
+                                "raw_counts": _json(raw[4]), "raw_shapes": raw_shapes,
+                                "contact_matrix": matrix_meta})
+            _write(args.out / "support_trace.json", records)
+            tail = records[-max(1,round(.2/dt)):]
+            expected_force = float(plan["mass_kg"])*9.81
+            support_passed = all(
+                np.isfinite(row["box_position"]).all() and np.isfinite(row["box_velocity"]).all()
+                and abs(row["box_position"][2]-(center[2]-.001)) < .003
+                and np.linalg.norm(row["box_velocity"][:3]) < .02
+                and .8*expected_force < row["support_force_N"] < 1.2*expected_force
+                and row["ground_force_N"] < .01 and row["robot_force_N"] < .01 for row in tail)
+            report.update(phase="support_validation", passed=False, support_passed=bool(support_passed),
+                          physics_steps=len(records), support_trace="support_trace.json",
+                          contact_filter_order=filters, expected_weight_N=expected_force,
+                          trajectory_executed=False, grasp_validated=False,
+                          final_support_state=records[-1])
+            _write(args.out / "result.json", report)
+            return 0 if support_passed else 3
         if args.scene_only:
             snapshots = {}
             for _ in range(20):
@@ -314,15 +391,21 @@ def main():
                             contacts.append({"other":filters[f],"normal_force_N":_json(forces[ix]),
                                              "point_m":_json(points[ix]),"normal":_json(normals[ix]),
                                              "separation_m":_json(distances[ix])})
-                    matrix=np.asarray(matrix).reshape(-1,3)
+                    matrix=np.asarray(matrix)
+                    matrix_meta = validate_contact_matrix(
+                        matrix, filters,
+                        sensor_count=_view_count("num_shapes"),
+                        filter_count=_view_count("num_filters"),
+                    )
                     row={"step":step,"time_s":(step+1)*dt,"phase":phase,"commanded":dict(zip([dofs[i] for i in indices],command.tolist())),
                          "q":_json(q),"qd":_json(qd),"effort":_json(robot.get_measured_joint_efforts()),
                          "box_position":_json(pos[0]),"box_quaternion_wxyz":_json(quat[0]),
                          "box_velocity":_json(box.get_velocities()[0]),"contacts":contacts,
-                         "support_force_N":float(np.linalg.norm(matrix[0])),
-                         "ground_force_N":float(np.linalg.norm(matrix[1])),
-                         "hand_contact_force_N":float(np.linalg.norm(matrix[hand_filter_indices],axis=1).sum()),
-                         "robot_contact_force_N":float(np.linalg.norm(matrix[2:],axis=1).sum())}
+                         "support_force_N":float(np.linalg.norm(matrix[0,0])),
+                         "ground_force_N":float(np.linalg.norm(matrix[0,1])),
+                         "hand_contact_force_N":float(np.linalg.norm(matrix[0,hand_filter_indices],axis=1).sum()),
+                         "robot_contact_force_N":float(np.linalg.norm(matrix[0,2:],axis=1).sum()),
+                         "contact_matrix":matrix_meta}
                     stream.write(json.dumps(row)+"\n");records.append(row)
                     if not state_is_bounded(row):
                         report.update(phase="numerical_instability", failed_step=step,

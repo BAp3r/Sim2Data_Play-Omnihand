@@ -457,7 +457,8 @@ def solve_ik(model, target, base_world, hand_q, initial=None, preview=None, scre
     return best
 
 
-def collision_screen(model, arm_q, active, amount, base_world, box_center, allowed, table_z, ground_z):
+def collision_screen(model, arm_q, active, amount, base_world, box_center, allowed, table_z, ground_z,
+                     *, require_contact=True):
     q = positions_for(model.joints, active, model.arm_names, arm_q, amount)
     rows, failures = [], []
     min_table = math.inf
@@ -474,8 +475,8 @@ def collision_screen(model, arm_q, active, amount, base_world, box_center, allow
                      "full_flat_ground_clearance_m": ground_clearance,
                      "surface_samples": int(len(points))})
         if link in allowed:
-            if clearance < -0.001 or clearance > 0.008:
-                failures.append(f"intended distal contact clearance outside [-0.001, 0.008] m: {link} {clearance:.6f}")
+            if clearance < -0.001 or (require_contact and clearance > 0.008):
+                failures.append(f"intended distal contact clearance invalid: {link} {clearance:.6f}; require_contact={require_contact}")
         elif clearance < 0.002:
             failures.append(f"unintended cardbox clearance/collision: {link} {clearance:.6f}")
         if ground_clearance < -0.002:
@@ -536,9 +537,10 @@ def create_plan(urdf_path, profile_path, manifest_path, side):
         lift[:3, 3] += [0, 0, 0.08]
         tips = {f"{side}_hand__{'l' if side == 'left' else 'R'}_{name}_dip_link"
                 for name in ("thumb", "index", "middle")}
-        def screen(arm_q, amount, box_center, allowed):
+        def screen(arm_q, amount, box_center, allowed, require_contact=True):
             return collision_screen(model, arm_q, active, amount, base_world,
-                                    box_center, allowed, table["collision_top_z_m"], table["ground_z_m"])
+                                    box_center, allowed, table["collision_top_z_m"], table["ground_z_m"],
+                                    require_contact=require_contact)
         ik_pre = solve_ik(model, pre, base_world, open_q, initial=preview_q,
                           screen=lambda q: screen(q, 0, BOX_CENTER, set()))
         ik_grasp = solve_ik(model, grasp, base_world, close_q, ik_pre["q"],
@@ -584,7 +586,8 @@ def create_plan(urdf_path, profile_path, manifest_path, side):
                 for u in np.linspace(0, 1, 25):
                     box_target = BOX_CENTER + ([0,0,.08*u] if segment == "lift" else np.zeros(3))
                     allowed = tips if segment in ("finger_close", "lift") else set()
-                    checked = screen(start+(end-start)*u, a0+(a1-a0)*u, box_target, allowed)
+                    checked = screen(start+(end-start)*u, a0+(a1-a0)*u, box_target, allowed,
+                                     require_contact=segment != "finger_close" or u == 1)
                     if not checked["passed"]:
                         path_gate["failures"].append({"segment": segment, "fraction": float(u),
                                                        "reasons": checked["failures"]})

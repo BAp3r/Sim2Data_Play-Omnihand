@@ -269,3 +269,10 @@ contact07完成后Kit close未返回，主会话终止本任务进程；wrapper�
 M12 right_response02 fresh USD 亦完成 1920 个 CPU PhysX 步，real_articulation=true、finger_target_response=true、contact=false；新相机运行因 Kit cleanup hang owner-terminated，报告保留。左右均未添加物体。
 
 最终回归：轻量 unittest 共119项，110通过、9跳过；仿真解释器下规划器专用8项通过；compileall、git diff --check 通过。最终左右空载结果为 left_response06/right_response02，各1920 PhysX步，amount=0/0.5/1/0，真实q/qd/effort读回通过。视频为诊断视角，白色模型曝光高，不作为物体接触或抬升证据。
+## 2026-09-28 M13/M14 接触矩阵审计（仍未通过）
+
+新增只读 `scripts/physx_scene_audit.py`：记录 CardBox、Thor、FullFlatGround 与机器人碰撞体的刚体归属、碰撞开关、质量、重力和 physics material；接触矩阵现在必须保持原始 `(sensor_count, filter_count, 3)` 形状，禁止先 `reshape(-1,3)` 丢失滤波维度。三项矩阵门禁和接触状态门禁定向测试通过。
+
+`isaac_contact_trial.py --support-only` 已接入运行时审计、raw contact buffer shape/count、net force 和严格滤波顺序记录。旧 support03 在审计接入前因 `_contact_view.num_shapes=None` 失败；代码已改为在 `box.initialize()` 后读取。新运行因本会话没有 NAS 映射而被 Thor 依赖检查阻断；按私有命令记录尝试恢复映射需要凭据并返回系统错误 1223，未猜测路径或替代资产。
+
+本轮没有新的支撑力、真实接触、抬升、视频或双臂接力验收。规划器定向测试 9 项通过；使用真实左侧 URDF 重新规划因源 collision mesh 的 NAS 映射不可用而失败，`execution_allowed=false` 保持不变。完整 unittest 仍受当前临时目录拒绝访问影响（122 项中 40 个环境相关错误），不能记为通过。准确命令和日志保留在 ignored 私有证据目录。

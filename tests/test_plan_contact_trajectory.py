@@ -19,6 +19,7 @@ from scripts.plan_contact_trajectory import (
     palm_goal,
     validate_hand_targets,
     box_sdf,
+    collision_screen,
     nearest_surface_distances,
     hand_clearance_residual,
     nearest_zero_configuration,
@@ -26,6 +27,25 @@ from scripts.plan_contact_trajectory import (
 
 
 class ContactTrajectoryPlannerTests(unittest.TestCase):
+    def test_closing_path_allows_separated_tip_but_never_deep_penetration(self):
+        class Model:
+            joints = []
+            arm_names = []
+            points = np.asarray([BOX_CENTER + [0.10, 0, 0.10]])
+
+            def fk(self, q):
+                return {}
+
+            def world_samples(self, frames, base):
+                yield "tip", self.points
+
+        model = Model()
+        args = (model, [], [], 0, np.eye(4), BOX_CENTER, {"tip"}, -.0155, -.7947)
+        self.assertFalse(collision_screen(*args)["passed"])
+        self.assertTrue(collision_screen(*args, require_contact=False)["passed"])
+        model.points = BOX_CENTER[None, :]
+        self.assertFalse(collision_screen(*args, require_contact=False)["passed"])
+
     def setUp(self):
         self.joints = ET.fromstring("""<robot>
           <joint name="left_hand__l_thumb_joint" type="revolute"><limit lower="0" upper="1"/><parent link="p"/><child link="t"/></joint>
