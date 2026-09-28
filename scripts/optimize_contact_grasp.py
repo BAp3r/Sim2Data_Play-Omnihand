@@ -38,6 +38,48 @@ CONTACT_PENETRATION_M = 0.001
 PREGRASP_M = 0.05
 
 
+def closure_joint_names(side):
+    """Return the active hand joints allowed to move during closure.
+
+    The legacy gestures are per-side.  Tripod closes thumb MCP, index PIP and
+    middle PIP on the left; pinch closes only thumb MCP and index PIP on the
+    right.  Every other active channel is held at its open value.
+    """
+    if side not in ("left", "right"):
+        raise ValueError(f"unsupported hand side: {side}")
+    prefix = f"{side}_hand__{'l' if side == 'left' else 'R'}_"
+    suffixes = ("thumb_mcp_joint", "index_pip_joint")
+    if side == "left":
+        suffixes += ("middle_pip_joint",)
+    return tuple(prefix + suffix for suffix in suffixes)
+
+
+def closure_indices(side, active):
+    """Resolve allowed/fixed indices from the current active-joint names."""
+    names = [item["name"] for item in active]
+    allowed_names = closure_joint_names(side)
+    if len(set(names)) != len(names):
+        raise ValueError("duplicate active hand joint name")
+    missing = [name for name in allowed_names if name not in names]
+    if missing:
+        raise ValueError(f"closure joint missing from active mapping: {missing}")
+    allowed = [names.index(name) for name in allowed_names]
+    fixed = [index for index in range(len(names)) if index not in allowed]
+    return allowed, fixed
+
+
+def close_from_allowed(side, active, hand_open, allowed_values):
+    """Build a full hand endpoint while preserving all fixed open channels."""
+    opened = np.asarray(hand_open, dtype=float)
+    allowed, _ = closure_indices(side, active)
+    values = np.asarray(allowed_values, dtype=float)
+    if opened.shape != (len(active),) or values.shape != (len(allowed),):
+        raise ValueError("hand closure endpoint shape does not match active mapping")
+    closed = opened.copy()
+    closed[allowed] = values
+    return closed
+
+
 def sha256(path):
     h = hashlib.sha256()
     with Path(path).open("rb") as f:
@@ -91,8 +133,8 @@ def expand_q(model, active, values):
 
 def distal_links(side):
     suffix = "l" if side == "left" else "R"
-    return {role: f"{side}_hand__{suffix}_{role}_dip_link"
-            for role in ("thumb", "index", "middle")}
+    roles = ("thumb", "index", "middle") if side == "left" else ("thumb", "index")
+    return {role: f"{side}_hand__{suffix}_{role}_dip_link" for role in roles}
 
 
 def world_geometry(geometry, position, rotation):
@@ -301,12 +343,17 @@ def _objective(model, side, active, opened, profile_close, position0,
                rotation0, approach, closing_axis, max_points, closure_penalty=False):
     links = distal_links(side)
     face_axis, _, face_coordinates = layout(closing_axis)
-    n = len(active)
+    allowed, _ = closure_indices(side, active)
+    n = len(allowed)
     open_geometry = hand_geometry(model, expand_q(model, active, opened), side,
                                   max_points_per_link=max_points)
 
     def residual(x):
-        close = x[:n]
+        # Only gesture-specific closing channels are optimizer variables. All
+        # fixed channels are copied from the open gesture for every residual
+        # evaluation, so the solver cannot rotate a thumb or spread a fixed
+        # finger to manufacture contact.
+        close = close_from_allowed(side, active, opened, x[:n])
         position = x[n:n + 3]
         rotation = rotation0 * Rotation.from_rotvec(x[n + 3:n + 6])
         close_geometry = hand_geometry(model, expand_q(model, active, close), side,
@@ -353,10 +400,7 @@ def _objective(model, side, active, opened, profile_close, position0,
                     table_values = np.minimum(np.sort(table)[:table_count] - 0.002, 0.) * weight
                     table_terms[:len(table_values)] = table_values
                 terms.extend(table_terms)
-        terms.extend((close - profile_close) * .04)
-        # Ring and pinky are not intended contacts in this three-finger grasp.
-        # Preserve their already-clear folded posture through the close path.
-        terms.extend((close[6:] - opened[6:]) * 10.)
+        terms.extend((close[allowed] - profile_close[allowed]) * .04)
         terms.extend(x[n + 3:n + 6] * .04)
         return np.asarray(terms, dtype=float)
     return residual
@@ -377,21 +421,24 @@ def search_candidates(urdf_path, profile_path, manifest_path, side,
     model = RobotModel(urdf_path, side)
     active = profile["gripper_commissioning"][side]["active_joints"]
     names = [x["name"] for x in active]
+    allowed, fixed = closure_indices(side, active)
     opened = np.asarray([x["open_rad"] for x in active], dtype=float)
     profile_close = np.asarray([x["close_rad"] for x in active], dtype=float)
     limits = validate_hand_targets(model.joints, active, side)
     lower = np.asarray([limits[name]["lower_rad"] for name in names])
     upper = np.asarray([limits[name]["upper_rad"] for name in names])
+    seed_close = close_from_allowed(side, active, opened, profile_close[allowed])
     rng = np.random.default_rng(seed)
     candidates = []
     for approach, closing, label, rotation0 in _directions():
         face_axis, direction, _ = layout(closing)
-        position0 = _seed_position(model, side, active, profile_close, rotation0, face_axis, direction)
-        bounds = (np.r_[lower, BOX_CENTER - .25, [-1.4] * 3],
-                  np.r_[upper, BOX_CENTER + .25, [1.4] * 3])
-        initial = [np.r_[profile_close, position0, np.zeros(3)]]
+        position0 = _seed_position(model, side, active, seed_close, rotation0, face_axis, direction)
+        bounds = (np.r_[lower[allowed], BOX_CENTER - .25, [-1.4] * 3],
+                  np.r_[upper[allowed], BOX_CENTER + .25, [1.4] * 3])
+        initial = [np.r_[profile_close[allowed], position0, np.zeros(3)]]
         for _ in range(max(1, int(starts) - 1)):
-            initial.append(np.r_[np.clip(profile_close + rng.normal(0, .3, len(active)), lower + 1e-7, upper - 1e-7),
+            initial.append(np.r_[np.clip(profile_close[allowed] + rng.normal(0, .3, len(allowed)),
+                                         lower[allowed] + 1e-7, upper[allowed] - 1e-7),
                                  position0 + rng.normal(0, .02, 3), rng.normal(0, .3, 3)])
         residual = _objective(model, side, active, opened, profile_close, position0,
                              rotation0, approach, closing, max_points, closure_penalty=True)
@@ -410,8 +457,8 @@ def search_candidates(urdf_path, profile_path, manifest_path, side,
                                "gate_failures": [{"stage": "optimizer", "reason": "no finite solution"}]})
             continue
         score, solution = best
-        n = len(active)
-        close = solution.x[:n]
+        n = len(allowed)
+        close = close_from_allowed(side, active, opened, solution.x[:n])
         position = solution.x[n:n + 3]
         rotation = rotation0 * Rotation.from_rotvec(solution.x[n + 3:n + 6])
         candidate = evaluate_candidate(model, side, active, opened, close, position,
@@ -419,7 +466,10 @@ def search_candidates(urdf_path, profile_path, manifest_path, side,
         candidate.update({"name": label,
                           "optimization": {"starts": len(initial), "nfev": int(solution.nfev),
                                            "objective_norm": score, "optimizer_success": bool(solution.success),
-                                           "variables": "10 active hand joints + palm position + palm rotation"},
+                                           "variables": [names[index] for index in allowed] +
+                                                        ["palm_position_xyz", "palm_rotation_rotvec"]},
+                          "closure_joint_names": [names[index] for index in allowed],
+                          "fixed_joint_names": [names[index] for index in fixed],
                           "hand_open": {"joint_names": names, "values_rad": opened.tolist()},
                           "hand_close": {"joint_names": names, "values_rad": close.tolist()},
                           "source_active_limits_rad": limits,
@@ -461,10 +511,13 @@ def refine_candidate(urdf_path, profile_path, manifest_path, side, search_path,
     active = profile["gripper_commissioning"][side]["active_joints"]
     limits = validate_hand_targets(model.joints, active, side)
     names = [a["name"] for a in active]
+    allowed, fixed = closure_indices(side, active)
     if any(source[k]["joint_names"] != names for k in ("hand_open", "hand_close")):
         raise ValueError("refinement joint order mismatch")
     opened = np.asarray(source["hand_open"]["values_rad"])
     closed = np.asarray(source["hand_close"]["values_rad"])
+    if any(not np.isclose(closed[index], opened[index]) for index in fixed):
+        raise ValueError("source candidate changes a fixed hand channel")
     position = np.asarray(source["palm_pose_world"]["position_m"])
     matrix = np.asarray(source["palm_pose_world"]["matrix_4x4"])
     rotation = Rotation.from_matrix(matrix[:3,:3])
@@ -474,21 +527,26 @@ def refine_candidate(urdf_path, profile_path, manifest_path, side, search_path,
     upper = np.asarray([limits[n]["upper_rad"] for n in names])
     objective = _objective(model, side, active, opened, closed, position, rotation,
                            approach, closing, max_points, closure_penalty=True)
-    x0 = np.r_[closed, position, np.zeros(3)]
+    x0 = np.r_[closed[allowed], position, np.zeros(3)]
     solution = least_squares(objective, x0,
-                             bounds=(np.r_[lower, position-.04, [-.5]*3],
-                                     np.r_[upper, position+.04, [.5]*3]),
+                             bounds=(np.r_[lower[allowed], position-.04, [-.5]*3],
+                                     np.r_[upper[allowed], position+.04, [.5]*3]),
                              max_nfev=max_nfev, ftol=1e-8, xtol=1e-8, gtol=1e-8)
-    n = len(active)
+    n = len(allowed)
+    closed_new = close_from_allowed(side, active, opened, solution.x[:n])
     rnew = rotation * Rotation.from_rotvec(solution.x[n+3:n+6])
-    candidate = evaluate_candidate(model, side, active, opened, solution.x[:n],
+    candidate = evaluate_candidate(model, side, active, opened, closed_new,
                                    solution.x[n:n+3], rnew, approach, closing,
                                    path_samples=25, max_points=2048)
     candidate.update(name=candidate_name, hand_open=source["hand_open"],
-                     hand_close={"joint_names": names, "values_rad": solution.x[:n].tolist()},
+                     hand_close={"joint_names": names, "values_rad": closed_new.tolist()},
                      optimization={"optimizer_success":bool(solution.success), "nfev":int(solution.nfev),
                                    "objective_norm":float(np.linalg.norm(solution.fun)),
-                                   "refined_from_sha256":sha256(search_path), "samples_per_link":max_points})
+                                   "refined_from_sha256":sha256(search_path), "samples_per_link":max_points,
+                                   "variables": [names[index] for index in allowed] +
+                                               ["palm_position_xyz", "palm_rotation_rotvec"]},
+                     closure_joint_names=[names[index] for index in allowed],
+                     fixed_joint_names=[names[index] for index in fixed])
     result.update(candidates=[candidate], candidate_count=1, selected_candidate=candidate_name,
                   execution_allowed=False, physics_validated=False)
     return result
