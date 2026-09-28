@@ -8,6 +8,7 @@ import math
 from pathlib import Path
 import numpy as np
 from plan_contact_trajectory import RobotModel, pose, positions_for, sha256
+from sim2data.control.gripper import allowed_closing_joint_names, validate_gesture_targets
 
 
 def create_preload(urdf, profile, plan_path, force):
@@ -18,6 +19,8 @@ def create_preload(urdf, profile, plan_path, force):
         raise ValueError("passed source-bound plan required")
     side = plan["side"]
     active = json.loads(profile.read_text(encoding="utf-8"))["gripper_commissioning"][side]["active_joints"]
+    validate_gesture_targets(side, active, plan["hand_open"], plan["hand_close"])
+    allowed = set(allowed_closing_joint_names(side))
     model = RobotModel(urdf, side)
     closed = np.array(plan["hand_close"])
     base = pose(plan["planner"]["profile_base_xyz_m"], plan["planner"]["profile_base_rpy_rad"])
@@ -27,7 +30,8 @@ def create_preload(urdf, profile, plan_path, force):
     fk = frames(closed)
     torque = np.zeros(len(active))
     records = []
-    for role, share in (("thumb",1.), ("index",-.5), ("middle",-.5)):
+    shares = (("thumb",1.), ("index",-.5), ("middle",-.5)) if side == "left" else (("thumb",1.), ("index",-1.))
+    for role, share in shares:
         prefix = "l" if side == "left" else "R"
         link = f"{side}_hand__{prefix}_{role}_dip_link"
         shape = next(s for s in model.meshes if s["link"] == link)
@@ -42,6 +46,8 @@ def create_preload(urdf, profile, plan_path, force):
         point = shape["points"][index]
         jacobian = np.zeros((3,len(active)))
         for j, item in enumerate(active):
+            if item["name"] not in allowed:
+                continue
             values = closed.copy()
             limits = plan["planner"]["active_hand_limits_rad"][item["name"]]
             h = 1e-5 if values[j]+1e-5 < limits["upper_rad"] else -1e-5

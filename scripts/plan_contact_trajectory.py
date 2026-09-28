@@ -104,6 +104,22 @@ def validate_hand_targets(joints, active, side):
     return limits
 
 
+def closing_joint_names(side):
+    from sim2data.control.gripper import allowed_closing_joint_names
+    return allowed_closing_joint_names(side)
+
+
+def validate_gesture_channels(active, side):
+    from sim2data.control.gripper import validate_gesture_targets
+    return validate_gesture_targets(side, active,
+                                    [a["open_rad"] for a in active],
+                                    [a["close_rad"] for a in active])
+
+
+def contact_roles(side):
+    return ("thumb", "index", "middle") if side == "left" else ("thumb", "index")
+
+
 def nearest_zero_configuration(limits):
     """Return the source-limit-bounded arm configuration nearest zero."""
     bounds = np.asarray(limits, dtype=float)
@@ -253,7 +269,7 @@ def hand_clouds(model, q, side):
     geometry = hand_geometry(model, q, side)
     suffix = "l" if side == "left" else "R"
     clouds = {}
-    for role in ("thumb", "index", "middle"):
+    for role in contact_roles(side):
         link = f"{side}_hand__{suffix}_{role}_dip_link"
         if link not in geometry:
             raise ValueError(f"missing source distal collision geometry: {link}")
@@ -340,8 +356,9 @@ def fit_contacts(clouds, approach, close_hint, collision_clouds=None, allowed_li
     face_coordinates = {"thumb": BOX_CENTER[face_axis] - face_direction * half[face_axis],
                         "index": BOX_CENTER[face_axis] + face_direction * half[face_axis],
                         "middle": BOX_CENTER[face_axis] + face_direction * half[face_axis]}
-    target = {role: BOX_CENTER.copy() for role in face_coordinates}
-    for role, coordinate in face_coordinates.items():
+    target = {role: BOX_CENTER.copy() for role in clouds}
+    for role in clouds:
+        coordinate = face_coordinates[role]
         target[role][face_axis] = coordinate
     initial_position = BOX_CENTER - approach * 0.075
     allowed_links = set(allowed_links)
@@ -362,7 +379,7 @@ def fit_contacts(clouds, approach, close_hint, collision_clouds=None, allowed_li
         rotation = rotation0 * Rotation.from_rotvec(value[3:])
         matrix = rotation.as_matrix()
         parts = []
-        for role in ("thumb", "index", "middle"):
+        for role in clouds:
             world = clouds[role] @ matrix.T + position
             distances, _ = box_face_patch_distances(world, BOX_CENTER, BOX_SIZE,
                                                      face_axis, face_coordinates[role])
@@ -530,15 +547,17 @@ def create_plan(urdf_path, profile_path, manifest_path, side, grasp_search=None)
     robot_profile = profile["robots"][side]
     model = RobotModel(urdf_path, side)
     active_limits = validate_hand_targets(model.joints, active, side)
-    reset_hand = [float(np.clip(0., active_limits[a["name"]]["lower_rad"],
-                               active_limits[a["name"]]["upper_rad"])) for a in active]
+    validate_gesture_channels(active, side)
+    # The articulation enters the reviewed open gesture directly.  There is no
+    # synthetic URDF-zero -> open hand interpolation in the runtime path.
+    reset_hand = [float(a["open_rad"]) for a in active]
     close_q = positions_for(model.joints, active, model.arm_names, np.zeros(6), 1.0)
     open_q = positions_for(model.joints, active, model.arm_names, np.zeros(6), 0.0)
     clouds = hand_clouds(model, close_q, side)
     closed_hand_geometry = hand_geometry(model, close_q, side, max_points_per_link=384)
     open_hand_geometry = hand_geometry(model, open_q, side, max_points_per_link=384)
     distal_links = {f"{side}_hand__{'l' if side == 'left' else 'R'}_{name}_dip_link"
-                    for name in ("thumb", "index", "middle")}
+                    for name in contact_roles(side)}
     base_world = pose(robot_profile["base_xyz_m"], robot_profile["base_rpy_rad"])
     approach_start_q = nearest_zero_configuration(model.arm_limits)
     preview_map = robot_profile.get("preview_joint_positions", {})
@@ -579,6 +598,9 @@ def create_plan(urdf_path, profile_path, manifest_path, side, grasp_search=None)
             active = [dict(item, open_rad=float(lo), close_rad=float(hi)) for item, lo, hi in
                       zip(active, c["hand_open"]["values_rad"], c["hand_close"]["values_rad"])]
             validate_hand_targets(model.joints, active, side)
+            validate_gesture_channels(active, side)
+            if any(abs(a["open_rad"]-v) > 1e-9 for a,v in zip(active, reset_hand)):
+                raise ValueError("grasp search changed the mapped open gesture")
             close_q = positions_for(model.joints, active, model.arm_names, np.zeros(6), 1.0)
             open_q = positions_for(model.joints, active, model.arm_names, np.zeros(6), 0.0)
             matrix = np.asarray(c["palm_pose_world"]["matrix_4x4"], dtype=float)
@@ -592,7 +614,7 @@ def create_plan(urdf_path, profile_path, manifest_path, side, grasp_search=None)
             contact_rows = {}
             axis = int(np.argmax(np.abs(close_hint[:2])))
             direction = 1 if close_hint[axis] >= 0 else -1
-            for role in ("thumb", "index", "middle"):
+            for role in contact_roles(side):
                 link = f"{side}_hand__{'l' if side == 'left' else 'R'}_{role}_dip_link"
                 world = geometry[link] @ matrix[:3,:3].T + matrix[:3,3]
                 coordinate = BOX_CENTER[axis] + (-direction if role == "thumb" else direction)*BOX_SIZE[axis]/2
@@ -617,7 +639,7 @@ def create_plan(urdf_path, profile_path, manifest_path, side, grasp_search=None)
         pre[:3, 3] -= approach * 0.05
         lift[:3, 3] += [0, 0, 0.08]
         tips = {f"{side}_hand__{'l' if side == 'left' else 'R'}_{name}_dip_link"
-                for name in ("thumb", "index", "middle")}
+                for name in contact_roles(side)}
         def screen(arm_q, amount, box_center, allowed, require_contact=True):
             return collision_screen(model, arm_q, active, amount, base_world,
                                     box_center, allowed, table["collision_top_z_m"], table["ground_z_m"],
@@ -647,7 +669,7 @@ def create_plan(urdf_path, profile_path, manifest_path, side, grasp_search=None)
         collision = None
         if ik_ok:
             tips = {f"{side}_hand__{'l' if side == 'left' else 'R'}_{name}_dip_link"
-                    for name in ("thumb", "index", "middle")}
+                    for name in contact_roles(side)}
             pre_gate = collision_screen(model, ik_pre["q"], active, 0.0, base_world,
                                         BOX_CENTER, set(), table["collision_top_z_m"], table["ground_z_m"])
             open_grasp_gate = collision_screen(model, ik_grasp["q"], active, 0.0, base_world,
@@ -666,14 +688,13 @@ def create_plan(urdf_path, profile_path, manifest_path, side, grasp_search=None)
         path_gate = {"passed": False, "samples_per_segment": 25,
                      "reason": "endpoint gate failed", "failures": []}
         if ik_ok:
-            prepare_active = [dict(a, open_rad=reset, close_rad=a["open_rad"])
-                              for a, reset in zip(active, reset_hand)]
-            for fraction in np.linspace(0,1,25):
-                checked = collision_screen(model, approach_start_q, prepare_active, fraction, base_world,
-                                           BOX_CENTER, set(), table["collision_top_z_m"], table["ground_z_m"])
-                if not checked["passed"]:
-                    path_gate["failures"].append({"segment":"prepare_hand", "fraction":float(fraction),
-                                                  "reasons":checked["failures"]})
+            # Fixed hand-shaping channels are checked at both endpoints.  They
+            # are not optimizer/runtime variables and do not receive preload.
+            checked = collision_screen(model, approach_start_q, active, 0.0, base_world,
+                                       BOX_CENTER, set(), table["collision_top_z_m"], table["ground_z_m"])
+            if not checked["passed"]:
+                path_gate["failures"].append({"segment":"hand_open_reset", "fraction":0.0,
+                                              "reasons":checked["failures"]})
             # Screen the actual joint-interpolated phases, including finger
             # closing; endpoint-only IK is not a collision-free trajectory.
             for segment, start, end, a0, a1 in (
@@ -745,9 +766,13 @@ def create_plan(urdf_path, profile_path, manifest_path, side, grasp_search=None)
                                      "hand": reset_hand},
             "start_configuration_joint_names": {"arm": list(model.arm_names),
                                                  "hand": [item["name"] for item in active]},
-            "start_configuration_sources": {"arm": "source URDF zero configuration clamped to arm joint limits",
-                                              "hand": "source zero clamped to limits; prepare_hand drives to open along screened path",
+            "start_configuration_sources": {"arm": "source URDF zero configuration clamped to arm joint limits; arm reset is separate",
+                                              "hand": "current source URDF mapped open gesture applied directly after articulation initialization",
                                               "runtime_readback_required": True},
+            "hand_gesture": {"side": side, "closing_joint_names": list(closing_joint_names(side)),
+                              "fixed_active_joint_names": [item["name"] for item in active
+                                                            if item["name"] not in closing_joint_names(side)],
+                              "mimic_command_policy": "read_only"},
             "box_center": BOX_CENTER.tolist(), "box_size": BOX_SIZE.tolist(),
             "mass_kg": 0.08, "friction": 0.8, "physics_dt": 0.001,
             "planner": {"algorithm": "source URDF FK+mimic, collision STL sampling, scipy least_squares contact fitting and bounded six-axis IK",

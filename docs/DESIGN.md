@@ -233,3 +233,17 @@ M11最终对照：低力、1 ms的contact07完成20秒且未触发状态界限�
 The left single-arm trial now has real PhysX evidence: source-USD articulation actions, arm gravity-compensation torque, source-FK Jacobian fingertip preload, contact-supported lift and RGB. The private evidence run `m15/contact_left06` passed the existing lift predicate for 2 continuous seconds, with a maximum 79.50 mm clearance increase. This is one synthetic single-arm trial, not a relay episode or production acceptance. The box and robot retain gravity and collision; no body pose or joint-state writes occur during the action loop.
 
 The right side has not passed. Its strict geometric candidate passed, but the physical trial lost contact on lift; robot pixels were absent from the captured view. Both issues block relay recording. Ring/pinky closure path penalties, reset-to-open preparation and Cartesian lift waypoints improve candidate generation without relaxing the final 1 mm intended-contact screening limit. Production calibration and collection remain unresolved/disabled.
+
+## 2026-09-28 O10 hand semantics and relay boundary
+
+The commissioning profile maps each current-URDF active joint to its legacy source name, sign, offset, limits, and endpoint. The left gesture is legacy tripod: only thumb MCP, index PIP, and middle PIP close. The right gesture is legacy pinch: only thumb MCP and index PIP close. Thumb roll/abad and unused finger channels stay at mapped open values; mimic joints are read-only and excluded from command vectors, optimizer variables, and preload effort.
+
+After `SingleArticulation.initialize`, the hand receives one active-only open pose write. Arm reset is recorded separately. The response probe then uses `ArticulationAction` for amount `0, 0.5, 1, 0` and logs measured q/qd/effort, limits, gains, and mimic relationships. This is a commissioning response check, not contact or relay success.
+
+The 2026-09-28 bounded searches remain diagnostic and retain the 1 mm geometry gate. A continuous dual-arm relay requires fresh left and right contact/lift/release gates on one dynamic box and one uninterrupted scene; no such episode has passed.
+
+## 2026-09-28 continuous episode and recorder boundary
+
+`sim2data.relay.RelayStateMachine` now names the single uninterrupted phase sequence from reset through left handoff and right bin retreat, with per-phase timeout/fatal-failure transitions. `scripts/relay_recording.py` records pre-action observation timing, three training camera streams (`overhead`, `wrist_left`, `wrist_right`), 32 independent active joint states, 14 arm/gripper actions, and separate auxiliary truth/contact rows. `scripts/export_relay.py` refuses any capture unless every relay gate is true, then uses the existing official LeRobot v3 writer and loader for a one-episode readback.
+
+These interfaces are connected and fail closed, but no complete two-arm PhysX episode has passed yet. The current fixed-tripod left run made real contact but failed lift, so no capture is eligible for export.

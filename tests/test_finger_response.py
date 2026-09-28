@@ -10,13 +10,20 @@ spec.loader.exec_module(module)
 
 class ResponseGateTests(unittest.TestCase):
     def check_gate(self, movement=True, residual=0.001, effort=0.1, stages=4):
+        stage_rows, movement_rows, mimic, frames, evidence = self.strict_fixture()
+        movement_rows[0]["passed"] = movement
+        mimic[0]["max_abs_residual_rad"] = residual
+        for frame in frames:
+            frame["measured_effort"] = None if effort is None else [effort]*3
         return module.response_passed(
-            [{"hand_max_abs_error_rad": 0.01}] * stages,
-            [{"passed": movement}], [{"max_abs_residual_rad": residual}],
-            [{"measured_effort": None if effort is None else [effort]}], 0.15)
+            stage_rows[:stages], movement_rows, mimic, frames, 0.15, evidence)
 
     def test_complete_evidence(self):
         self.assertTrue(self.check_gate())
+
+    def test_missing_runtime_sidecars_cannot_authorize_contact(self):
+        stages, movement, mimic, frames, _ = self.strict_fixture()
+        self.assertFalse(module.response_passed(stages, movement, mimic, frames, .15))
 
     def test_zero_motion_cannot_pass_tracking(self):
         self.assertFalse(self.check_gate(movement=False))

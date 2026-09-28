@@ -124,3 +124,13 @@ GitHub 只发布经审阅的代码、公开文档和允许再分发的文件。�
 Left synthetic single-arm lift/hold now passed with real contact and two RGB videos (`m15/contact_left06`, private evidence). Right `contact_right03` failed lift and visual evidence. Continue with right finger contact location/force distribution and renderer visibility, then require right standalone acceptance before implementing the same-object table relay. Neither two standalone videos nor a concatenation qualifies as the complete episode.
 
 Two attempted delegated continuations (Luna Max search and Sol High relay adaptation) returned model-at-capacity errors; neither produced new code. The root executed this round's implementation and tests. All source assets remain read-only. Kit close still fails to return, so report persistence and externally terminated process status remain separate.
+
+### O10 commissioning result (2026-09-28)
+
+The hand mapping and active-channel restrictions are implemented and covered by regression tests. Fresh real-articulation probes completed both sides with 1920 PhysX steps and four amount stages. The probes passed strict readback gates, but Kit close required owner termination, so shutdown is not a normal-exit acceptance. The left and right probe videos are diagnostic only.
+
+Restricted refinement ultimately produced an executable left top-down candidate. Translating and re-screening the right fixed-pinch template at the table relay center also passed geometry/IK. Both standalone PhysX trials made contact and produced visible robot RGB, but neither lifted under the corrected fixed gestures. No success criteria were relaxed.
+
+### Continuous relay implementation boundary (2026-09-28)
+
+The real dual-arm scene runner is implemented and has run. `relay05` used one dynamic CardBox, two initialized SingleArticulations and three mounted/overhead cameras. It recorded 238 pre-action frames at 25 Hz, then failed during left close on fixed-hand channel drift. Transfer, handoff, right regrasp and bin placement are wired but unverified. `run_relay_episode.py` provides bounded process cleanup and success-only invocation of the existing official writer/loader adapter. No successful export or 20-attempt randomized batch has run.

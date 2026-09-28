@@ -164,9 +164,7 @@ def _strict_response_evidence(evidence: dict[str, Any], stages, frames) -> bool:
 def response_passed(stages, movement, mimic, frames, tolerance, evidence: dict[str, Any] | None = None):
     """Fail closed on missing readback, collapsed targets, or invalid coupling.
 
-    ``evidence`` is optional for compatibility with the small CPU gate tests.
-    Runtime commissioning always supplies it, enabling the full reset/limits/
-    gains and command-subset checks in :func:`_strict_response_evidence`.
+    Missing reset/limits/gains sidecars cannot authorize a contact trial.
     """
     basic = bool(movement) and all(row.get("passed") is True for row in movement) and len(stages) == 4 and all(
         _finite_scalar(stage.get("hand_max_abs_error_rad"))
@@ -174,7 +172,7 @@ def response_passed(stages, movement, mimic, frames, tolerance, evidence: dict[s
         row.get("max_abs_residual_rad") is not None and _finite_scalar(row.get("max_abs_residual_rad"))
         and float(row["max_abs_residual_rad"]) <= 0.05 for row in mimic) and bool(frames) and all(
         _finite_sequence(row.get("measured_effort")) for row in frames)
-    return basic and (evidence is None or _strict_response_evidence(evidence, stages, frames))
+    return basic and isinstance(evidence, dict) and _strict_response_evidence(evidence, stages, frames)
 
 
 def _resolve_endpoint_targets(active: list[dict[str, Any]], indices: list[int], properties: Any):
@@ -208,16 +206,15 @@ def _resolve_endpoint_targets(active: list[dict[str, Any]], indices: list[int], 
 def _reset_hand_to_open(articulation: Any, dofs: list[str], indices: list[int],
                         targets: list[float], arm_reset_q: list[float], arm_names: list[str]):
     """Perform the one permitted initial active-hand pose write and log it."""
-    import numpy as np
-
+    import torch
     if not indices or len(indices) != len(targets):
         raise ValueError("initial open reset requires aligned active-hand indices and targets")
     q_before = _float_list(articulation.get_joint_positions())
     if len(q_before) != len(dofs):
         raise RuntimeError("joint-position readback length differs from articulation DOFs")
     articulation.set_joint_positions(
-        np.asarray(targets, dtype=np.float32),
-        joint_indices=np.asarray(indices, dtype=np.int32),
+        torch.tensor(targets, dtype=torch.float32),
+        joint_indices=torch.tensor(indices, dtype=torch.int64),
     )
     q_after = _float_list(articulation.get_joint_positions())
     if len(q_after) != len(dofs) or not all(math.isfinite(value) for value in q_after):
@@ -504,8 +501,8 @@ def run(args: argparse.Namespace, report: dict[str, Any]) -> int:
         if len(root_paths) != 1:
             raise RuntimeError(f"expected one side articulation root, found {root_paths}")
         root_path = root_paths[0]
-        articulation = SingleArticulation(root_path, name="finger_response_" + args.side)
         simulation = SimulationContext(SimulationCfg(dt=args.dt, device="cpu", use_fabric=False))
+        articulation = SingleArticulation(root_path, name="finger_response_" + args.side)
         simulation.reset()
         articulation.initialize()
         if not articulation.handles_initialized:
@@ -527,6 +524,11 @@ def run(args: argparse.Namespace, report: dict[str, Any]) -> int:
             raise RuntimeError("invalid post-SimulationContext.reset articulation state")
 
         profile = json.loads(args.profile.read_text(encoding="utf-8"))
+        from sim2data.control.gripper import load_gripper_map
+        gesture_map = load_gripper_map(args.side, args.urdf, args.profile)
+        report["gesture_mapping"] = {"table": gesture_map.mapping_table,
+                                     "closing_joint_names": list(gesture_map.closing_joint_names),
+                                     "fixed_joint_names": list(gesture_map.fixed_joint_names)}
         hand = profile["gripper_commissioning"][args.side]
         drive = hand["synthetic_drive"]
         active_profile = hand["active_joints"]
@@ -570,7 +572,7 @@ def run(args: argparse.Namespace, report: dict[str, Any]) -> int:
         arm_names_resolved: list[str] = []
         for name in arm_names:
             resolved, _ = _resolve(name, dofs, args.side)
-            if resolved and resolved not in active_set and resolved not in arm_names_resolved:
+            if resolved and resolved not in active_set and resolved not in source_mimic_dofs and resolved not in arm_names_resolved:
                 arm_names_resolved.append(resolved)
         arm_indices = [dofs.index(name) for name in arm_names_resolved]
         arm_reset_q = [float(arm_reset_q_before_hand_open[index]) for index in arm_indices]
@@ -817,8 +819,8 @@ def run(args: argparse.Namespace, report: dict[str, Any]) -> int:
             means = [float(np.mean([row["q"][index] for row in frames if row["phase_index"] == phase][-args.settle_window:]))
                      for phase in (0, 2, 3)]
             movement.append({"dof_name": dofs[index], "target_span": span, "phase_means": means,
-                             "passed": abs(span) >= 0.02 and (means[1]-means[0])*np.sign(span) >= abs(span)*0.5
-                             and (means[1]-means[2])*np.sign(span) >= abs(span)*0.5})
+                             "passed": bool(abs(span) >= 0.02 and (means[1]-means[0])*np.sign(span) >= abs(span)*0.5
+                             and (means[1]-means[2])*np.sign(span) >= abs(span)*0.5)})
         report["response"]["movement"] = movement
         # The strict evidence gate consumes only JSON-serialisable fields and
         # blocks contact trials when any reset/readback/drive sidecar is absent.
@@ -896,7 +898,7 @@ def main(argv: list[str] | None = None) -> int:
         "assumptions": ["Synthetic commissioning drives only; no measured hardware parameters are inferred.",
                         "Arm DOFs, when present, are held at the simulator reset pose by position targets.",
                         "No object is added: contact, friction, lift and grasp are not validated.",
-                        "Source URDF and USD are read-only; no direct set_joint_positions call is used."],
+                        "Source URDF and USD are read-only; one active-only hand initialization write, zero loop state writes."],
     }
     _write(args.out / "result.json", report)
     try:

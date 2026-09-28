@@ -46,6 +46,23 @@ def contact_lift_gate(rows, initial_z, dt=1/240):
             "required_hold_seconds": 1, "clearance_m": .025, "max_linear_speed_m_s": .05}
 
 
+def contact_release_gate(rows, mass_kg, dt):
+    """Require a continuous supported, stable and hand-free final retreat."""
+    if not math.isfinite(mass_kg) or mass_kg <= 0 or not math.isfinite(dt) or not 0 < dt <= 1/30:
+        raise ValueError("positive mass and valid physics dt required")
+    current = 0
+    for row in rows:
+        accepted = (state_is_bounded(row) and row["phase"] == "retreat"
+                    and 0 <= row["hand_contact_force_N"] < .01
+                    and .8*mass_kg*9.81 < row["support_force_N"] < 1.2*mass_kg*9.81
+                    and 0 <= row["ground_force_N"] < .01
+                    and sum(v*v for v in row["box_velocity"][:3]) < .02**2
+                    and sum(v*v for v in row["box_velocity"][3:]) < .1**2)
+        current = current + 1 if accepted else 0
+    return {"passed": current*dt >= 1., "final_continuous_steps": current,
+            "required_dwell_s": 1., "scope": "single-arm return to Thor; not relay footprint acceptance"}
+
+
 def validate_planned_scene(plan, profile_sha, scene_only=False):
     """Keep failed or stale global-state plans out of the physics action loop."""
     if plan.get("scene_kind") != "thor_cardbox":
@@ -56,7 +73,8 @@ def validate_planned_scene(plan, profile_sha, scene_only=False):
         raise ValueError("global-state geometry/IK gate failed; action execution blocked")
 
 
-def validate_preload(preload, *, plan_sha, profile_sha, urdf_sha, active_names, effort_limits):
+def validate_preload(preload, *, plan_sha, profile_sha, urdf_sha, active_names, effort_limits,
+                     allowed_effort_names=None):
     """Reject stale, reordered or unbounded active-only feedforward requests."""
     if (preload.get("plan_sha256") != plan_sha
             or preload.get("profile_sha256") != profile_sha
@@ -72,7 +90,28 @@ def validate_preload(preload, *, plan_sha, profile_sha, urdf_sha, active_names, 
                    or not math.isfinite(limit) or limit < 0 or abs(v) > limit
                    for v, limit in zip(values, effort_limits))):
         raise ValueError("preload exceeds active effort bounds")
+    if allowed_effort_names is not None:
+        allowed = set(allowed_effort_names)
+        if not allowed.issubset(active_names):
+            raise ValueError("preload allowed set is not a subset of active joints")
+        if any(name not in allowed and abs(float(value)) > 1e-12
+               for name, value in zip(active_names, values)):
+            raise ValueError("preload allocates effort to a fixed hand channel")
     return values
+
+
+def validate_hand_plan(profile, plan):
+    """Reject old plans that vary thumb shaping or start the hand at zero."""
+    from sim2data.control.gripper import allowed_closing_joint_names, validate_gesture_targets
+    side = plan["side"]
+    active = profile["gripper_commissioning"][side]["active_joints"]
+    opened, closed = plan["hand_open"], plan["hand_close"]
+    validate_gesture_targets(side, active, opened, closed)
+    expected = [item["open_rad"] for item in active]
+    for values in (opened, plan["start_configuration"]["hand"]):
+        if len(values) != len(expected) or any(abs(a-b) > 1e-9 for a,b in zip(values, expected)):
+            raise ValueError("hand plan must initialize and approach in the mapped open gesture")
+    return allowed_closing_joint_names(side)
 
 
 def camera_content(camera):
@@ -134,6 +173,8 @@ def main():
         if any(r["inputs"]["profile_sha256"] != sha256(args.profile) for r in (response, other)):
             raise ValueError("profile changed after response acceptance")
         plan = json.loads(args.plan.read_text(encoding="utf-8"))
+        profile = json.loads(args.profile.read_text(encoding="utf-8"))
+        allowed_close = set(validate_hand_plan(profile, plan))
         if not math.isfinite(args.squeeze_effort) or not 0 <= args.squeeze_effort <= .3:
             raise ValueError("squeeze effort must be finite in [0, 0.3] Nm")
         diagnostic_only = args.scene_only or args.support_only
@@ -268,6 +309,21 @@ def main():
             camera.set_clipping_range(.01,10)
             cameras.append((name,camera))
         sim.reset(); robot.initialize(); box.initialize()
+        # One initialization write of the ten active hand DOFs only. The arm
+        # reset and passive/mimic readback remain separate; no loop state writes.
+        initial_dofs = list(robot.dof_names)
+        initial_active = response["mapping"]["active_hand"]
+        initial_arm = response["mapping"]["arm_hold_names"]
+        initial_indices = [initial_dofs.index(item["dof_name"]) for item in initial_active]
+        from isaac_finger_response import _reset_hand_to_open
+        reset_q = np.asarray(robot.get_joint_positions()).reshape(-1)
+        report["initialization"] = _reset_hand_to_open(
+            robot, initial_dofs, initial_indices, plan["hand_open"],
+            [float(reset_q[initial_dofs.index(name)]) for name in initial_arm], initial_arm)
+        report["initial_joint_state_writes"] = 1
+        # Fail closed if the backend does not explicitly expose initialized
+        # articulation handles; a missing flag is not evidence of PhysX.
+        report["real_articulation"] = bool(getattr(robot, "handles_initialized", False))
         report["contact_view"] = {
             "num_shapes": _view_count("num_shapes"),
             "num_filters": _view_count("num_filters"),
@@ -363,6 +419,11 @@ def main():
         kp[indices[:6]]=800; kd[indices[:6]]=50
         hand_kp=float(plan.get("hand_stiffness", 1.0)); hand_kd=float(plan.get("hand_damping", .05))
         kp[indices[6:]]=hand_kp; kd[indices[6:]]=hand_kd
+        fixed_drive_indices=[indices[6+j] for j,item in enumerate(active) if item["dof_name"] not in allowed_close]
+        kp[fixed_drive_indices]=40; kd[fixed_drive_indices]=2
+        report["fixed_hand_hold_drive"]={"stiffness":40.,"damping":2.,"synthetic":True,
+            "joint_names":[dofs[i] for i in fixed_drive_indices],
+            "reason":"hold fixed gesture channels against contact; no shaping preload"}
         controller.set_gains(kp,kd)
         efforts = np.asarray(controller.get_max_efforts()).reshape(-1).copy()
         efforts[indices[:6]]=40; efforts[indices[6:]]=float(plan.get("hand_max_force", .3))
@@ -381,6 +442,40 @@ def main():
             "enabled": True, "source": "PhysX generalized gravity compensation forces",
             "joint_names": arm, "absolute_effort_cap_Nm": 40.0,
             "gravity_remains_enabled": True, "synthetic_controller": True}
+        hand_open = plan.get("hand_open", [x["open_rad"] for x in active])
+        hand_close = plan.get("hand_close", [x["close_rad"] for x in active])
+        if len(hand_open) != len(active) or len(hand_close) != len(active):
+            raise ValueError("contact hand endpoints must cover active joints only")
+        # Let the action drives settle the direct-open reset and PhysX mimic
+        # constraints before recording the trajectory.  These are ordinary
+        # ArticulationAction commands during reset; no joint state is written.
+        reset_indices = indices
+        reset_targets = np.asarray(list(plan["start_configuration"]["arm"]) + list(hand_open), dtype=float)
+        reset_settle_steps = max(1, round(0.5 / dt))
+        reset_frames = []
+        with (args.out/"reset_trace.jsonl").open("w") as reset_stream:
+            for reset_step in range(reset_settle_steps):
+                gravity = np.asarray(view.get_generalized_gravity_forces()).reshape(-1)
+                action = _action(ArticulationAction, reset_indices, reset_targets.tolist())
+                action.joint_efforts = torch.tensor(np.r_[np.clip(gravity[indices[:6]],-40,40),np.zeros(10)],dtype=torch.float32)
+                robot.apply_action(action)
+                sim.step(render=False)
+                reset_row = {"step":reset_step,"time_s":(reset_step+1)*dt,
+                    "commanded":dict(zip([dofs[i] for i in indices],reset_targets.tolist())),
+                    "q":_json(robot.get_joint_positions()),"qd":_json(robot.get_joint_velocities()),
+                    "effort":_json(robot.get_measured_joint_efforts()),
+                    "box_position":_json(box.get_world_poses()[0][0]),
+                    "box_velocity":_json(box.get_velocities()[0])}
+                reset_stream.write(json.dumps(reset_row)+"\n")
+                reset_frames.append(reset_row)
+                if not all(np.isfinite(reset_row[k]).all() for k in ("q","qd","effort","box_position","box_velocity")):
+                    raise ValueError("nonfinite reset settle state")
+        report["initialization"]["physical_settle"] = {"steps":reset_settle_steps,
+            "trace":"reset_trace.jsonl","state_writes":0,
+            "max_initial_joint_velocity_rad_s":max(abs(v) for r in reset_frames for v in r["qd"]),
+            "final_max_joint_velocity_rad_s":max(abs(v) for v in reset_frames[-1]["qd"])}
+        if max(abs(v) for v in reset_frames[-1]["qd"]) > 1:
+            raise ValueError("reset settle joint velocities did not converge")
         qstart=np.asarray(robot.get_joint_positions()).reshape(-1)[indices]
         start = plan.get("start_configuration", {})
         expected_start = np.asarray(list(start.get("arm", [])) + list(start.get("hand", [])), dtype=float)
@@ -397,10 +492,12 @@ def main():
         # Only the three opposed fingers receive bounded flexion preload.
         # Passive/mimic joints remain read-only. This is actuator torque, not a
         # claimed contact force or a change to gravity/collision geometry.
+        # The planner records the side-specific gesture.  Fixed active hand
+        # channels remain at their open targets and receive zero preload.
         squeeze = np.zeros(len(active))
         for j, item in enumerate(active):
             name = item["dof_name"]
-            if any(part in name for part in ("thumb_abad_joint", "index_pip_joint", "middle_pip_joint")):
+            if name in allowed_close:
                 squeeze[j] = args.squeeze_effort * np.sign(hand_close[j]-hand_open[j])
         report["squeeze_preload"] = {"synthetic":True,"effort_Nm":squeeze.tolist(),
             "joint_names":[a["dof_name"] for a in active],"not_measured_contact_force":True}
@@ -411,7 +508,8 @@ def main():
             squeeze = np.asarray(validate_preload(
                 preload, plan_sha=sha256(args.plan), profile_sha=sha256(args.profile),
                 urdf_sha=plan["urdf_sha256"], active_names=[a["dof_name"] for a in active],
-                effort_limits=efforts[indices[6:]].tolist()), dtype=float)
+                effort_limits=efforts[indices[6:]].tolist(),
+                allowed_effort_names=allowed_close), dtype=float)
             report["squeeze_preload"] = preload
         props = robot.dof_properties
         for i, lo, hi in zip(indices[6:], hand_open, hand_close):
@@ -425,7 +523,7 @@ def main():
         report.update(trace="trace.jsonl", images=images, dt=dt,
                       inertia_override_applied=False)
         rgbroot=args.out/"rgb";rgbroot.mkdir()
-        phases=[("prepare_hand",plan["start_configuration"]["arm"],0,3),
+        phases=[("settle_open",plan["start_configuration"]["arm"],0,3),
                 ("approach",plan["pregrasp"],0,4), ("approach_lower",plan["grasp"],0,2),
                 ("finger_close",plan["grasp"],1,2), ("lift",plan["lift"],1,3),
                 ("hold",plan["lift"],1,2), ("lower",plan["grasp"],1,3),
@@ -491,6 +589,16 @@ def main():
                          "hand_contact_force_N":float(np.linalg.norm(matrix[0,hand_filter_indices],axis=1).sum()),
                          "robot_contact_force_N":float(np.linalg.norm(matrix[0,ground_filter_index+1:],axis=1).sum()),
                          "contact_matrix":matrix_meta}
+                    fixed_indices = [j for j,item in enumerate(active) if item["dof_name"] not in allowed_close]
+                    fixed_drift = max((abs(float(q[indices[6+j]]) - float(hand_open[j])) for j in fixed_indices), default=0.0)
+                    row["fixed_hand_max_drift_rad"] = fixed_drift
+                    if fixed_drift > 0.03:
+                        report.update(phase="fixed_hand_drift", failed_step=step, steps=step+1,
+                                     fixed_hand_max_drift_rad=fixed_drift,
+                                     contact_observed=any(r["robot_contact_force_N"]>.02 for r in records))
+                        stream.write(json.dumps(row)+"\n"); records.append(row)
+                        _write(args.out/"result.json", report)
+                        return 3
                     stream.write(json.dumps(row)+"\n");records.append(row)
                     if not state_is_bounded(row):
                         report.update(phase="numerical_instability", failed_step=step,
@@ -512,12 +620,14 @@ def main():
                 report["phase"]="completed_"+phase
                 _write(args.out/"result.json",report)
         gate=contact_lift_gate(records, center[2], dt=dt)
+        release_gate=contact_release_gate(records, float(plan["mass_kg"]), dt)
         visual_gate = any(frame["camera"] == "main" and frame["phase"] == "hold"
                           and frame["robot_and_box_visible"] for frame in images)
         report.update(phase="completed", steps=step, trace="trace.jsonl", images=images,
                       max_box_lift_m=max(r["box_position"][2] for r in records)-center[2],
                       contact_lift_gate=gate, visual_evidence_gate=visual_gate,
-                      passed=gate["passed"] and visual_gate,
+                      contact_release_gate=release_gate,
+                      passed=gate["passed"] and release_gate["passed"] and visual_gate,
                       box_final_position=records[-1]["box_position"],
                       contact_observed=any(r["robot_contact_force_N"]>.02 for r in records))
         if report["passed"]:
@@ -539,6 +649,12 @@ def main():
         return 2
     finally:
         if app:
+            if report.get("images"):
+                try:
+                    from trial_video import encode_trial
+                    report["diagnostic_videos"] = encode_trial(args.out, report)
+                except Exception as exc:
+                    report["diagnostic_video_error"] = repr(exc)
             report["shutdown"]["attempted"]=True
             _write(args.out/"result.json",report)
             app.close(wait_for_replicator=False)

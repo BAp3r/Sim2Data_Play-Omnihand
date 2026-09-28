@@ -3,10 +3,43 @@ import sys
 from pathlib import Path
 import unittest
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
-from isaac_contact_trial import contact_lift_gate, state_is_bounded, validate_planned_scene, validate_preload
+from isaac_contact_trial import contact_lift_gate, contact_release_gate, state_is_bounded, validate_planned_scene, validate_preload, validate_hand_plan
 
 
 class ContactGateTests(unittest.TestCase):
+    def test_release_requires_final_stable_support_and_no_hand(self):
+        row=self.row();row.update(phase="retreat", support_force_N=.08*9.81, hand_contact_force_N=0.)
+        self.assertTrue(contact_release_gate([row]*1000,.08,.001)["passed"])
+        bad=dict(row,hand_contact_force_N=.2)
+        self.assertFalse(contact_release_gate([row]*1000+[bad],.08,.001)["passed"])
+        self.assertFalse(contact_release_gate([dict(row,support_force_N=0.)]*1000,.08,.001)["passed"])
+
+    def test_plan_cannot_restore_legacy_thumb_rotation_or_zero_reset(self):
+        import json, copy
+        profile=json.loads((Path(__file__).parents[1]/"configs/commissioning.synthetic.json").read_text())
+        for side in ("left","right"):
+            active=profile["gripper_commissioning"][side]["active_joints"]
+            opened=[a["open_rad"] for a in active]
+            plan=dict(side=side,hand_open=opened,hand_close=[a["close_rad"] for a in active],
+                      start_configuration={"hand":opened})
+            validate_hand_plan(profile,plan)
+            bad=copy.deepcopy(plan);bad["hand_close"][0]+=.1
+            with self.assertRaises(ValueError):validate_hand_plan(profile,bad)
+            bad=copy.deepcopy(plan);bad["start_configuration"]["hand"]=[0.]*10
+            with self.assertRaises(ValueError):validate_hand_plan(profile,bad)
+
+    def test_preload_rejects_fixed_hand_channels(self):
+        request = dict(plan_sha256="p", profile_sha256="c", urdf_sha256="u",
+                       joint_names=["thumb_roll", "thumb_mcp"], effort_Nm=[.1, .2],
+                       synthetic=True, requested_force_is_not_measured=True)
+        kwargs = dict(plan_sha="p", profile_sha="c", urdf_sha="u",
+                      active_names=request["joint_names"], effort_limits=[1., 1.],
+                      allowed_effort_names=["thumb_mcp"])
+        with self.assertRaisesRegex(ValueError, "fixed hand"):
+            validate_preload(request, **kwargs)
+        request["effort_Nm"][0] = 0.
+        self.assertEqual(validate_preload(request, **kwargs), [0., .2])
+
     def test_preload_identity_order_and_effort_bounds(self):
         import copy
         request = dict(plan_sha256="p", profile_sha256="c", urdf_sha256="u",

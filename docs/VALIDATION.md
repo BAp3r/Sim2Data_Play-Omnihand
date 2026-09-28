@@ -289,3 +289,21 @@ Input code base `ed12bdb`, synthetic profile and audited fresh M10 left/right US
 - All dynamic body gravity/collision/material properties remain in the audit. No per-frame joint state writes, object pose writes, attachment, or gravity removal were used. The standalone support-only diagnostic is separate and is not grasp evidence.
 
 Tests run: root unittest discovery 123 tests, 113 passed/10 skipped; planner/search tests in the existing simulation environment 13 passed; added preload identity/order/effort tests 8 contact tests passed. `compileall` and `git diff --check` passed. The final discovery count after the added test is recorded in the private command log. Skips include unavailable root LeRobot integration, symlinks and optional USD/scientific dependencies; no dataset compatibility claim follows. Full relay and production collection remain unvalidated.
+
+## 2026-09-28 O10 semantic correction and fresh response probes
+
+The fresh profile explicitly records legacy-to-current mapping, left tripod and right pinch closing sets, fixed channels, current URDF limits, and mimic read-only relationships. Regression coverage rejects zero/open-reset plans, fixed-channel preload, mimic command names, and out-of-limit endpoints.
+
+`left_response04` and `right_response01` each ran a real `SingleArticulation` for 1920 steps (`0, 0.5, 1, 0`) with measured q/qd/effort and strict sidecars. Both passed the response gate. No object was present, so these are not contact results. Kit close did not return and the owner terminated each process after evidence persistence; the process records are not normal shutdown.
+
+The final left top-down plan and right plan at the relay center passed geometry/IK. Fresh standalone trials on both sides made contact but failed lift. The old `.local/evidence/m15/contact_left06` remains preserved as historical evidence; its legacy hand semantics do not satisfy the new fixed-tripod regression.
+
+## 2026-09-28 continuous relay recorder
+
+The state machine and recorder were added without changing success thresholds. A fixed-tripod PhysX rerun (`contact_left06`) completed 23,000 steps with real contact and RGB visibility, but `contact_lift_gate` failed (`max_box_lift_m` approximately -0.00090 m; zero continuous hold steps). `contact_release_gate` passed after return to table support. Main and close failure videos are retained as `main.failed.mp4` and `close.failed.mp4`; they are not demonstrations. No right contact/lift or dual-arm continuous episode ran successfully. Official LeRobot export was therefore correctly blocked and no successful dataset/readback exists.
+
+Right `contact_right_relay01` likewise completed 23,000 steps with real contact and robot/box RGB visibility; maximum lift was approximately -0.0010 m, with zero accepted hold steps. Release support passed. Left `contact_left07` failed the new fixed-channel drift guard at step 10,513 (0.03003 rad), after increased fixed-channel holding gains.
+
+Continuous `relay05` initialized both real articulations in one official Thor/CardBox scene and recorded 238 synchronized pre-action samples at 25 Hz with 32 independent active joint states and 14 arm/scalar-gripper actions. It stopped in `left_close` on fixed-channel drift. Three failure MP4 streams and JSONL state/action/auxiliary traces persist. Root inspected a three-camera panel: both robots and table/bin are visible overhead; left wrist shows the box/hand; the inactive right wrist does not cover the box at that pose. These images do not prove metric calibration. Both standalone and continuous Kit cleanup timed out and were owner-terminated, never normal exits.
+
+Latest validation: root discovery 140 tests, 128 passed and 12 optional-dependency skips; simulation-interpreter geometry/relay tests 22 passed. Compileall and diff checks passed. No successful relay, official SDK readback of relay data, or randomized batch is claimed.
