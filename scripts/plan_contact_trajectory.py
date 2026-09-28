@@ -331,7 +331,8 @@ def palm_goal(approach, close_hint):
     return Rotation.from_matrix(np.column_stack((local_x, close, approach))), close
 
 
-def fit_contacts(clouds, approach, close_hint, collision_clouds=None, allowed_links=()):
+def fit_contacts(clouds, approach, close_hint, collision_clouds=None, allowed_links=(),
+                 open_geometry=None, table_z=None):
     rotation0, close_axis = palm_goal(approach, close_hint)
     half = BOX_SIZE / 2
     face_axis = int(np.argmax(np.abs(close_axis[:2])))
@@ -348,6 +349,13 @@ def fit_contacts(clouds, approach, close_hint, collision_clouds=None, allowed_li
                        if name not in allowed_links} if collision_clouds else {})
     collision_points = (np.concatenate([penalty_clouds[name] for name in sorted(penalty_clouds)])
                         if penalty_clouds else np.empty((0, 3), dtype=float))
+    contact_clouds = ({name: points for name, points in collision_clouds.items()
+                       if name in allowed_links} if collision_clouds else {})
+    contact_points = (np.concatenate([contact_clouds[name] for name in sorted(contact_clouds)])
+                      if contact_clouds else np.empty((0, 3), dtype=float))
+    open_points = (np.concatenate(list(open_geometry.values())) if open_geometry
+                   else np.empty((0, 3), dtype=float))
+    all_points = np.concatenate((collision_points, contact_points))
 
     def residual(value):
         position = value[:3]
@@ -366,6 +374,22 @@ def fit_contacts(clouds, approach, close_hint, collision_clouds=None, allowed_li
             hand_world = collision_points @ matrix.T + position
             signed_clearance = box_sdf(hand_world, BOX_CENTER, BOX_SIZE)
             parts.extend(hand_clearance_residual(signed_clearance))
+        if len(contact_points):
+            contact_world = contact_points @ matrix.T + position
+            # An intended contact link may touch the box, but its other surface
+            # samples must not pass through it to reach the opposite face.
+            parts.extend(hand_clearance_residual(
+                box_sdf(contact_world, BOX_CENTER, BOX_SIZE),
+                minimum_clearance_m=-0.0005, weight=12))
+        if len(open_points):
+            open_world = open_points @ matrix.T + position
+            parts.extend(hand_clearance_residual(
+                box_sdf(open_world, BOX_CENTER, BOX_SIZE), minimum_clearance_m=0.003, weight=30))
+        if table_z is not None and len(all_points):
+            heights = (all_points @ matrix.T + position)[:, 2] - table_z
+            if len(open_points):
+                heights = np.r_[heights, open_world[:, 2] - table_z]
+            parts.extend(hand_clearance_residual(heights, minimum_clearance_m=0.003, weight=24))
         parts.extend(value[3:] * 0.018)
         parts.extend((position - initial_position) * 0.025)
         parts.append(max(float(np.dot(position - BOX_CENTER, approach)) + 0.015, 0.0) * 8)
@@ -510,6 +534,7 @@ def create_plan(urdf_path, profile_path, manifest_path, side):
     open_q = positions_for(model.joints, active, model.arm_names, np.zeros(6), 0.0)
     clouds = hand_clouds(model, close_q, side)
     closed_hand_geometry = hand_geometry(model, close_q, side, max_points_per_link=384)
+    open_hand_geometry = hand_geometry(model, open_q, side, max_points_per_link=384)
     distal_links = {f"{side}_hand__{'l' if side == 'left' else 'R'}_{name}_dip_link"
                     for name in ("thumb", "index", "middle")}
     base_world = pose(robot_profile["base_xyz_m"], robot_profile["base_rpy_rad"])
@@ -531,7 +556,8 @@ def create_plan(urdf_path, profile_path, manifest_path, side):
     results = []
     for approach, close_hint, label in candidates:
         fit = fit_contacts(clouds, approach, close_hint, closed_hand_geometry,
-                           allowed_links=distal_links)
+                           allowed_links=distal_links, open_geometry=open_hand_geometry,
+                           table_z=table["collision_top_z_m"])
         pre, grasp, lift = fit["matrix"].copy(), fit["matrix"].copy(), fit["matrix"].copy()
         pre[:3, 3] -= approach * 0.05
         lift[:3, 3] += [0, 0, 0.08]
