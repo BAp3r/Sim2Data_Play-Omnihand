@@ -75,3 +75,9 @@
 接触physics_dt默认1/240秒，限制为[1/2000, 1/240]秒；RGB按最接近30 Hz的整数步采样，保持门禁使用实际dt。contact07为1/1000秒对照，非生产时钟绑定。质量、摩擦、手势、驱动及fixture尺寸仍是synthetic；机器人源惯性没有覆盖。
 
 2026-09-24 M12：场景约定为官方 Thor、/World/FullFlatGround 连续 Mesh 和 uniform scale 0.12 的官方 cardbox。Thor visual/collision 顶面差 15.5 mm；所有盒子质量、摩擦、驱动和位置仍 synthetic。
+
+## 2026-09-28 synthetic contact controller
+
+`plan_contact_preload.py` consumes the bound source URDF/profile/passed geometric plan and computes active-only torques from finite-difference fingertip Jacobians, including source mimic derivatives. Its requested force is not a measured force or a physical success claim. `isaac_contact_trial.py --preload <private-json>` checks plan/profile/URDF identities, joint order and effort limits, ramps preload during close, and removes it during release. Mimic joints are not commanded.
+
+The arm uses PhysX generalized gravity compensation as actuator feedforward with a 40 Nm per-joint cap, while gravity remains enabled. Readback, position drive gains, limits and feedforward requests are logged. The successful left trial requested opposed 3 N fingertip force; all controller, object mass/friction, assembly and camera values remain synthetic. Production parameters are not inferred from this result. Accurate machine commands and video paths are in private `m15/COMMANDS_20260928.md` and the delivery report.

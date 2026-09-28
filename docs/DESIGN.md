@@ -227,3 +227,9 @@ M11当前接触门禁仍失败：contact02有真实接触但推倒盒子，conta
 M11最终对照：低力、1 ms的contact07完成20秒且未触发状态界限，但仍推倒盒子，连续接触抬升保持为0步。空载关节响应和接触力已有读回证据，成功抓取和有效闭合视频仍缺。源机器人惯性未覆盖；视觉与动力学验收分开。
 
 2026-09-24 M12：全局真值规划已实现真实 URDF FK/mimic、接触几何拟合和 IK；候选仍因碰撞门禁失败而拒绝执行。接触场景统一为官方 Thor + 连续 Mesh 地面 + 0.12 倍官方 cardbox，候选资产独立入库，不自动替换。详见 GLOBAL_STATE_CONTACT.md。生产参数与接力门禁保持不变。
+
+## 2026-09-28 contact commissioning update
+
+The left single-arm trial now has real PhysX evidence: source-USD articulation actions, arm gravity-compensation torque, source-FK Jacobian fingertip preload, contact-supported lift and RGB. The private evidence run `m15/contact_left06` passed the existing lift predicate for 2 continuous seconds, with a maximum 79.50 mm clearance increase. This is one synthetic single-arm trial, not a relay episode or production acceptance. The box and robot retain gravity and collision; no body pose or joint-state writes occur during the action loop.
+
+The right side has not passed. Its strict geometric candidate passed, but the physical trial lost contact on lift; robot pixels were absent from the captured view. Both issues block relay recording. Ring/pinky closure path penalties, reset-to-open preparation and Cartesian lift waypoints improve candidate generation without relaxing the final 1 mm intended-contact screening limit. Production calibration and collection remain unresolved/disabled.

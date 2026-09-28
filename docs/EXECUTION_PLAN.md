@@ -118,3 +118,9 @@ GitHub 只发布经审阅的代码、公开文档和允许再分发的文件。�
 最终对照：1 ms、低力条件下contact07完整运行仍推倒盒子。下一步需解决对向包络/抓取净空与手部RGB可见性，再验证接触抬升；复核接触时mimic残差、惯性/碰撞几何和RGB同步。Kit正常关闭仍未验收。
 
 2026-09-24 M12：先完成全局状态几何规划与 Thor/cardbox 场景可见性修复；规划候选未通过碰撞门禁时不得启动接触状态机。RoboFlywheel 资产只作为 NAS candidate，待独立 PhysX 接触验证后再评估替换。
+
+## 2026-09-28 next execution boundary
+
+Left synthetic single-arm lift/hold now passed with real contact and two RGB videos (`m15/contact_left06`, private evidence). Right `contact_right03` failed lift and visual evidence. Continue with right finger contact location/force distribution and renderer visibility, then require right standalone acceptance before implementing the same-object table relay. Neither two standalone videos nor a concatenation qualifies as the complete episode.
+
+Two attempted delegated continuations (Luna Max search and Sol High relay adaptation) returned model-at-capacity errors; neither produced new code. The root executed this round's implementation and tests. All source assets remain read-only. Kit close still fails to return, so report persistence and externally terminated process status remain separate.

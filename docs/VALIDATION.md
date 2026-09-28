@@ -276,3 +276,16 @@ M12 right_response02 fresh USD 亦完成 1920 个 CPU PhysX 步，real_articulat
 `isaac_contact_trial.py --support-only` 已接入运行时审计、raw contact buffer shape/count、net force 和严格滤波顺序记录。旧 support03 在审计接入前因 `_contact_view.num_shapes=None` 失败；代码已改为在 `box.initialize()` 后读取。新运行因本会话没有 NAS 映射而被 Thor 依赖检查阻断；按私有命令记录尝试恢复映射需要凭据并返回系统错误 1223，未猜测路径或替代资产。
 
 本轮没有新的支撑力、真实接触、抬升、视频或双臂接力验收。规划器定向测试 9 项通过；使用真实左侧 URDF 重新规划因源 collision mesh 的 NAS 映射不可用而失败，`execution_allowed=false` 保持不变。完整 unittest 仍受当前临时目录拒绝访问影响（122 项中 40 个环境相关错误），不能记为通过。准确命令和日志保留在 ignored 私有证据目录。
+
+## 2026-09-28 actual left contact lift; right remains unaccepted
+
+Input code base `ed12bdb`, synthetic profile and audited fresh M10 left/right USD inputs. Code implementation `3f52989`; preload validation follow-up `15eef3a`. Evidence sequence M15 is not milestone acceptance.
+
+- Left `contact_left06`: 23,000 real 1 ms PhysX steps; `passed=true`, 2,000 continuous hold steps, 79.496 mm maximum lift relative to the 1 mm raised reset center. During all hold steps Thor and ground contact force were zero; hand contact force ranged 3.987–6.843 N. RGB semantic gate passed. `main.mp4` and `close.mp4` were generated only after those predicates passed. Root inspected the lifted-box close-up.
+- At the end of retreat, hand contact was zero, Thor support approximately 0.785 N, and the box had settled near the source position. Release had a transient force spike; no gentle-placement or relay acceptance is inferred.
+- Left runs 03–05 failed lift, preserved their trace/report and generated no accepted video. Gravity compensation reduced the approach arm error from roughly 0.02 rad to roughly 0.00003 rad. FK force-direction analysis corrected the ineffective thumb preload.
+- Right `contact_right01` rejected a floating-point limit endpoint; the runtime now allows 1e-6 rad conversion rounding. Right 02/03 physically failed lift. Right 03 used a plan accepted with the original 1 mm screening limit, but the robot was absent from RGB. No right or relay video was accepted. Temporary 2.5 mm diagnostic screening experiments were not retained in source or used as final geometric acceptance; all source screening limits remain unchanged.
+- Conversion/runtime unresolved `color_optical` visual-reference and Kit warnings remain in private logs. All completed Kit trials failed to return from close and were terminated by their owner after report persistence; this is not normal shutdown or exit-code-zero acceptance.
+- All dynamic body gravity/collision/material properties remain in the audit. No per-frame joint state writes, object pose writes, attachment, or gravity removal were used. The standalone support-only diagnostic is separate and is not grasp evidence.
+
+Tests run: root unittest discovery 123 tests, 113 passed/10 skipped; planner/search tests in the existing simulation environment 13 passed; added preload identity/order/effort tests 8 contact tests passed. `compileall` and `git diff --check` passed. The final discovery count after the added test is recorded in the private command log. Skips include unavailable root LeRobot integration, symlinks and optional USD/scientific dependencies; no dataset compatibility claim follows. Full relay and production collection remain unvalidated.
