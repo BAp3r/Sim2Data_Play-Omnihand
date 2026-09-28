@@ -298,17 +298,17 @@ def _seed_position(model, side, active, close, rotation, face_axis, direction):
 
 
 def _objective(model, side, active, opened, profile_close, position0,
-               rotation0, approach, closing_axis, max_points):
+               rotation0, approach, closing_axis, max_points, closure_penalty=False):
     links = distal_links(side)
     face_axis, _, face_coordinates = layout(closing_axis)
     n = len(active)
+    open_geometry = hand_geometry(model, expand_q(model, active, opened), side,
+                                  max_points_per_link=max_points)
 
     def residual(x):
         close = x[:n]
         position = x[n:n + 3]
         rotation = rotation0 * Rotation.from_rotvec(x[n + 3:n + 6])
-        open_geometry = hand_geometry(model, expand_q(model, active, opened), side,
-                                      max_points_per_link=max_points)
         close_geometry = hand_geometry(model, expand_q(model, active, close), side,
                                        max_points_per_link=max_points)
         opened_world = world_geometry(open_geometry, position - approach * PREGRASP_M, rotation)
@@ -324,16 +324,22 @@ def _objective(model, side, active, opened, profile_close, position0,
             terms.extend(np.sort(distance)[:contact_count] * 22.)
             signed = box_sdf(points, BOX_CENTER, BOX_SIZE)
             worst = np.partition(signed, contact_count - 1)[:contact_count]
-            terms.extend(np.minimum(worst + CONTACT_PENETRATION_M, 0.) * 18.)
-        for world, weight in ((closed_world, 18.), (opened_world, 12.),
-                              (opened_grasp_world, 12.)):
+            terms.extend(np.minimum(worst + 0.0002, 0.) * 120.)
+        worlds = [(closed_world, 100.), (opened_world, 100.), (opened_grasp_world, 100.)]
+        if closure_penalty:
+            for fraction in (.25, .5, .75):
+                intermediate = hand_geometry(model, expand_q(model, active, opened + fraction*(close-opened)),
+                                             side, max_points_per_link=max_points)
+                worlds.append((world_geometry(intermediate, position, rotation), 100.))
+        for world, weight in worlds:
             for link, points in world.items():
                 sdf = box_sdf(points, BOX_CENTER, BOX_SIZE)
                 intended_contact = world is closed_world and link in links.values()
                 if not intended_contact:
                     count = min(8, len(sdf))
                     worst = np.partition(sdf, count - 1)[:count]
-                    terms.extend(np.minimum(worst - NONCONTACT_M, 0.) * weight)
+                    margin = -0.0002 if link in links.values() and world is not opened_world and world is not opened_grasp_world else 0.003
+                    terms.extend(np.minimum(worst - margin, 0.) * weight)
                 ground = points[:, 2] - FULL_FLAT_GROUND_M
                 ground_count = min(8, len(ground))
                 terms.extend(np.minimum(np.partition(ground, ground_count - 1)[:ground_count], 0.) * weight)
@@ -344,7 +350,7 @@ def _objective(model, side, active, opened, profile_close, position0,
                 if mask.any():
                     table = points[mask, 2] - THOR_COLLISION_TOP_M
                     table_count = min(8, len(table))
-                    table_values = np.minimum(np.partition(table, table_count - 1)[:table_count], 0.) * weight
+                    table_values = np.minimum(np.partition(table, table_count - 1)[:table_count] - 0.002, 0.) * weight
                     table_terms[:len(table_values)] = table_values
                 terms.extend(table_terms)
         terms.extend((close - profile_close) * .04)
@@ -385,7 +391,7 @@ def search_candidates(urdf_path, profile_path, manifest_path, side,
             initial.append(np.r_[np.clip(profile_close + rng.normal(0, .3, len(active)), lower + 1e-7, upper - 1e-7),
                                  position0 + rng.normal(0, .02, 3), rng.normal(0, .3, 3)])
         residual = _objective(model, side, active, opened, profile_close, position0,
-                             rotation0, approach, closing, max_points)
+                             rotation0, approach, closing, max_points, closure_penalty=True)
         best = None
         for x0 in initial:
             try:
