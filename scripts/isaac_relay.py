@@ -293,4 +293,3 @@ def run(args):
 if __name__=="__main__":
     parser=argparse.ArgumentParser();parser.add_argument("--spec",type=Path,required=True);parser.add_argument("--out",type=Path,required=True)
     raise SystemExit(run(parser.parse_args()))
-

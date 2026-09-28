@@ -65,4 +65,3 @@ def export_relay(capture_root, output_root):
 if __name__=="__main__":
     p=argparse.ArgumentParser();p.add_argument("--capture",type=Path,required=True);p.add_argument("--out",type=Path,required=True)
     args=p.parse_args();print(json.dumps(export_relay(args.capture,args.out),indent=2))
-

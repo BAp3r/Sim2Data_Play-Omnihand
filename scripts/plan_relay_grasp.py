@@ -38,4 +38,3 @@ if __name__=="__main__":
     args=vars(parser.parse_args());result=plan_at_box(**args)
     print(json.dumps({"passed":result["passed"],"geometry_gate":result["planner"]["geometry_gate"]["failure_reasons"]}))
     raise SystemExit(0 if result["passed"] else 3)
-
