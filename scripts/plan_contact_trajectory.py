@@ -512,7 +512,7 @@ def collision_screen(model, arm_q, active, amount, base_world, box_center, allow
             "method": "sampled source collision surfaces versus cardbox AABB, bounded Thor footprint/top, and ground; not exhaustive triangle collision"}
 
 
-def create_plan(urdf_path, profile_path, manifest_path, side):
+def create_plan(urdf_path, profile_path, manifest_path, side, grasp_search=None):
     profile = json.loads(Path(profile_path).read_text(encoding="utf-8"))
     manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
     if side not in ("left", "right"):
@@ -553,11 +553,64 @@ def create_plan(urdf_path, profile_path, manifest_path, side):
     candidates = [(approach, closing * roll,
                    f"{name}_roll_{'positive' if roll > 0 else 'negative'}")
                   for approach, closing, name in approach_directions for roll in (1.0, -1.0)]
+    searched = {}
+    if grasp_search is not None:
+        search = json.loads(Path(grasp_search).read_text(encoding="utf-8"))
+        for key, path in (("urdf", urdf_path), ("profile", profile_path), ("manifest", manifest_path)):
+            if search.get(key + "_sha256") != sha256(Path(path)):
+                raise ValueError(f"grasp search {key} identity mismatch")
+        if search.get("side") != side or search.get("scene_kind") != SCENE_KIND:
+            raise ValueError("grasp search side/scene mismatch")
+        searched = {c["name"]: c for c in search["candidates"] if "palm_pose_world" in c}
+        candidates = [(np.asarray(c["approach_unit_world"]), np.asarray(c["closing_axis_unit_world"]), c["name"])
+                      for c in searched.values()]
+        if not candidates:
+            raise ValueError("grasp search has no finite candidates")
     results = []
     for approach, close_hint, label in candidates:
-        fit = fit_contacts(clouds, approach, close_hint, closed_hand_geometry,
-                           allowed_links=distal_links, open_geometry=open_hand_geometry,
-                           table_z=table["collision_top_z_m"])
+        if label in searched:
+            c = searched[label]
+            names = [item["name"] for item in active]
+            if any(c[k]["joint_names"] != names or len(c[k]["values_rad"]) != len(names)
+                   for k in ("hand_open", "hand_close")):
+                raise ValueError("grasp search active joint order mismatch")
+            active = [dict(item, open_rad=float(lo), close_rad=float(hi)) for item, lo, hi in
+                      zip(active, c["hand_open"]["values_rad"], c["hand_close"]["values_rad"])]
+            validate_hand_targets(model.joints, active, side)
+            close_q = positions_for(model.joints, active, model.arm_names, np.zeros(6), 1.0)
+            open_q = positions_for(model.joints, active, model.arm_names, np.zeros(6), 0.0)
+            matrix = np.asarray(c["palm_pose_world"]["matrix_4x4"], dtype=float)
+            if (matrix.shape != (4,4) or not np.isfinite(matrix).all()
+                    or not np.allclose(matrix[3], [0,0,0,1])
+                    or not np.allclose(matrix[:3,:3].T @ matrix[:3,:3], np.eye(3), atol=1e-6)
+                    or not np.isclose(np.linalg.det(matrix[:3,:3]), 1.0)):
+                raise ValueError("invalid candidate rigid transform")
+            rotation = Rotation.from_matrix(matrix[:3, :3])
+            geometry = hand_geometry(model, close_q, side)
+            contact_rows = {}
+            axis = int(np.argmax(np.abs(close_hint[:2])))
+            direction = 1 if close_hint[axis] >= 0 else -1
+            for role in ("thumb", "index", "middle"):
+                link = f"{side}_hand__{'l' if side == 'left' else 'R'}_{role}_dip_link"
+                world = geometry[link] @ matrix[:3,:3].T + matrix[:3,3]
+                coordinate = BOX_CENTER[axis] + (-direction if role == "thumb" else direction)*BOX_SIZE[axis]/2
+                distances, _ = box_face_patch_distances(world, BOX_CENTER, BOX_SIZE, axis, coordinate)
+                contact_rows[role] = {"nearest_mean_m": float(np.sort(distances)[:8].mean()),
+                                      "face_axis": axis, "face_coordinate_m": float(coordinate)}
+            clearance = hand_box_clearance(geometry, matrix[:3, 3], rotation, BOX_CENTER, BOX_SIZE)
+            clearance["noncontact_minimum_clearance_m"] = min(
+                item["minimum_signed_clearance_m"] for name, item in clearance["links"].items() if name not in distal_links)
+            fit = dict(position=matrix[:3,3], rotation=rotation, matrix=matrix,
+                       approach=approach, close_axis=close_hint, contacts=contact_rows,
+                       closed_hand_box_clearance=clearance,
+                       position_residual_m=max(item["nearest_mean_m"] for item in contact_rows.values()),
+                       orientation_residual_rad=0.0, optimizer_success=True,
+                       objective_norm=c["optimization"]["objective_norm"])
+        else:
+            fit = fit_contacts(clouds, approach, close_hint, closed_hand_geometry,
+                               allowed_links=distal_links, open_geometry=open_hand_geometry,
+                               table_z=table["collision_top_z_m"])
+        fit["active_targets"] = active
         pre, grasp, lift = fit["matrix"].copy(), fit["matrix"].copy(), fit["matrix"].copy()
         pre[:3, 3] -= approach * 0.05
         lift[:3, 3] += [0, 0, 0.08]
@@ -631,6 +684,7 @@ def create_plan(urdf_path, profile_path, manifest_path, side):
                                   not item["collision_feasible"], item["position_residual_m"],
                                   max(value["position_residual_m"] for value in item["ik"].values())))
     chosen = results[0]
+    active = chosen["active_targets"]
     passed = chosen["candidate_passed"]
     gate_candidates = []
     for item in results:
@@ -731,13 +785,14 @@ def main(argv=None):
     for name in ("urdf", "profile", "manifest", "out"):
         parser.add_argument("--" + name, type=Path, required=True)
     parser.add_argument("--side", choices=("left", "right"), required=True)
+    parser.add_argument("--grasp-search", type=Path)
     args = parser.parse_args(argv)
     if args.out.exists():
         raise SystemExit("fresh private output path required")
     args.out.mkdir(parents=True)
     result_path = args.out / "plan.json"
     try:
-        result = create_plan(args.urdf, args.profile, args.manifest, args.side)
+        result = create_plan(args.urdf, args.profile, args.manifest, args.side, args.grasp_search)
         result["input_paths_private"] = {name: str(getattr(args, name).resolve())
                                          for name in ("urdf", "profile", "manifest")}
         result_path.write_text(json.dumps(result, indent=2, allow_nan=False), encoding="utf-8")

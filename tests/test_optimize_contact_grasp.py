@@ -1,6 +1,10 @@
 import unittest
+import importlib.util
 import xml.etree.ElementTree as ET
 from unittest.mock import patch
+
+if any(importlib.util.find_spec(name) is None for name in ("numpy", "scipy", "trimesh")):
+    raise unittest.SkipTest("grasp search tests require the existing simulation interpreter")
 
 import numpy as np
 
