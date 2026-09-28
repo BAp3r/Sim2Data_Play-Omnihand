@@ -303,7 +303,7 @@ def hand_clearance_residual(clearances, *, minimum_clearance_m=0.002, count=24, 
     if clearances.size == 0:
         return np.zeros(count, dtype=float)
     take = min(count, clearances.size)
-    worst = np.partition(clearances, take - 1)[:take]
+    worst = np.sort(clearances)[:take]
     result = np.minimum(worst - minimum_clearance_m, 0.0) * weight
     if take < count:
         result = np.pad(result, (0, count - take))
@@ -530,6 +530,8 @@ def create_plan(urdf_path, profile_path, manifest_path, side, grasp_search=None)
     robot_profile = profile["robots"][side]
     model = RobotModel(urdf_path, side)
     active_limits = validate_hand_targets(model.joints, active, side)
+    reset_hand = [float(np.clip(0., active_limits[a["name"]]["lower_rad"],
+                               active_limits[a["name"]]["upper_rad"])) for a in active]
     close_q = positions_for(model.joints, active, model.arm_names, np.zeros(6), 1.0)
     open_q = positions_for(model.joints, active, model.arm_names, np.zeros(6), 0.0)
     clouds = hand_clouds(model, close_q, side)
@@ -626,8 +628,17 @@ def create_plan(urdf_path, profile_path, manifest_path, side, grasp_search=None)
                             screen=lambda q: screen(q, 1, BOX_CENTER, tips))
         ik_lift = solve_ik(model, lift, base_world, close_q, ik_grasp["q"],
                            screen=lambda q: screen(q, 1, BOX_CENTER + [0,0,.08], tips))
+        lift_waypoints = [ik_grasp["q"]]
+        lift_path_ik_ok = True
+        for fraction in np.linspace(0, 1, 9)[1:]:
+            target = grasp.copy()
+            target[:3,3] += [0,0,.08*fraction]
+            waypoint = solve_ik(model, target, base_world, close_q, lift_waypoints[-1])
+            lift_path_ik_ok &= waypoint["position_residual_m"] <= .0002 and waypoint["orientation_residual_rad"] <= .002
+            lift_waypoints.append(waypoint["q"])
+        ik_lift = dict(ik_lift, q=lift_waypoints[-1])
         ik = {"pregrasp": ik_pre, "grasp": ik_grasp, "lift": ik_lift}
-        ik_ok = all(item["position_residual_m"] <= 0.002 and item["orientation_residual_rad"] <= 0.02
+        ik_ok = lift_path_ik_ok and all(item["position_residual_m"] <= 0.002 and item["orientation_residual_rad"] <= 0.02
                     and np.all(item["q"] >= np.asarray(model.arm_limits)[:, 0] - 1e-8)
                     and np.all(item["q"] <= np.asarray(model.arm_limits)[:, 1] + 1e-8)
                     for item in ik.values())
@@ -655,6 +666,14 @@ def create_plan(urdf_path, profile_path, manifest_path, side, grasp_search=None)
         path_gate = {"passed": False, "samples_per_segment": 25,
                      "reason": "endpoint gate failed", "failures": []}
         if ik_ok:
+            prepare_active = [dict(a, open_rad=reset, close_rad=a["open_rad"])
+                              for a, reset in zip(active, reset_hand)]
+            for fraction in np.linspace(0,1,25):
+                checked = collision_screen(model, approach_start_q, prepare_active, fraction, base_world,
+                                           BOX_CENTER, set(), table["collision_top_z_m"], table["ground_z_m"])
+                if not checked["passed"]:
+                    path_gate["failures"].append({"segment":"prepare_hand", "fraction":float(fraction),
+                                                  "reasons":checked["failures"]})
             # Screen the actual joint-interpolated phases, including finger
             # closing; endpoint-only IK is not a collision-free trajectory.
             for segment, start, end, a0, a1 in (
@@ -665,7 +684,12 @@ def create_plan(urdf_path, profile_path, manifest_path, side, grasp_search=None)
                 for u in np.linspace(0, 1, 25):
                     box_target = BOX_CENTER + ([0,0,.08*u] if segment == "lift" else np.zeros(3))
                     allowed = tips if segment in ("finger_close", "lift") else set()
-                    checked = screen(start+(end-start)*u, a0+(a1-a0)*u, box_target, allowed,
+                    arm_sample = start+(end-start)*u
+                    if segment == "lift":
+                        scaled = u*(len(lift_waypoints)-1)
+                        index = min(int(scaled), len(lift_waypoints)-2)
+                        arm_sample = lift_waypoints[index] + (scaled-index)*(lift_waypoints[index+1]-lift_waypoints[index])
+                    checked = screen(arm_sample, a0+(a1-a0)*u, box_target, allowed,
                                      require_contact=segment != "finger_close" or u == 1)
                     if not checked["passed"]:
                         path_gate["failures"].append({"segment": segment, "fraction": float(u),
@@ -673,6 +697,7 @@ def create_plan(urdf_path, profile_path, manifest_path, side, grasp_search=None)
             path_gate.update(passed=not path_gate["failures"], reason="sampled joint-interpolated path")
         collision_ok = collision_ok and path_gate["passed"]
         fit.update({"name": label, "ik": ik, "ik_feasible": ik_ok,
+                    "lift_waypoints": lift_waypoints,
                     "contact_feasible": contact_ok, "collision": collision,
                     "path_gate": path_gate,
                     "closed_hand_clearance_feasible": closed_hand_clearance_ok,
@@ -717,11 +742,11 @@ def create_plan(urdf_path, profile_path, manifest_path, side, grasp_search=None)
             "passed": bool(passed), "execution_allowed": bool(passed), "physics_validated": False,
             "production_collection_allowed": False,
             "start_configuration": {"arm": approach_start_q.tolist(),
-                                     "hand": [float(item["open_rad"]) for item in active]},
+                                     "hand": reset_hand},
             "start_configuration_joint_names": {"arm": list(model.arm_names),
                                                  "hand": [item["name"] for item in active]},
             "start_configuration_sources": {"arm": "source URDF zero configuration clamped to arm joint limits",
-                                              "hand": "synthetic profile open targets in active-joint order",
+                                              "hand": "source zero clamped to limits; prepare_hand drives to open along screened path",
                                               "runtime_readback_required": True},
             "box_center": BOX_CENTER.tolist(), "box_size": BOX_SIZE.tolist(),
             "mass_kg": 0.08, "friction": 0.8, "physics_dt": 0.001,
@@ -768,6 +793,7 @@ def create_plan(urdf_path, profile_path, manifest_path, side, grasp_search=None)
                      "pregrasp": chosen["ik"]["pregrasp"]["q"].tolist(),
                      "grasp": chosen["ik"]["grasp"]["q"].tolist(),
                      "lift": chosen["ik"]["lift"]["q"].tolist(),
+                     "lift_waypoints": [q.tolist() for q in chosen["lift_waypoints"]],
                      "position_residual_m": chosen["position_residual_m"],
                      "orientation_residual_rad": chosen["orientation_residual_rad"],
                      "finger_contact_residuals": chosen["contacts"],

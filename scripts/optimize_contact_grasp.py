@@ -323,11 +323,11 @@ def _objective(model, side, active, opened, profile_close, position0,
             contact_count = min(6, len(distance))
             terms.extend(np.sort(distance)[:contact_count] * 22.)
             signed = box_sdf(points, BOX_CENTER, BOX_SIZE)
-            worst = np.partition(signed, contact_count - 1)[:contact_count]
+            worst = np.sort(signed)[:contact_count]
             terms.extend(np.minimum(worst + 0.0002, 0.) * 120.)
         worlds = [(closed_world, 100.), (opened_world, 100.), (opened_grasp_world, 100.)]
         if closure_penalty:
-            for fraction in (.25, .5, .75):
+            for fraction in (.25, .5, .75, .875, .9375):
                 intermediate = hand_geometry(model, expand_q(model, active, opened + fraction*(close-opened)),
                                              side, max_points_per_link=max_points)
                 worlds.append((world_geometry(intermediate, position, rotation), 100.))
@@ -337,12 +337,12 @@ def _objective(model, side, active, opened, profile_close, position0,
                 intended_contact = world is closed_world and link in links.values()
                 if not intended_contact:
                     count = min(8, len(sdf))
-                    worst = np.partition(sdf, count - 1)[:count]
+                    worst = np.sort(sdf)[:count]
                     margin = -0.0002 if link in links.values() and world is not opened_world and world is not opened_grasp_world else 0.003
                     terms.extend(np.minimum(worst - margin, 0.) * weight)
                 ground = points[:, 2] - FULL_FLAT_GROUND_M
                 ground_count = min(8, len(ground))
-                terms.extend(np.minimum(np.partition(ground, ground_count - 1)[:ground_count], 0.) * weight)
+                terms.extend(np.minimum(np.sort(ground)[:ground_count], 0.) * weight)
                 mask = ((np.abs(points[:, 0]) <= THOR_HALF_X_M) & (np.abs(points[:, 1]) <= THOR_HALF_Y_M))
                 # Keep the residual vector length fixed even when a sampled
                 # link moves outside the finite Thor footprint.
@@ -350,10 +350,13 @@ def _objective(model, side, active, opened, profile_close, position0,
                 if mask.any():
                     table = points[mask, 2] - THOR_COLLISION_TOP_M
                     table_count = min(8, len(table))
-                    table_values = np.minimum(np.partition(table, table_count - 1)[:table_count] - 0.002, 0.) * weight
+                    table_values = np.minimum(np.sort(table)[:table_count] - 0.002, 0.) * weight
                     table_terms[:len(table_values)] = table_values
                 terms.extend(table_terms)
         terms.extend((close - profile_close) * .04)
+        # Ring and pinky are not intended contacts in this three-finger grasp.
+        # Preserve their already-clear folded posture through the close path.
+        terms.extend((close[6:] - opened[6:]) * 10.)
         terms.extend(x[n + 3:n + 6] * .04)
         return np.asarray(terms, dtype=float)
     return residual
@@ -443,6 +446,54 @@ def search_candidates(urdf_path, profile_path, manifest_path, side,
             "urdf_sha256": sha256(urdf_path)}
 
 
+def refine_candidate(urdf_path, profile_path, manifest_path, side, search_path,
+                     candidate_name, max_nfev, max_points):
+    """Densify a bound candidate without allowing it to bypass arm/path gates."""
+    result = json.loads(Path(search_path).read_text(encoding="utf-8"))
+    for key, path in (("urdf", urdf_path), ("profile", profile_path), ("manifest", manifest_path)):
+        if result.get(key + "_sha256") != sha256(path):
+            raise ValueError("refinement input identity mismatch: " + key)
+    if result.get("side") != side:
+        raise ValueError("refinement side mismatch")
+    source = next(c for c in result["candidates"] if c["name"] == candidate_name)
+    model = RobotModel(urdf_path, side)
+    profile = json.loads(Path(profile_path).read_text(encoding="utf-8"))
+    active = profile["gripper_commissioning"][side]["active_joints"]
+    limits = validate_hand_targets(model.joints, active, side)
+    names = [a["name"] for a in active]
+    if any(source[k]["joint_names"] != names for k in ("hand_open", "hand_close")):
+        raise ValueError("refinement joint order mismatch")
+    opened = np.asarray(source["hand_open"]["values_rad"])
+    closed = np.asarray(source["hand_close"]["values_rad"])
+    position = np.asarray(source["palm_pose_world"]["position_m"])
+    matrix = np.asarray(source["palm_pose_world"]["matrix_4x4"])
+    rotation = Rotation.from_matrix(matrix[:3,:3])
+    approach = np.asarray(source["approach_unit_world"])
+    closing = np.asarray(source["closing_axis_unit_world"])
+    lower = np.asarray([limits[n]["lower_rad"] for n in names])
+    upper = np.asarray([limits[n]["upper_rad"] for n in names])
+    objective = _objective(model, side, active, opened, closed, position, rotation,
+                           approach, closing, max_points, closure_penalty=True)
+    x0 = np.r_[closed, position, np.zeros(3)]
+    solution = least_squares(objective, x0,
+                             bounds=(np.r_[lower, position-.04, [-.5]*3],
+                                     np.r_[upper, position+.04, [.5]*3]),
+                             max_nfev=max_nfev, ftol=1e-8, xtol=1e-8, gtol=1e-8)
+    n = len(active)
+    rnew = rotation * Rotation.from_rotvec(solution.x[n+3:n+6])
+    candidate = evaluate_candidate(model, side, active, opened, solution.x[:n],
+                                   solution.x[n:n+3], rnew, approach, closing,
+                                   path_samples=25, max_points=2048)
+    candidate.update(name=candidate_name, hand_open=source["hand_open"],
+                     hand_close={"joint_names": names, "values_rad": solution.x[:n].tolist()},
+                     optimization={"optimizer_success":bool(solution.success), "nfev":int(solution.nfev),
+                                   "objective_norm":float(np.linalg.norm(solution.fun)),
+                                   "refined_from_sha256":sha256(search_path), "samples_per_link":max_points})
+    result.update(candidates=[candidate], candidate_count=1, selected_candidate=candidate_name,
+                  execution_allowed=False, physics_validated=False)
+    return result
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("urdf", "profile", "manifest", "out"):
@@ -452,13 +503,19 @@ def main(argv=None):
     parser.add_argument("--max-nfev", type=int, default=80)
     parser.add_argument("--max-points", type=int, default=48)
     parser.add_argument("--seed", type=int, default=141)
+    parser.add_argument("--refine-search", type=Path)
+    parser.add_argument("--candidate-name")
     args = parser.parse_args(argv)
     if args.out.exists():
         raise SystemExit("fresh private output path required")
     args.out.mkdir(parents=True)
     result_path = args.out / "search.json"
     try:
-        result = search_candidates(args.urdf, args.profile, args.manifest, args.side,
+        if args.refine_search:
+            result = refine_candidate(args.urdf, args.profile, args.manifest, args.side,
+                                      args.refine_search, args.candidate_name, args.max_nfev, args.max_points)
+        else:
+            result = search_candidates(args.urdf, args.profile, args.manifest, args.side,
                                    starts=args.starts, max_nfev=args.max_nfev,
                                    max_points=args.max_points, seed=args.seed)
         result["input_paths_private"] = {x: str(getattr(args, x).resolve()) for x in ("urdf", "profile", "manifest")}

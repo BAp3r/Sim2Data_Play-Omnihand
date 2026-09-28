@@ -86,6 +86,9 @@ def main():
     parser.add_argument("--table", type=Path)
     parser.add_argument("--cardbox", type=Path)
     parser.add_argument("--manifest", type=Path, default=Path("configs/asset_manifest.json"))
+    parser.add_argument("--squeeze-effort", type=float, default=0.0,
+                        help="Synthetic active flexion effort preload in Nm, ramped during finger close (0..0.3)")
+    parser.add_argument("--preload", type=Path, help="Source FK Jacobian preload bound to this plan")
     parser.add_argument("--scene-only", action="store_true", help="Scene visibility review with render warmup; no action trajectory or grasp claim")
     parser.add_argument("--support-only", action="store_true", help="Gravity/support force validation only; no robot action trajectory")
     args = parser.parse_args()
@@ -112,6 +115,8 @@ def main():
         if any(r["inputs"]["profile_sha256"] != sha256(args.profile) for r in (response, other)):
             raise ValueError("profile changed after response acceptance")
         plan = json.loads(args.plan.read_text(encoding="utf-8"))
+        if not math.isfinite(args.squeeze_effort) or not 0 <= args.squeeze_effort <= .3:
+            raise ValueError("squeeze effort must be finite in [0, 0.3] Nm")
         diagnostic_only = args.scene_only or args.support_only
         if args.scene_only and args.support_only:
             raise ValueError("choose scene-only or support-only")
@@ -353,9 +358,16 @@ def main():
             raise ValueError("no hand contact filters resolved")
         report["drives"]={"gains":_json(controller.get_gains()),"effort_limits":_json(controller.get_max_efforts()),
                           "velocity_limits":_json(view.get_joint_max_velocities()),"synthetic":True}
+        report["arm_gravity_compensation"] = {
+            "enabled": True, "source": "PhysX generalized gravity compensation forces",
+            "joint_names": arm, "absolute_effort_cap_Nm": 40.0,
+            "gravity_remains_enabled": True, "synthetic_controller": True}
         qstart=np.asarray(robot.get_joint_positions()).reshape(-1)[indices]
         start = plan.get("start_configuration", {})
         expected_start = np.asarray(list(start.get("arm", [])) + list(start.get("hand", [])), dtype=float)
+        report["reset_joint_check"] = {"measured": _json(qstart), "expected": _json(expected_start),
+                                       "max_abs_error": (float(np.max(np.abs(expected_start-qstart)))
+                                                         if expected_start.shape == qstart.shape else None)}
         if (expected_start.shape != qstart.shape or not np.isfinite(expected_start).all()
                 or np.max(np.abs(expected_start-qstart)) > .02):
             raise ValueError("measured reset joints differ from collision-screened trajectory start")
@@ -363,19 +375,43 @@ def main():
         hand_close = plan.get("hand_close", [x["close_rad"] for x in active])
         if len(hand_open) != len(active) or len(hand_close) != len(active):
             raise ValueError("contact hand endpoints must cover active joints only")
+        # Only the three opposed fingers receive bounded flexion preload.
+        # Passive/mimic joints remain read-only. This is actuator torque, not a
+        # claimed contact force or a change to gravity/collision geometry.
+        squeeze = np.zeros(len(active))
+        for j, item in enumerate(active):
+            name = item["dof_name"]
+            if any(part in name for part in ("thumb_abad_joint", "index_pip_joint", "middle_pip_joint")):
+                squeeze[j] = args.squeeze_effort * np.sign(hand_close[j]-hand_open[j])
+        report["squeeze_preload"] = {"synthetic":True,"effort_Nm":squeeze.tolist(),
+            "joint_names":[a["dof_name"] for a in active],"not_measured_contact_force":True}
+        if args.preload:
+            if args.squeeze_effort:
+                raise ValueError("choose scalar or Jacobian preload")
+            preload = json.loads(args.preload.read_text(encoding="utf-8"))
+            if (preload.get("plan_sha256") != sha256(args.plan)
+                    or preload.get("profile_sha256") != sha256(args.profile)
+                    or preload.get("urdf_sha256") != plan["urdf_sha256"]
+                    or preload.get("joint_names") != [a["dof_name"] for a in active]):
+                raise ValueError("preload input identity or active joint order mismatch")
+            squeeze = np.asarray(preload["effort_Nm"], dtype=float)
+            if squeeze.shape != (len(active),) or not np.isfinite(squeeze).all() or np.any(np.abs(squeeze) > efforts[indices[6:]]):
+                raise ValueError("preload exceeds active effort bounds")
+            report["squeeze_preload"] = preload
         props = robot.dof_properties
         for i, lo, hi in zip(indices[6:], hand_open, hand_close):
-            if not all(np.isfinite(v) and props[i]["lower"] <= v <= props[i]["upper"] for v in (lo, hi)):
+            if not all(np.isfinite(v) and props[i]["lower"] - 1e-6 <= v <= props[i]["upper"] + 1e-6 for v in (lo, hi)):
                 raise ValueError("contact hand target outside source limits")
         for arm_target in (plan["pregrasp"], plan["grasp"], plan["lift"]):
-            if len(arm_target) != 6 or not all(np.isfinite(v) and props[i]["lower"] <= v <= props[i]["upper"]
+            if len(arm_target) != 6 or not all(np.isfinite(v) and props[i]["lower"] - 1e-6 <= v <= props[i]["upper"] + 1e-6
                                                 for i,v in zip(indices[:6],arm_target)):
                 raise ValueError("arm target outside source limits")
         records=[]; images=[]; step=0
         report.update(trace="trace.jsonl", images=images, dt=dt,
                       inertia_override_applied=False)
         rgbroot=args.out/"rgb";rgbroot.mkdir()
-        phases=[("approach",plan["pregrasp"],0,4), ("approach_lower",plan["grasp"],0,2),
+        phases=[("prepare_hand",plan["start_configuration"]["arm"],0,3),
+                ("approach",plan["pregrasp"],0,4), ("approach_lower",plan["grasp"],0,2),
                 ("finger_close",plan["grasp"],1,2), ("lift",plan["lift"],1,3),
                 ("hold",plan["lift"],1,2), ("lower",plan["grasp"],1,3),
                 ("release",plan["grasp"],0,2), ("retreat",plan["pregrasp"],0,2)]
@@ -387,7 +423,30 @@ def main():
                 for tick in range(count):
                     u=min(1,(tick+1)/(count*.8)); blend=u*u*(3-2*u)
                     command=qstart+(end-qstart)*blend
-                    robot.apply_action(_action(ArticulationAction,indices,command.tolist()))
+                    if phase in ("lift", "lower") and plan.get("lift_waypoints"):
+                        waypoints = np.asarray(plan["lift_waypoints"], dtype=float)
+                        if waypoints.ndim != 2 or waypoints.shape[1] != 6 or not np.isfinite(waypoints).all():
+                            raise ValueError("invalid Cartesian lift joint waypoints")
+                        if phase == "lower":
+                            waypoints = waypoints[::-1]
+                        scaled = blend*(len(waypoints)-1)
+                        index = min(int(scaled), len(waypoints)-2)
+                        command[:6] = waypoints[index]+(scaled-index)*(waypoints[index+1]-waypoints[index])
+                    # Counteract the measured configuration's gravity load with
+                    # actuator torque. Keep gravity, contacts and position drives
+                    # active; never compensate passive/mimic hand joints.
+                    gravity = np.asarray(view.get_generalized_gravity_forces()).reshape(-1)
+                    if gravity.shape != (len(dofs),) or not np.isfinite(gravity).all():
+                        raise ValueError("invalid PhysX gravity compensation readback")
+                    feedforward = np.zeros(len(indices))
+                    feedforward[:6] = np.clip(gravity[indices[:6]], -40., 40.)
+                    squeeze_scale = (blend if phase == "finger_close" else
+                                     1.0 if phase in ("lift", "hold", "lower") else
+                                     1.0-blend if phase == "release" else 0.0)
+                    feedforward[6:] = squeeze * squeeze_scale
+                    action = _action(ArticulationAction,indices,command.tolist())
+                    action.joint_efforts = torch.tensor(feedforward, dtype=torch.float32)
+                    robot.apply_action(action)
                     sim.step(render=step%rgb_stride==0)
                     pos,quat=box.get_world_poses()
                     q=robot.get_joint_positions();qd=robot.get_joint_velocities()
@@ -408,6 +467,7 @@ def main():
                         filter_count=_view_count("num_filters"),
                     )
                     row={"step":step,"time_s":(step+1)*dt,"phase":phase,"commanded":dict(zip([dofs[i] for i in indices],command.tolist())),
+                         "feedforward_effort_Nm":dict(zip([dofs[i] for i in indices],feedforward.tolist())),
                          "q":_json(q),"qd":_json(qd),"effort":_json(robot.get_measured_joint_efforts()),
                          "box_position":_json(pos[0]),"box_quaternion_wxyz":_json(quat[0]),
                          "box_velocity":_json(box.get_velocities()[0]),"contacts":contacts,
