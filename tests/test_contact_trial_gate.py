@@ -3,10 +3,29 @@ import sys
 from pathlib import Path
 import unittest
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
-from isaac_contact_trial import contact_lift_gate, state_is_bounded, validate_planned_scene
+from isaac_contact_trial import contact_lift_gate, state_is_bounded, validate_planned_scene, validate_preload
 
 
 class ContactGateTests(unittest.TestCase):
+    def test_preload_identity_order_and_effort_bounds(self):
+        import copy
+        request = dict(plan_sha256="p", profile_sha256="c", urdf_sha256="u",
+                       joint_names=["active1", "active2"], effort_Nm=[.2, -.3],
+                       synthetic=True, requested_force_is_not_measured=True)
+        def check(value):
+            return validate_preload(value, plan_sha="p", profile_sha="c", urdf_sha="u",
+                                    active_names=["active1", "active2"], effort_limits=[1., 1.])
+        self.assertEqual(check(request), [.2, -.3])
+        for key, value in (("plan_sha256", "stale"), ("urdf_sha256", "other"),
+                           ("joint_names", ["active2", "active1"]),
+                           ("joint_names", ["active1", "mimic"]),
+                           ("effort_Nm", [.2]), ("effort_Nm", [1.01, 0]),
+                           ("effort_Nm", [float("nan"), 0]), ("effort_Nm", [True, 0]),
+                           ("synthetic", False), ("requested_force_is_not_measured", False)):
+            invalid = copy.deepcopy(request); invalid[key] = value
+            with self.subTest(key=key, value=value), self.assertRaises(ValueError):
+                check(invalid)
+
     def row(self, **kwargs):
         return dict(phase="hold", box_position=[0,0,.14], support_force_N=0,
                     ground_force_N=0, hand_contact_force_N=.4, box_velocity=[0,0,0,0,0,0],

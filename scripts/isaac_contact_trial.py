@@ -56,6 +56,25 @@ def validate_planned_scene(plan, profile_sha, scene_only=False):
         raise ValueError("global-state geometry/IK gate failed; action execution blocked")
 
 
+def validate_preload(preload, *, plan_sha, profile_sha, urdf_sha, active_names, effort_limits):
+    """Reject stale, reordered or unbounded active-only feedforward requests."""
+    if (preload.get("plan_sha256") != plan_sha
+            or preload.get("profile_sha256") != profile_sha
+            or preload.get("urdf_sha256") != urdf_sha
+            or preload.get("joint_names") != active_names
+            or len(set(active_names)) != len(active_names)
+            or preload.get("synthetic") is not True
+            or preload.get("requested_force_is_not_measured") is not True):
+        raise ValueError("preload input identity or active joint order mismatch")
+    values = preload.get("effort_Nm", [])
+    if (len(values) != len(active_names) or len(effort_limits) != len(active_names)
+            or any(isinstance(v, bool) or not isinstance(v, (float, int)) or not math.isfinite(v)
+                   or not math.isfinite(limit) or limit < 0 or abs(v) > limit
+                   for v, limit in zip(values, effort_limits))):
+        raise ValueError("preload exceeds active effort bounds")
+    return values
+
+
 def camera_content(camera):
     """Record visible labelled pixel counts, not merely non-black backgrounds."""
     import numpy as np
@@ -389,14 +408,10 @@ def main():
             if args.squeeze_effort:
                 raise ValueError("choose scalar or Jacobian preload")
             preload = json.loads(args.preload.read_text(encoding="utf-8"))
-            if (preload.get("plan_sha256") != sha256(args.plan)
-                    or preload.get("profile_sha256") != sha256(args.profile)
-                    or preload.get("urdf_sha256") != plan["urdf_sha256"]
-                    or preload.get("joint_names") != [a["dof_name"] for a in active]):
-                raise ValueError("preload input identity or active joint order mismatch")
-            squeeze = np.asarray(preload["effort_Nm"], dtype=float)
-            if squeeze.shape != (len(active),) or not np.isfinite(squeeze).all() or np.any(np.abs(squeeze) > efforts[indices[6:]]):
-                raise ValueError("preload exceeds active effort bounds")
+            squeeze = np.asarray(validate_preload(
+                preload, plan_sha=sha256(args.plan), profile_sha=sha256(args.profile),
+                urdf_sha=plan["urdf_sha256"], active_names=[a["dof_name"] for a in active],
+                effort_limits=efforts[indices[6:]].tolist()), dtype=float)
             report["squeeze_preload"] = preload
         props = robot.dof_properties
         for i, lo, hi in zip(indices[6:], hand_open, hand_close):
