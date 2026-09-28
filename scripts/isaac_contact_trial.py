@@ -198,7 +198,17 @@ def main():
         # Ordered filter groups distinguish support from all hand/arm body contacts.
         bodies = [str(p.GetPath()) for p in stage.TraverseAll() if p.HasAPI(UsdPhysics.RigidBodyAPI)
                   and str(p.GetPath()).startswith(robot_parent + "/")]
-        filters = [support_path, ground_path] + bodies
+        # Use composed collider paths for contact filters. The Thor asset's
+        # namespace regex is useful as a scene description, but the PhysX
+        # tensor view may not expand instanceable descendants from that regex.
+        # Keeping the resolved paths makes the filter order auditable and lets
+        # the matrix report the actual support pair.
+        support_filters = list(scene.get("thor_colliders", []))
+        if not support_filters:
+            raise ValueError("Thor scene resolved no collider filters")
+        filters = support_filters + [ground_path] + bodies
+        support_filter_indices = list(range(len(support_filters)))
+        ground_filter_index = len(support_filters)
         box = RigidPrim(box_path, name="trial_box", track_contact_forces=True,
                         contact_filter_prim_paths_expr=filters, max_contact_count=4096,
                         disable_stablization=False, reset_xform_properties=False)
@@ -278,9 +288,9 @@ def main():
                 )
                 records.append({"step": step, "time_s": (step+1)*dt,
                                 "box_position": _json(pos[0]), "box_velocity": _json(box.get_velocities()[0]),
-                                "support_force_N": float(np.linalg.norm(matrix[0,0])),
-                                "ground_force_N": float(np.linalg.norm(matrix[0,1])),
-                                "robot_force_N": float(np.linalg.norm(matrix[0,2:],axis=1).sum()),
+                                "support_force_N": float(np.linalg.norm(matrix[0,support_filter_indices],axis=1).sum()),
+                                "ground_force_N": float(np.linalg.norm(matrix[0,ground_filter_index])),
+                                "robot_force_N": float(np.linalg.norm(matrix[0,ground_filter_index+1:],axis=1).sum()),
                                 "net_contact_force_N": _json(box.get_net_contact_forces(dt=dt)),
                                 "raw_counts": _json(raw[4]), "raw_shapes": raw_shapes,
                                 "contact_matrix": matrix_meta})
@@ -401,10 +411,10 @@ def main():
                          "q":_json(q),"qd":_json(qd),"effort":_json(robot.get_measured_joint_efforts()),
                          "box_position":_json(pos[0]),"box_quaternion_wxyz":_json(quat[0]),
                          "box_velocity":_json(box.get_velocities()[0]),"contacts":contacts,
-                         "support_force_N":float(np.linalg.norm(matrix[0,0])),
-                         "ground_force_N":float(np.linalg.norm(matrix[0,1])),
+                         "support_force_N":float(np.linalg.norm(matrix[0,support_filter_indices],axis=1).sum()),
+                         "ground_force_N":float(np.linalg.norm(matrix[0,ground_filter_index])),
                          "hand_contact_force_N":float(np.linalg.norm(matrix[0,hand_filter_indices],axis=1).sum()),
-                         "robot_contact_force_N":float(np.linalg.norm(matrix[0,2:],axis=1).sum()),
+                         "robot_contact_force_N":float(np.linalg.norm(matrix[0,ground_filter_index+1:],axis=1).sum()),
                          "contact_matrix":matrix_meta}
                     stream.write(json.dumps(row)+"\n");records.append(row)
                     if not state_is_bounded(row):
