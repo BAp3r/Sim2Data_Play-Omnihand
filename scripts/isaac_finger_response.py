@@ -2,9 +2,11 @@
 
 The input USD must be produced by the reviewed Isaac Lab URDF converter.  The
 probe initializes a real PhysX articulation and sends position targets through
-ArticulationAction.  It never writes joint state during the run; only the
-initial simulator reset is used.  No object is added, so this entry point does
-not claim contact, grasp, or production collection success.
+ArticulationAction.  Immediately after articulation initialization it performs
+one explicit active-hand open reset; that reset is recorded separately from the
+arm reset and is never repeated inside the response loop.  No object is added,
+so this entry point does not claim contact, grasp, or production collection
+success.
 """
 from __future__ import annotations
 
@@ -27,15 +29,211 @@ DEFAULT_DT = 1.0 / 240.0
 ARM_KP, ARM_KD, ARM_EFFORT, ARM_VELOCITY = 20.0, 2.0, 40.0, 2.0
 
 
-def response_passed(stages, movement, mimic, frames, tolerance):
-    """Fail closed on missing readback, collapsed targets or invalid coupling."""
-    return bool(movement) and all(row["passed"] for row in movement) and len(stages) == 4 and all(
-        math.isfinite(stage["hand_max_abs_error_rad"]) and stage["hand_max_abs_error_rad"] <= tolerance
-        for stage in stages) and bool(mimic) and all(
-        row["max_abs_residual_rad"] is not None and math.isfinite(row["max_abs_residual_rad"])
-        and row["max_abs_residual_rad"] <= 0.05 for row in mimic) and bool(frames) and all(
-        row["measured_effort"] is not None and all(math.isfinite(v) for v in row["measured_effort"])
-        for row in frames)
+def _finite_sequence(value: Any, length: int | None = None) -> bool:
+    """Return whether *value* is a finite scalar sequence of the requested size."""
+    if value is None or isinstance(value, (str, bytes, dict)):
+        return False
+    try:
+        values = list(value)
+    except (TypeError, ValueError):
+        return False
+    if length is not None and len(values) != length:
+        return False
+    return bool(values) and all(isinstance(item, (int, float)) and math.isfinite(float(item)) for item in values)
+
+
+def _finite_scalar(value: Any) -> bool:
+    return isinstance(value, (int, float)) and math.isfinite(float(value))
+
+
+def _float_list(value: Any) -> list[float]:
+    if hasattr(value, "reshape"):
+        value = value.reshape(-1)
+    if hasattr(value, "tolist"):
+        value = value.tolist()
+    return [float(item) for item in value]
+
+
+def _strict_response_evidence(evidence: dict[str, Any], stages, frames) -> bool:
+    """Validate evidence that only a real articulation response can provide.
+
+    Runtime reports supply all fields from ``SingleArticulation``.  The gate
+    deliberately fails closed when reset, command, limits, gains, or readback
+    sidecars are absent.
+    """
+    expected_amounts = tuple(float(item) for item in evidence.get("expected_amounts", AMOUNTS))
+    if len(stages) != len(expected_amounts):
+        return False
+    for phase_index, (stage, expected_amount) in enumerate(zip(stages, expected_amounts)):
+        if stage.get("phase_index") != phase_index or not _finite_scalar(stage.get("amount")):
+            return False
+        if not math.isclose(float(stage["amount"]), expected_amount, rel_tol=0.0, abs_tol=1e-9):
+            return False
+        if not isinstance(stage.get("samples"), int) or stage["samples"] <= 0:
+            return False
+        if not _finite_scalar(stage.get("hand_max_abs_error_rad")):
+            return False
+        if not _finite_scalar(stage.get("arm_max_abs_drift_rad")):
+            return False
+
+    dof_count = evidence.get("expected_dof_count")
+    all_dof_names = evidence.get("all_dof_names")
+    if not isinstance(dof_count, int) or dof_count <= 0 or not isinstance(all_dof_names, list):
+        return False
+    command_names = evidence.get("command_names")
+    mimic_names = set(evidence.get("mimic_names", ()))
+    if not isinstance(command_names, list) or not command_names or set(command_names) & mimic_names:
+        return False
+    phase_seen: set[int] = set()
+    for row in frames:
+        phase_index = row.get("phase_index")
+        if not isinstance(phase_index, int) or phase_index < 0 or phase_index >= len(expected_amounts):
+            return False
+        phase_seen.add(phase_index)
+        if not _finite_scalar(row.get("amount")) or not math.isclose(
+            float(row["amount"]), expected_amounts[phase_index], rel_tol=0.0, abs_tol=1e-9):
+            return False
+        if not _finite_sequence(row.get("q"), dof_count) or not _finite_sequence(row.get("qd"), dof_count):
+            return False
+        if not _finite_sequence(row.get("measured_effort"), dof_count):
+            return False
+        commanded = row.get("commanded")
+        if not isinstance(commanded, dict) or set(commanded) != set(command_names):
+            return False
+        if any(not _finite_scalar(value) for value in commanded.values()):
+            return False
+        if set(commanded) & mimic_names:
+            return False
+    if phase_seen != set(range(len(expected_amounts))):
+        return False
+
+    reset = evidence.get("reset")
+    if not isinstance(reset, dict) or reset.get("direct_joint_state_writes") != 1:
+        return False
+    arm_reset = reset.get("arm_reset")
+    hand_open = reset.get("hand_open")
+    if not isinstance(arm_reset, dict) or not isinstance(hand_open, dict):
+        return False
+    arm_names = arm_reset.get("joint_names", [])
+    hand_names = hand_open.get("joint_names", [])
+    if not isinstance(arm_names, list) or not isinstance(hand_names, list) or not hand_names:
+        return False
+    if not _finite_sequence(arm_reset.get("q"), len(arm_names)):
+        return False
+    for key in ("target_q", "q_before", "q_after"):
+        if not _finite_sequence(hand_open.get(key), len(hand_names)):
+            return False
+    if hand_open.get("direct_active_only") is not True or hand_open.get("mimic_commanded") is not False:
+        return False
+    if set(hand_names) & mimic_names:
+        return False
+
+    limits = evidence.get("limits")
+    if not isinstance(limits, dict) or set(limits) != set(all_dof_names):
+        return False
+    for item in limits.values():
+        if not isinstance(item, dict):
+            return False
+        for key in ("lower", "upper", "max_velocity", "max_effort", "stiffness", "damping"):
+            if not _finite_scalar(item.get(key)):
+                return False
+
+    gains = evidence.get("gains")
+    if not isinstance(gains, (list, tuple)) or len(gains) != 2:
+        return False
+    if not _finite_sequence(gains[0], dof_count) or not _finite_sequence(gains[1], dof_count):
+        return False
+    if not _finite_sequence(evidence.get("max_efforts"), dof_count):
+        return False
+
+    relationships = evidence.get("mimic_relationships")
+    if not isinstance(relationships, list) or not relationships:
+        return False
+    for relationship in relationships:
+        if not isinstance(relationship, dict) or relationship.get("commanded") is not False:
+            return False
+        if not relationship.get("usd_relationship") or not relationship.get("usd_reference"):
+            return False
+        if not _finite_scalar(relationship.get("usd_gearing")):
+            return False
+        if not _finite_scalar(relationship.get("usd_offset_degrees")):
+            return False
+    return True
+
+
+def response_passed(stages, movement, mimic, frames, tolerance, evidence: dict[str, Any] | None = None):
+    """Fail closed on missing readback, collapsed targets, or invalid coupling.
+
+    ``evidence`` is optional for compatibility with the small CPU gate tests.
+    Runtime commissioning always supplies it, enabling the full reset/limits/
+    gains and command-subset checks in :func:`_strict_response_evidence`.
+    """
+    basic = bool(movement) and all(row.get("passed") is True for row in movement) and len(stages) == 4 and all(
+        _finite_scalar(stage.get("hand_max_abs_error_rad"))
+        and float(stage["hand_max_abs_error_rad"]) <= tolerance for stage in stages) and bool(mimic) and all(
+        row.get("max_abs_residual_rad") is not None and _finite_scalar(row.get("max_abs_residual_rad"))
+        and float(row["max_abs_residual_rad"]) <= 0.05 for row in mimic) and bool(frames) and all(
+        _finite_sequence(row.get("measured_effort")) for row in frames)
+    return basic and (evidence is None or _strict_response_evidence(evidence, stages, frames))
+
+
+def _resolve_endpoint_targets(active: list[dict[str, Any]], indices: list[int], properties: Any):
+    """Resolve open/closed targets and reject missing or violated USD limits."""
+    open_targets: list[float] = []
+    close_targets: list[float] = []
+    limits: list[dict[str, Any]] = []
+    for item, index in zip(active, indices):
+        prop = properties[index]
+        low, high = float(prop["lower"]), float(prop["upper"])
+        bounded = bool(prop["hasLimits"])
+        open_value, close_value = float(item["open_rad"]), float(item["close_rad"])
+        if not bounded or not math.isfinite(low) or not math.isfinite(high) or low > high:
+            raise ValueError(f"active hand DOF has no finite ordered limits: {item['dof_name']}")
+        if not (low <= open_value <= high) or not (low <= close_value <= high):
+            raise ValueError(
+                f"open/closed endpoint exceeds current USD limits for {item['dof_name']}: "
+                f"open={open_value}, close={close_value}, limits=[{low}, {high}]"
+            )
+        open_targets.append(open_value)
+        close_targets.append(close_value)
+        limits.append({"dof_name": item["dof_name"], "lower": low, "upper": high,
+                       "open_requested": open_value, "open_target": open_value,
+                       "close_requested": close_value, "close_target": close_value,
+                       "within_limits": True, "clipped": False})
+    if len(active) != len(indices) or not active:
+        raise ValueError("active hand endpoints do not align with resolved DOFs")
+    return open_targets, close_targets, limits
+
+
+def _reset_hand_to_open(articulation: Any, dofs: list[str], indices: list[int],
+                        targets: list[float], arm_reset_q: list[float], arm_names: list[str]):
+    """Perform the one permitted initial active-hand pose write and log it."""
+    import numpy as np
+
+    if not indices or len(indices) != len(targets):
+        raise ValueError("initial open reset requires aligned active-hand indices and targets")
+    q_before = _float_list(articulation.get_joint_positions())
+    if len(q_before) != len(dofs):
+        raise RuntimeError("joint-position readback length differs from articulation DOFs")
+    articulation.set_joint_positions(
+        np.asarray(targets, dtype=np.float32),
+        joint_indices=np.asarray(indices, dtype=np.int32),
+    )
+    q_after = _float_list(articulation.get_joint_positions())
+    if len(q_after) != len(dofs) or not all(math.isfinite(value) for value in q_after):
+        raise RuntimeError("invalid joint-position readback after initial hand-open reset")
+    return {
+        "direct_joint_state_writes": 1,
+        "arm_reset": {"method": "SimulationContext.reset", "joint_names": list(arm_names),
+                      "q": list(arm_reset_q), "direct_state_write": False},
+        "hand_open": {"method": "SingleArticulation.set_joint_positions_once",
+                      "joint_names": [dofs[index] for index in indices],
+                      "joint_indices": list(indices), "target_q": list(targets),
+                      "q_before": [q_before[index] for index in indices],
+                      "q_after": [q_after[index] for index in indices],
+                      "direct_active_only": True, "mimic_commanded": False},
+        "post_hand_open_q": q_after,
+    }
 
 
 def _json(value: Any) -> Any:
@@ -320,12 +518,21 @@ def run(args: argparse.Namespace, report: dict[str, Any]) -> int:
                                    "num_bodies": articulation.num_bodies, "dof_names": dofs,
                                    "simulation_context": "isaaclab.sim.SimulationContext", "device": "cpu",
                                    "dt": args.dt, "articulation_initialized": True})
+        arm_reset_q_before_hand_open = np.asarray(articulation.get_joint_positions(), dtype=float).reshape(-1)
+        arm_reset_qd_before_hand_open = np.asarray(articulation.get_joint_velocities(), dtype=float).reshape(-1)
+        if (arm_reset_q_before_hand_open.size != articulation.num_dof
+                or arm_reset_qd_before_hand_open.size != articulation.num_dof
+                or not np.all(np.isfinite(arm_reset_q_before_hand_open))
+                or not np.all(np.isfinite(arm_reset_qd_before_hand_open))):
+            raise RuntimeError("invalid post-SimulationContext.reset articulation state")
 
         profile = json.loads(args.profile.read_text(encoding="utf-8"))
         hand = profile["gripper_commissioning"][args.side]
         drive = hand["synthetic_drive"]
         active_profile = hand["active_joints"]
         source = _urdf(args.urdf)
+        if len(active_profile) != 10 or len({str(item["name"]) for item in active_profile}) != 10:
+            raise RuntimeError("commissioning profile must resolve the ten unique source active hand joints")
         active: list[dict[str, Any]] = []
         unresolved: list[str] = []
         for item in active_profile:
@@ -334,12 +541,53 @@ def run(args: argparse.Namespace, report: dict[str, Any]) -> int:
                 unresolved.append(str(item["name"]))
             else:
                 active.append({"profile_name": item["name"], "dof_name": resolved, "strategy": strategy,
-                               "open_rad": float(item["open_rad"]), "close_rad": float(item["close_rad"])})
+                               "open_rad": float(item["open_rad"]), "close_rad": float(item["close_rad"]),
+                               "legacy_name": item.get("legacy_name"),
+                               "legacy_open_rad": item.get("legacy_open_rad"),
+                               "legacy_close_rad": item.get("legacy_close_rad"),
+                               "legacy_sign": item.get("legacy_sign"),
+                               "legacy_offset_rad": item.get("legacy_offset_rad"),
+                               "allow_close": item.get("allow_close", float(item["open_rad"]) != float(item["close_rad"]))})
         if unresolved:
             raise RuntimeError("unresolved active hand DOFs: " + repr(unresolved))
         active_names = [item["dof_name"] for item in active]
         active_indices = [dofs.index(name) for name in active_names]
         active_set = set(active_names)
+        source_mimic_dofs: set[str] = set()
+        unresolved_mimic: list[str] = []
+        for item in source["mimic"]:
+            resolved, _ = _resolve(str(item["name"]), dofs, args.side)
+            if resolved is None:
+                unresolved_mimic.append(str(item["name"]))
+            else:
+                source_mimic_dofs.add(resolved)
+        if unresolved_mimic:
+            raise RuntimeError("unresolved source mimic DOFs: " + repr(unresolved_mimic))
+        if active_set & source_mimic_dofs:
+            raise RuntimeError("mimic DOFs may not be included in the one-time open reset")
+
+        arm_names = [f"{args.side}_arm__joint{i}" for i in range(1, 7)]
+        arm_names_resolved: list[str] = []
+        for name in arm_names:
+            resolved, _ = _resolve(name, dofs, args.side)
+            if resolved and resolved not in active_set and resolved not in arm_names_resolved:
+                arm_names_resolved.append(resolved)
+        arm_indices = [dofs.index(name) for name in arm_names_resolved]
+        arm_reset_q = [float(arm_reset_q_before_hand_open[index]) for index in arm_indices]
+
+        props = articulation.dof_properties
+        open_targets, close_targets, endpoint_limits = _resolve_endpoint_targets(active, active_indices, props)
+        initial_hand_reset = _reset_hand_to_open(
+            articulation, dofs, active_indices, open_targets,
+            arm_reset_q, arm_names_resolved)
+        initial_hand_reset["arm_reset"]["qd"] = [float(arm_reset_qd_before_hand_open[index])
+                                                   for index in arm_indices]
+        initial_hand_reset["hand_open"]["qd_before"] = [float(arm_reset_qd_before_hand_open[index])
+                                                          for index in active_indices]
+        initial_hand_reset["hand_open"]["qd_after"] = np.asarray(
+            articulation.get_joint_velocities(), dtype=float).reshape(-1)[active_indices].tolist()
+        report["reset"] = initial_hand_reset
+
         passive: list[dict[str, Any]] = []
         passive_set: set[str] = set()
         for item in source["mimic"]:
@@ -387,17 +635,10 @@ def run(args: argparse.Namespace, report: dict[str, Any]) -> int:
             item["offset"] = -math.radians(float(offset))
         if len(passive) != len(source["mimic"]):
             raise RuntimeError("not all source mimic joints resolved")
-        arm_names = [f"{args.side}_arm__joint{i}" for i in range(1, 7)]
-        arm_names_resolved: list[str] = []
-        for name in arm_names:
-            resolved, _ = _resolve(name, dofs, args.side)
-            if resolved and resolved not in active_set and resolved not in passive_set and resolved not in arm_names_resolved:
-                arm_names_resolved.append(resolved)
-        arm_indices = [dofs.index(name) for name in arm_names_resolved]
         report["mapping"] = {"active_hand": active, "active_indices": active_indices,
                               "mimic_passive_read_only": passive, "arm_hold_names": arm_names_resolved,
-                              "arm_hold_indices": arm_indices, "unresolved_active": unresolved}
-        props = articulation.dof_properties
+                              "arm_hold_indices": arm_indices, "unresolved_active": unresolved,
+                              "target_limits": endpoint_limits}
         report["physics"]["dof_limits_and_drives_before"] = {
             name: {"lower": float(props[i]["lower"]), "upper": float(props[i]["upper"]),
                    "has_limits": bool(props[i]["hasLimits"]), "max_velocity": float(props[i]["maxVelocity"]),
@@ -450,28 +691,32 @@ def run(args: argparse.Namespace, report: dict[str, Any]) -> int:
         report["physics"]["gains_readback"] = _json(controller.get_gains())
         report["physics"]["max_efforts_readback"] = _json(controller.get_max_efforts())
 
+        # Let PhysX propagate the mimic constraints after the one active-only
+        # open reset.  The passive joints are never included in this action.
+        reset_settle_indices = arm_indices + active_indices
+        reset_settle_targets = arm_reset_q + open_targets
+        reset_settle_frames = []
+        for settle_index in range(args.reset_settle_steps):
+            articulation.apply_action(_action(ArticulationAction, reset_settle_indices, reset_settle_targets))
+            simulation.step(render=False)
+            settle_q = np.asarray(articulation.get_joint_positions(), dtype=float).reshape(-1)
+            settle_qd = np.asarray(articulation.get_joint_velocities(), dtype=float).reshape(-1)
+            if settle_q.size != articulation.num_dof or settle_qd.size != articulation.num_dof:
+                raise RuntimeError("reset-settle readback length differs from articulation DOFs")
+            if not np.all(np.isfinite(settle_q)) or not np.all(np.isfinite(settle_qd)):
+                raise RuntimeError("non-finite joint state during mimic reset settle")
+            reset_settle_frames.append({"step": settle_index, "q": settle_q.tolist(), "qd": settle_qd.tolist()})
         q0 = np.asarray(articulation.get_joint_positions(), dtype=float).reshape(-1)
+        qd0 = np.asarray(articulation.get_joint_velocities(), dtype=float).reshape(-1)
         report["physics"]["initial_q"] = q0.tolist()
-        report["physics"]["initial_qd"] = np.asarray(articulation.get_joint_velocities(), dtype=float).reshape(-1).tolist()
-        clipped: list[dict[str, Any]] = []
-        open_targets: list[float] = []
-        close_targets: list[float] = []
-        for item, index in zip(active, active_indices):
-            low, high = float(props[index]["lower"]), float(props[index]["upper"])
-            bounded = bool(props[index]["hasLimits"])
-            open_value, close_value = float(item["open_rad"]), float(item["close_rad"])
-            if bounded:
-                open_target, close_target = np.clip([open_value, close_value], low, high)
-            else:
-                open_target, close_target = open_value, close_value
-            open_targets.append(float(open_target)); close_targets.append(float(close_target))
-            clipped.append({"dof_name": item["dof_name"], "open_requested": open_value, "open_target": float(open_target),
-                            "close_requested": close_value, "close_target": float(close_target),
-                            "clipped": bool(open_target != open_value or close_target != close_value)})
-        report["mapping"]["target_clipping"] = clipped
+        report["physics"]["initial_qd"] = qd0.tolist()
+        report["reset"]["settle_steps"] = reset_settle_frames
+        report["reset"]["hand_open"]["q_after_settle"] = [float(q0[index]) for index in active_indices]
+        report["reset"]["hand_open"]["qd_after_settle"] = [float(qd0[index]) for index in active_indices]
+        report["mapping"]["target_clipping"] = endpoint_limits
 
-        # A reset pose is read once and then held through targets.  There is no
-        # set_joint_positions/set_joint_velocities call in this implementation.
+        # The one initial active-hand open write above is a reset operation.
+        # Every subsequent state transition uses ArticulationAction only.
         command_indices = arm_indices + active_indices
         command_log = args.out / "joint_trace.jsonl"
         cameras: list[tuple[str, Any]] = []
@@ -553,6 +798,15 @@ def run(args: argparse.Namespace, report: dict[str, Any]) -> int:
                                "mimic_readback": mimic_summary, "trace": str(command_log.relative_to(args.out)),
                                "direct_joint_state_writes": 0,
                                "targets_sent_via": "ArticulationAction -> SingleArticulation.apply_action"}
+        report["response"]["evidence"] = {
+            "expected_amounts": list(AMOUNTS), "expected_dof_count": len(dofs),
+            "all_dof_names": dofs, "command_names": [dofs[index] for index in command_indices],
+            "mimic_names": [item["dof_name"] for item in passive],
+            "reset": report["reset"], "limits": report["physics"]["dof_limits_and_drives_before"],
+            "gains": report["physics"]["gains_readback"],
+            "max_efforts": report["physics"]["max_efforts_readback"],
+            "mimic_relationships": passive,
+        }
         report["physics"].update({"physx_articulation_validated": True, "physics_steps": len(frames), "contact_validated": False})
         report["gates"] = {"real_articulation": True, "finger_target_response": bool(frames), "contact": False,
                            "grasp": False, "production_collection_allowed": False}
@@ -566,7 +820,11 @@ def run(args: argparse.Namespace, report: dict[str, Any]) -> int:
                              "passed": abs(span) >= 0.02 and (means[1]-means[0])*np.sign(span) >= abs(span)*0.5
                              and (means[1]-means[2])*np.sign(span) >= abs(span)*0.5})
         report["response"]["movement"] = movement
-        report["passed"] = response_passed(stages, movement, mimic_summary, frames, args.max_response_error)
+        # The strict evidence gate consumes only JSON-serialisable fields and
+        # blocks contact trials when any reset/readback/drive sidecar is absent.
+        report["passed"] = response_passed(
+            stages, movement, mimic_summary, frames, args.max_response_error,
+            report["response"]["evidence"])
         report["gates"]["finger_target_response"] = report["passed"]
         report["gates"]["contact_trial_allowed"] = report["passed"] and bool(report["stage_inventory"]["colliders"])
         report["phase"] = "completed" if report["passed"] else "response_outside_tolerance"
@@ -610,6 +868,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--dt", type=float, default=DEFAULT_DT)
     parser.add_argument("--mimic-frequency", type=float, default=None)
     parser.add_argument("--mimic-damping", type=float, default=1.0)
+    parser.add_argument("--reset-settle-steps", type=int, default=8,
+                        help="PhysX steps after the one-time active-hand open reset")
     return parser.parse_args(argv)
 
 
@@ -618,8 +878,8 @@ def main(argv: list[str] | None = None) -> int:
     for path, label in ((args.usd, "--usd"), (args.urdf, "--urdf"), (args.profile, "--profile")):
         if not path.is_file():
             raise SystemExit(f"{label} does not exist: {path}")
-    if args.steps_per_amount <= 0 or args.settle_window <= 0 or args.rgb_stride <= 0:
-        raise SystemExit("steps/window/stride must be positive")
+    if args.steps_per_amount <= 0 or args.settle_window <= 0 or args.rgb_stride <= 0 or args.reset_settle_steps < 0:
+        raise SystemExit("steps/window/stride must be positive and reset-settle-steps non-negative")
     args.out = args.out.absolute()
     if args.out.exists() and any(args.out.iterdir()):
         raise SystemExit(f"--out must be fresh or empty: {args.out}")
