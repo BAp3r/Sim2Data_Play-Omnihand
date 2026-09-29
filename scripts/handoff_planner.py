@@ -45,7 +45,10 @@ def replan_handoff(model, base, active, template, position, quaternion, start, t
         grasp = original.copy()
         grasp[:3,:3] = delta @ original[:3,:3]
         grasp[:3,3] = pos + delta @ (original[:3,3]-source)
-        pre = grasp.copy(); pre[:3,3] += [0,0,.05]
+        # Keep the receiver outside the 2 mm non-contact envelope before
+        # descent; the source planner's 50 mm pregrasp can be marginal after
+        # the measured handoff yaw/translation.
+        pre = grasp.copy(); pre[:3,3] += [0,0,.10]
         lift = grasp.copy(); lift[:3,3] += [0,0,.08]
         qs={}; residuals={}; seed=start; failures=[]
         for key, target, amount, center in [('pregrasp',pre,0,pos),('grasp',grasp,1,pos),('lift',lift,1,pos+[0,0,.08])]:
