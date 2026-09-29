@@ -299,13 +299,36 @@ def main():
                 "synthetic_diagnostic_only": True,
             }
         cameras = []
-        camera_eyes = (("main", [.65,-1.05,.9]), ("close", [center[0]+.26,center[1]-.32,center[2]+.21]))
-        for name, eye in camera_eyes:
+        # Training main view is overhead; the wider oblique view is demo only.
+        # Include both base locations and the bin in the overhead framing even
+        # during this single-arm diagnostic. These are synthetic camera poses.
+        bbox_cache = UsdGeom.BBoxCache(0, [UsdGeom.Tokens.default_, UsdGeom.Tokens.render])
+        robot_range = bbox_cache.ComputeWorldBound(stage.GetPrimAtPath(robot_parent)).ComputeAlignedRange()
+        robot_min = np.asarray(robot_range.GetMin(), dtype=float)
+        robot_max = np.asarray(robot_range.GetMax(), dtype=float)
+        box_center = np.asarray(center, dtype=float)
+        work_min = np.minimum(robot_min, box_center - np.asarray(scene["box_dimensions_m"]) / 2)
+        work_max = np.maximum(robot_max, box_center + np.asarray(scene["box_dimensions_m"]) / 2)
+        work_target = ((work_min + work_max) / 2).tolist()
+        camera_specs = (
+            ("overhead", [.12, -.08, 1.20], [.12, -.08, 0.0], [0, 1, 0], 18.0),
+            ("demo", [0.62, -1.18, 0.78], work_target, [0, 0, 1], 12.0),
+            ("close", [0.28, -0.72, 0.44], [float(box_center[0]), float(box_center[1]), float(box_center[2] + .04)], [0, 0, 1], 16.0),
+        )
+        report["camera_framing"] = {"work_bounds_min": work_min.tolist(),
+                                    "work_bounds_max": work_max.tolist(),
+                                    "synthetic": True,
+                                    "training_main": "overhead",
+                                    "diagnostic_only": ["demo", "close"],
+                                    "wrist_streams_present": False,
+                                    "poses": [{"name": n, "eye": e, "target": t, "up": u,
+                                               "focal_length": f} for n,e,t,u,f in camera_specs]}
+        for name, eye, target, up, focal_length in camera_specs:
             camera = Camera("/Trial/Camera_" + name, resolution=(640,480))
-            matrix = Gf.Matrix4d().SetLookAt(Gf.Vec3d(*eye), Gf.Vec3d(*center), Gf.Vec3d(0,0,1)).GetInverse()
+            matrix = Gf.Matrix4d().SetLookAt(Gf.Vec3d(*eye), Gf.Vec3d(*target), Gf.Vec3d(*up)).GetInverse()
             q = matrix.ExtractRotationQuat()
             camera.set_world_pose(np.array(eye), np.array([q.GetReal(),*q.GetImaginary()]), camera_axes="usd")
-            camera.set_focal_length(18); camera.set_horizontal_aperture(24); camera.set_vertical_aperture(18)
+            camera.set_focal_length(focal_length); camera.set_horizontal_aperture(24); camera.set_vertical_aperture(18)
             camera.set_clipping_range(.01,10)
             cameras.append((name,camera))
         sim.reset(); robot.initialize(); box.initialize()
@@ -523,6 +546,21 @@ def main():
         report.update(trace="trace.jsonl", images=images, dt=dt,
                       inertia_override_applied=False)
         rgbroot=args.out/"rgb";rgbroot.mkdir()
+        # Resolve the render products before spending a full contact trial on
+        # frames with no robot. Rendering alone does not advance the episode.
+        for _ in range(20):
+            sim.render()
+        visibility = {}
+        for name, cam in cameras:
+            rgba = np.asarray(cam.get_rgba())
+            if rgba.shape != (480, 640, 4):
+                raise RuntimeError(f"missing initial RGB: {name}")
+            Image.fromarray(rgba[..., :3].astype(np.uint8)).save(args.out/f"initial_{name}.png")
+            visibility[name] = camera_content(cam)
+        report["initial_visibility"] = visibility
+        _write(args.out/"result.json", report)
+        if not visibility["overhead"]["robot_and_box_visible"]:
+            raise ValueError("overhead robot/box visibility failed before approach")
         phases=[("settle_open",plan["start_configuration"]["arm"],0,3),
                 ("approach",plan["pregrasp"],0,4), ("approach_lower",plan["grasp"],0,2),
                 ("finger_close",plan["grasp"],1,2), ("lift",plan["lift"],1,3),
@@ -621,7 +659,7 @@ def main():
                 _write(args.out/"result.json",report)
         gate=contact_lift_gate(records, center[2], dt=dt)
         release_gate=contact_release_gate(records, float(plan["mass_kg"]), dt)
-        visual_gate = any(frame["camera"] == "main" and frame["phase"] == "hold"
+        visual_gate = any(frame["camera"] == "overhead" and frame["phase"] == "hold"
                           and frame["robot_and_box_visible"] for frame in images)
         report.update(phase="completed", steps=step, trace="trace.jsonl", images=images,
                       max_box_lift_m=max(r["box_position"][2] for r in records)-center[2],
@@ -640,7 +678,7 @@ def main():
                 for frame in images:
                     if frame["camera"]==name:writer.write(cv2.imread(str(args.out/frame["file"])))
                 writer.release()
-            report["video"]="main.mp4"
+            report["video"]="overhead.mp4"
         _write(args.out/"result.json",report)
         return 0 if report["passed"] else 3
     except Exception:
