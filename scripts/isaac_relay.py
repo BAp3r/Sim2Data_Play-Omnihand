@@ -108,16 +108,18 @@ def run(args):
                 max_contact_count=8192,reset_xform_properties=False)
         cameras={}
         overhead=Camera("/World/TrainingOverhead",resolution=(320,240));cameras["overhead"]=overhead
-        m=Gf.Matrix4d().SetLookAt(Gf.Vec3d(.55,-.7,1.1),Gf.Vec3d(.12,.1,0),Gf.Vec3d(0,0,1)).GetInverse();q=m.ExtractRotationQuat()
-        overhead.set_world_pose(np.array([.55,-.7,1.1]),np.array([q.GetReal(),*q.GetImaginary()]),camera_axes="usd")
+        # Training overhead view keeps both arm bases, relay area and bin in frame.
+        overhead_eye=np.array([.12,-.08,1.20]); overhead_target=np.array([.12,-.08,0.0])
+        m=Gf.Matrix4d().SetLookAt(Gf.Vec3d(*overhead_eye),Gf.Vec3d(*overhead_target),Gf.Vec3d(0,1,0)).GetInverse();q=m.ExtractRotationQuat()
+        overhead.set_world_pose(overhead_eye,np.array([q.GetReal(),*q.GetImaginary()]),camera_axes="usd")
         for side in sides:
             paths=[p.GetPath() for p in stage.Traverse() if p.GetName()==side+"_color_optical"]
             if len(paths)!=1:raise ValueError("missing unambiguous mounted optical camera frame")
             camera=Camera(str(paths[0])+"/TrainingCamera",resolution=(320,240))
             camera.set_local_pose(np.zeros(3),np.array([1.,0,0,0]),camera_axes="ros")
             cameras["wrist_"+side]=camera
-        for camera in cameras.values():
-            camera.set_focal_length(12);camera.set_horizontal_aperture(24);camera.set_vertical_aperture(18);camera.set_clipping_range(.01,10)
+        for name,camera in cameras.items():
+            camera.set_focal_length(18 if name == "overhead" else 12);camera.set_horizontal_aperture(24);camera.set_vertical_aperture(18);camera.set_clipping_range(.01,10)
         sim.reset();box.initialize()
         for view in collision_views.values():view.initialize()
         mapping={};models={};base={};targets={};amounts={s:0. for s in sides};reset={}
