@@ -309,15 +309,16 @@ def run(args):
         phase("right_close","right",plans["right"]["grasp"],1,2)
         phase("right_lift","right",plans["right"]["lift"],1,3,lifted("right",box_now[2]),waypoints=plans["right"]["lift_waypoints"]);report["gates"]["right_contact_lift"]=True
         cfg=profile["bin"];destination=np.array(cfg["bottom_center_xyz_m"]);destination[2]=cfg["top_z_m"]-cfg["inner_size_xyz_m"][2]+plans["right"]["box_size"][2]/2
-        offset=destination-np.array(plans["right"]["box_center"])
-        over=offset.copy();over[2]=cfg["top_z_m"]+.12-np.array(plans["right"]["box_center"])[2]
-        phase("right_transfer","right",translated_goal("right",over),1,5)
-        phase("right_lower","right",translated_goal("right",offset),1,4,
-              touchdown_force_key="bin_support_force_N")
+        over=destination.copy();over[2]=cfg["top_z_m"]+.12
+        transfer=held_translation("right",over,"right_transfer")
+        phase("right_transfer","right",transfer[-1],1,5,waypoints=transfer,require_held=True)
+        lower=held_translation("right",destination,"right_lower")
+        phase("right_lower","right",lower[-1],1,4,
+              touchdown_force_key="bin_support_force_N",waypoints=lower,require_held=True)
         in_bin=lambda r:stable(r) and hand_free(r) and .8*weight<r["bin_support_force_N"]<1.2*weight and footprint_inside(r["box_position"],r["box_quaternion_wxyz"],plans["right"]["box_size"],destination[:2],cfg["inner_size_xyz_m"][:2])
         phase("right_release","right",targets["right"].copy(),0,2,in_bin)
         report["gates"]["bin_footprint"]=True
-        phase("right_retreat","right",translated_goal("right",over),0,3,in_bin)
+        phase("right_retreat","right",plans["right"]["pregrasp"],0,3,in_bin)
         report["gates"].update(final_released_stable=True,no_illegal_collision=True,no_object_teleport=True)
         report.update(passed=True,phase="complete",physics_steps=physical_step)
     except Exception:

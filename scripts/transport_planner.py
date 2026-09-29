@@ -18,7 +18,7 @@ def plan_transport(model,base,active,plan,arm_start,box_position,box_quaternion,
                                 require_contact=False,box_rotation=rotation,box_size=np.asarray(plan['box_size']))
     for u in np.linspace(0,1,25)[1:]:
         target=palm.copy();target[:3,3]+=u*delta
-        ik=solve_ik(model,target,base,hand,initial=q,screen=lambda v:screen(v,center+u*delta))
+        ik=solve_ik(model,target,base,hand,initial=q,screen=lambda v:screen(v,center+u*delta),prefer_initial=True)
         candidate=ik['q']
         if ik['position_residual_m']>.002 or ik['orientation_residual_rad']>.02:
             failures.append({'fraction':float(u),'reason':'IK residual'});break
