@@ -218,14 +218,34 @@ def run(args):
                     for i,n in zip(mp["indices"][6:],mp["names"][6:]):
                         if i in mp["fixed"] and abs(rr["q"][i]-actual[n])>.03:raise RuntimeError(f"{s} fixed hand channel drift")
             record_step+=stride;trace.flush();return row
-        def phase(name,side,goal,amount,seconds,condition=None):
+        def phase(name,side,goal,amount,seconds,condition=None,touchdown_force_key=None,waypoints=None,require_held=False):
             if machine.phase.value!=name: raise RuntimeError("relay stage order mismatch")
             report["phase"]=name;_write(args.out/"result.json",report)
             initial=targets[side].copy();initial_amount=amounts[side];steps=round(seconds*fps);stable=0
+            lost_contact=0
             for i in range(steps+int(3*fps)):
                 t=min(1,(i+1)/steps);blend=t*t*(3-2*t)
                 targets[side]=initial+(np.asarray(goal)-initial)*blend;amounts[side]=initial_amount+(amount-initial_amount)*blend
+                if waypoints is not None:
+                    x=blend*(len(waypoints)-1);j=min(int(x),len(waypoints)-2)
+                    targets[side]=np.asarray(waypoints[j])+(x-j)*(np.asarray(waypoints[j+1])-waypoints[j])
                 row=control_interval()
+                if touchdown_force_key and row[touchdown_force_key] > .5*weight:
+                    # Contact with the receiving surface ends descent. Hold
+                    # the measured arm pose and let the next release phase
+                    # unload the hand. Final support/stability/footprint
+                    # acceptance still occurs after release, unchanged.
+                    targets[side]=np.array([row[side]["q"][j] for j in mapping[side]["indices"][:6]])
+                    report.setdefault("touchdowns",{})[name]={
+                        "physics_step":physical_step,"force_N":row[touchdown_force_key],
+                        "arm_hold_target":targets[side].tolist(),"box_position":row["box_position"],
+                        "reason":"stop commanded descent on measured support; not placement acceptance"}
+                    machine.tick(1/fps,True)
+                    return row
+                if require_held:
+                    lost_contact=lost_contact+1 if row[side]["hand_force_N"]<=.02 else 0
+                    if lost_contact>=3 or row["support_force_N"]>.5*weight:
+                        raise RuntimeError(name+" lost held object before intended touchdown")
                 tracking=max(abs(row[side]["q"][j]-v) for j,v in zip(mapping[side]["indices"][:6],goal))<.03
                 ready=t>=1 and tracking and (condition(row) if condition else True)
                 stable=stable+1 if ready else 0
@@ -243,6 +263,16 @@ def run(args):
             ik=solve_ik(model,matrix,base[side],hand,initial=targets[side])
             if ik["position_residual_m"]>.003 or ik["orientation_residual_rad"]>.03:raise RuntimeError(side+" transfer IK failed")
             return ik["q"]
+        def held_translation(side,destination,label):
+            from transport_planner import plan_transport
+            row=read();q=[row[side]["q"][i] for i in mapping[side]["indices"][:6]]
+            if row[side]["hand_force_N"]<=.02 or row["support_force_N"]>.01:
+                raise RuntimeError(label+" requires a physically held airborne box")
+            result=plan_transport(models[side],base[side],mapping[side]["active"],plans[side],q,
+                row["box_position"],row["box_quaternion_wxyz"],np.asarray(destination)-row["box_position"],profile["table"])
+            _write(args.out/(label+"_plan.json"),result)
+            if not result["passed"]:raise RuntimeError(label+" Cartesian transport screening failed")
+            return result["waypoints"]
         weight=plans["left"]["mass_kg"]*9.81
         def stable(row):return np.linalg.norm(row["box_velocity"][:3])<.02 and np.linalg.norm(row["box_velocity"][3:])<.1
         def hand_free(row):return all(row[s]["hand_force_N"]<.01 for s in sides)
@@ -253,16 +283,27 @@ def run(args):
         phase("left_approach_lower","left",plans["left"]["grasp"],0,2)
         phase("left_close","left",plans["left"]["grasp"],1,2)
         phase("left_lift","left",plans["left"]["lift"],1,3,lifted("left",source[2]));report["gates"]["left_contact_lift"]=True
-        phase("left_transfer","left",translated_goal("left",relay-source+np.array([0,0,.12])),1,5)
-        phase("left_lower","left",translated_goal("left",relay-source),1,3)
+        transfer=held_translation("left",relay+np.array([0,0,.12]),"left_transfer")
+        phase("left_transfer","left",transfer[-1],1,7,waypoints=transfer,require_held=True)
+        lower=held_translation("left",relay,"left_lower")
+        phase("left_lower","left",lower[-1],1,5,
+              touchdown_force_key="support_force_N",waypoints=lower,require_held=True)
         placed=targets["left"].copy()
         support=lambda r:stable(r) and hand_free(r) and .8*weight<r["support_force_N"]<1.2*weight and footprint_inside(r["box_position"],r["box_quaternion_wxyz"],plans["left"]["box_size"],relay[:2],profile["relay_region"]["size_xyz_m"][:2])
         phase("left_release","left",placed,0,2,support);report["gates"]["relay_supported_stable"]=True
         phase("left_retreat","left",plans["left"]["start_configuration"]["arm"],0,4,support)
         report["gates"]["left_released_retreated"]=True
         phase("relay_stable","left",targets["left"].copy(),0,1,support)
-        box_now=np.array(read()["box_position"])
-        if np.linalg.norm(box_now[:2]-np.array(plans["right"]["box_center"])[:2])>.015:raise RuntimeError("handoff pose outside screened right approach; replanning required")
+        handoff=read(); box_now=np.array(handoff["box_position"]); box_quat=np.array(handoff["box_quaternion_wxyz"])
+        from handoff_planner import replan_handoff
+        replan=replan_handoff(models["right"],base["right"],mapping["right"]["active"],
+            plans["right"],box_now,box_quat,targets["right"],profile["table"])
+        _write(args.out/"right_handoff_plan.json",replan)
+        report["right_replan_from_handoff"]={k:v for k,v in replan.items() if k!="plan"}
+        _write(args.out/"result.json",report)
+        if not replan["passed"]:
+            raise RuntimeError("right measured-handoff IK/OBB/path screening failed")
+        plans["right"]=replan["plan"]
         phase("right_approach","right",plans["right"]["pregrasp"],0,4)
         phase("right_approach_lower","right",plans["right"]["grasp"],0,2)
         phase("right_close","right",plans["right"]["grasp"],1,2)
@@ -271,7 +312,8 @@ def run(args):
         offset=destination-np.array(plans["right"]["box_center"])
         over=offset.copy();over[2]=cfg["top_z_m"]+.12-np.array(plans["right"]["box_center"])[2]
         phase("right_transfer","right",translated_goal("right",over),1,5)
-        phase("right_lower","right",translated_goal("right",offset),1,4)
+        phase("right_lower","right",translated_goal("right",offset),1,4,
+              touchdown_force_key="bin_support_force_N")
         in_bin=lambda r:stable(r) and hand_free(r) and .8*weight<r["bin_support_force_N"]<1.2*weight and footprint_inside(r["box_position"],r["box_quaternion_wxyz"],plans["right"]["box_size"],destination[:2],cfg["inner_size_xyz_m"][:2])
         phase("right_release","right",targets["right"].copy(),0,2,in_bin)
         report["gates"]["bin_footprint"]=True

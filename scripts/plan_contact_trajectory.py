@@ -499,12 +499,17 @@ def solve_ik(model, target, base_world, hand_q, initial=None, preview=None, scre
 
 
 def collision_screen(model, arm_q, active, amount, base_world, box_center, allowed, table_z, ground_z,
-                     *, require_contact=True):
+                     *, require_contact=True, box_rotation=None, box_size=None):
     q = positions_for(model.joints, active, model.arm_names, arm_q, amount)
     rows, failures = [], []
     min_table = math.inf
     for link, points in model.world_samples(model.fk(q), base_world):
-        clearance = float(np.min(box_sdf(points, box_center, BOX_SIZE)))
+        if box_rotation is None:
+            clearance = float(np.min(box_sdf(points, box_center, BOX_SIZE if box_size is None else box_size)))
+        else:
+            # Row-vector inverse rigid transform; table/ground remain in world.
+            local = (points - np.asarray(box_center)) @ np.asarray(box_rotation)
+            clearance = float(np.min(box_sdf(local, np.zeros(3), BOX_SIZE if box_size is None else box_size)))
         # Audited Thor footprint, unlike an infinite horizontal half-space.
         footprint = (np.abs(points[:, 0]) <= .45) & (np.abs(points[:, 1]) <= .375)
         table_clearance = float(np.min(points[footprint, 2]) - table_z) if footprint.any() else None
@@ -526,7 +531,7 @@ def collision_screen(model, arm_q, active, amount, base_world, box_center, allow
             failures.append(f"Thor collision-top plane penetration: {link} {table_clearance:.6f}")
     return {"passed": not failures, "failures": failures,
             "minimum_table_plane_clearance_m": min_table if math.isfinite(min_table) else None, "meshes": rows,
-            "method": "sampled source collision surfaces versus cardbox AABB, bounded Thor footprint/top, and ground; not exhaustive triangle collision"}
+            "method": "sampled source collision surfaces versus cardbox OBB/AABB, bounded Thor footprint/top, and ground; not exhaustive triangle collision"}
 
 
 def create_plan(urdf_path, profile_path, manifest_path, side, grasp_search=None):
