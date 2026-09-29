@@ -307,7 +307,7 @@ def run(args):
         phase("right_approach","right",plans["right"]["pregrasp"],0,4)
         phase("right_approach_lower","right",plans["right"]["grasp"],0,2)
         phase("right_close","right",plans["right"]["grasp"],1,2)
-        phase("right_lift","right",plans["right"]["lift"],1,3,lifted("right",box_now[2]));report["gates"]["right_contact_lift"]=True
+        phase("right_lift","right",plans["right"]["lift"],1,3,lifted("right",box_now[2]),waypoints=plans["right"]["lift_waypoints"]);report["gates"]["right_contact_lift"]=True
         cfg=profile["bin"];destination=np.array(cfg["bottom_center_xyz_m"]);destination[2]=cfg["top_z_m"]-cfg["inner_size_xyz_m"][2]+plans["right"]["box_size"][2]/2
         offset=destination-np.array(plans["right"]["box_center"])
         over=offset.copy();over[2]=cfg["top_z_m"]+.12-np.array(plans["right"]["box_center"])[2]

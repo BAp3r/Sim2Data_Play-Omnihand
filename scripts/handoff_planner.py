@@ -54,7 +54,7 @@ def replan_handoff(model, base, active, template, position, quaternion, start, t
         for key, target, amount, center in [('pregrasp',pre,0,pos),('grasp',grasp,1,pos),('lift',lift,1,pos+[0,0,.08])]:
             hand=positions_for(model.joints,active,model.arm_names,seed,amount)
             allowed=tips if amount else set()
-            ik=solve_ik(model,target,base,hand,initial=seed,
+            ik=solve_ik(model,target,base,hand,initial=seed,prefer_initial=True,
                 screen=lambda q:screen(q,amount,center,allowed))
             seed=ik['q'];qs[key]=seed
             residuals[key]={k:float(ik[k]) for k in ('position_residual_m','orientation_residual_rad')}
@@ -63,13 +63,30 @@ def replan_handoff(model, base, active, template, position, quaternion, start, t
             if ik['position_residual_m']>.002 or ik['orientation_residual_rad']>.02:
                 failures.append(key+' IK residual')
             if failures:break
+        lift_path=None
+        if not failures:
+            q=np.asarray(qs['grasp']); lift_path=[q.tolist()]
+            for fraction in np.linspace(0,1,25)[1:]:
+                target=grasp.copy();target[:3,3]+=[0,0,.08*fraction]
+                hand=positions_for(model.joints,active,model.arm_names,q,1)
+                ik=solve_ik(model,target,base,hand,initial=q,prefer_initial=True)
+                candidate=np.asarray(ik['q'])
+                if ik['position_residual_m']>.002 or ik['orientation_residual_rad']>.02 or np.max(np.abs(candidate-q))>.25:
+                    failures.append('lift Cartesian IK residual/branch discontinuity');break
+                for u in np.linspace(0,1,5):
+                    f=fraction-1/24+u/24
+                    gate=screen(q+u*(candidate-q),1,pos+[0,0,.08*f],tips,False)
+                    if not gate['passed']:
+                        failures.extend([f'lift fraction={f:.4f}: {reason}' for reason in gate['failures']]);break
+                if failures:break
+                q=candidate;lift_path.append(q.tolist())
+            if not failures:qs['lift']=q
         if not failures:
             # Open descent, closure and lift have the same 25-sample screen
             # and 1 mm contact / 2 mm non-contact bounds as the source planner.
             segments=[(start,qs['pregrasp'],0,0,pos,pos),
                       (qs['pregrasp'],qs['grasp'],0,0,pos,pos),
-                      (qs['grasp'],qs['grasp'],0,1,pos,pos),
-                      (qs['grasp'],qs['lift'],1,1,pos,pos+[0,0,.08])]
+                      (qs['grasp'],qs['grasp'],0,1,pos,pos)]
             for qa,qb,a,b,ca,cb in segments:
                 for u in np.linspace(0,1,25):
                     amount=a+(b-a)*u
@@ -82,6 +99,7 @@ def replan_handoff(model, base, active, template, position, quaternion, start, t
         if not failures:
             plan=copy.deepcopy(template)
             plan.update({key:value.tolist() for key,value in qs.items()})
+            plan['lift_waypoints']=lift_path
             plan['box_center']=pos.tolist()
             plan['box_quaternion_wxyz']=quat.tolist()
             return dict(passed=True,plan=plan,attempts=attempts,

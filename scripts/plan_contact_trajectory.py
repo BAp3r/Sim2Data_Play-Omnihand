@@ -459,7 +459,7 @@ def rot_error(target, actual):
     return Rotation.from_matrix(target[:3, :3] @ actual[:3, :3].T).as_rotvec()
 
 
-def solve_ik(model, target, base_world, hand_q, initial=None, preview=None, screen=None):
+def solve_ik(model, target, base_world, hand_q, initial=None, preview=None, screen=None, prefer_initial=False):
     bounds = np.asarray(model.arm_limits)
     lower, upper = bounds[:, 0], bounds[:, 1]
     starts = []
@@ -493,6 +493,13 @@ def solve_ik(model, target, base_world, hand_q, initial=None, preview=None, scre
         candidate["screen_failures"] = 0 if screen is None else len(screen(solution.x)["failures"])
         candidate["selection_rank"] = (candidate["score"] > 3,
                                         candidate["screen_failures"], candidate["score"])
+        if prefer_initial and initial is not None:
+            feasible = (candidate["position_residual_m"] <= .002 and
+                        candidate["orientation_residual_rad"] <= .02)
+            candidate["selection_rank"] = (
+                not feasible, candidate["screen_failures"],
+                float(np.linalg.norm(solution.x - np.asarray(initial))) if feasible else candidate["score"],
+                candidate["score"])
         if best is None or candidate["selection_rank"] < best["selection_rank"]:
             best = candidate
     return best

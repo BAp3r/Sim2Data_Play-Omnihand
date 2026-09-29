@@ -7,13 +7,24 @@ try:
     import numpy as np
     from scipy.spatial.transform import Rotation
     from handoff_planner import box_symmetries
-    from plan_contact_trajectory import collision_screen
+    from plan_contact_trajectory import collision_screen, solve_ik
 except ImportError:
     np=None
 
 
 @unittest.skipIf(np is None,'optional scientific planning environment')
 class MeasuredHandoffTests(unittest.TestCase):
+    def test_continuation_ik_keeps_nearest_feasible_branch(self):
+        class PeriodicModel:
+            side='right'; arm_limits=[[-3.,3.]]; arm_names=['joint']
+            def fk(self,q):
+                matrix=np.eye(4);matrix[0,3]=np.sin(q['joint'])
+                return {'right_hand__R_palm':matrix}
+        target=np.eye(4);target[0,3]=.5
+        result=solve_ik(PeriodicModel(),target,np.eye(4),{},initial=[2.5],prefer_initial=True)
+        self.assertLess(result['position_residual_m'],1e-6)
+        self.assertAlmostEqual(result['q'][0],5*np.pi/6,places=5)
+
     def test_symmetries_preserve_cuboid_not_arbitrary_axes(self):
         size=np.array([.084,.06,.06]); matrices=list(box_symmetries(size))
         self.assertEqual(len(matrices),8)
