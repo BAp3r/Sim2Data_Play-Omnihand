@@ -62,7 +62,7 @@
 
 `configs/commissioning.synthetic.json.gripper_commissioning` 为左右独立开合映射。`amount=0` 是张开，`amount=1` 是闭合；每侧 10 个 active joint 目标按各自 URDF limit 限幅，mimic joint 由模型耦合。`synthetic_drive` 的 stiffness/damping/max_force/max_velocity_rad_s 是明确假设，不覆盖 manifest 中生产参数的 null。
 
-当前固定手型候选采用内网 teleop 仓库已实现的 `tripod` 端点；来源 commit 与左右十维端点写入 profile。该代码的硬件发送仍展开为十个主动关节，不能把一维接口误解为十个关节共用同一角度。
+当前固定手型候选采用内网 teleop 仓库已实现的 `tripod`/`pinch` 语义；当前 synthetic profile 将未参与闭合的中指、无名指和小指固定在各自 URDF 的伸直端点（左右符号不同，当前均为 0 rad），拇指 roll/abad 固定在中性位置，不注入外翻。来源 legacy 角度保留在 audit 字段，sign/offset 与 `gesture_open_adjustment_rad` 明确记录当前端点修正。硬件发送仍展开为十个主动关节，不能把一维接口误解为十个关节共用同一角度。
 
 框子顶面与桌面平齐是 synthetic 场景约束，待官方资产/尺寸绑定后再验证，当前不会写入生产标定。
 

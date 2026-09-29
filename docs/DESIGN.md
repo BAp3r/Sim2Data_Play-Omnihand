@@ -236,7 +236,7 @@ The right side has not passed. Its strict geometric candidate passed, but the ph
 
 ## 2026-09-28 O10 hand semantics and relay boundary
 
-The commissioning profile maps each current-URDF active joint to its legacy source name, sign, offset, limits, and endpoint. The left gesture is legacy tripod: only thumb MCP, index PIP, and middle PIP close. The right gesture is legacy pinch: only thumb MCP and index PIP close. Thumb roll/abad and unused finger channels stay at mapped open values; mimic joints are read-only and excluded from command vectors, optimizer variables, and preload effort.
+The commissioning profile maps each current-URDF active joint to its legacy source name, sign, offset, limits, and endpoint. The left gesture is legacy tripod: only thumb MCP, index PIP, and middle PIP close. The right gesture is legacy pinch: only thumb MCP and index PIP close. The user-confirmed open-jaw revision holds unused flexion channels at their current-URDF straight endpoint and holds thumb roll/abad near neutral, without an outward thumb flip. Mimic joints are read-only and excluded from command vectors, optimizer variables, and preload effort. This revision remains a synthetic candidate until fresh contact gates pass.
 
 After `SingleArticulation.initialize`, the hand receives one active-only open pose write. Arm reset is recorded separately. The response probe then uses `ArticulationAction` for amount `0, 0.5, 1, 0` and logs measured q/qd/effort, limits, gains, and mimic relationships. This is a commissioning response check, not contact or relay success.
 

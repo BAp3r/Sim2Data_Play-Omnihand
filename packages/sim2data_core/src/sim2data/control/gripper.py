@@ -123,6 +123,7 @@ class JointTarget:
     allow_close: bool = True
     legacy_open_rad: float | None = None
     legacy_close_rad: float | None = None
+    gesture_open_adjustment_rad: float = 0.0
 
     def at(self, amount: float) -> float:
         x = min(1.0, max(0.0, float(amount)))
@@ -192,6 +193,7 @@ class GripperMap:
                 "legacy_offset_rad": joint.legacy_offset_rad,
                 "legacy_open_rad": joint.legacy_open_rad,
                 "legacy_close_rad": joint.legacy_close_rad,
+                "gesture_open_adjustment_rad": joint.gesture_open_adjustment_rad,
                 "allow_close": joint.allow_close,
                 "open_rad": joint.open_rad,
                 "close_rad": joint.close_rad,
@@ -299,6 +301,10 @@ def load_gripper_map(side: str, urdf: str | Path, config: str | Path) -> Gripper
             if "legacy_close_rad" in item
             else None
         )
+        open_adjustment = _number(
+            item.get("gesture_open_adjustment_rad", 0.0),
+            field="gesture_open_adjustment_rad", joint=name,
+        )
         if has_mapping:
             if not legacy_name:
                 raise ValueError(f"{side} {name} mapping is missing legacy_name")
@@ -310,11 +316,13 @@ def load_gripper_map(side: str, urdf: str | Path, config: str | Path) -> Gripper
             for current_key, legacy_key in (("open_rad", "legacy_open_rad"), ("close_rad", "legacy_close_rad")):
                 if legacy_key in item:
                     expected = legacy_sign * _number(item[legacy_key], field=legacy_key, joint=name) + legacy_offset
+                    if current_key == "open_rad":
+                        expected += open_adjustment
                     actual = open_rad if current_key == "open_rad" else close_rad
                     if abs(expected - actual) > 1e-8:
                         raise ValueError(
                             f"{side} {name} {current_key} does not match explicit legacy mapping "
-                            f"({legacy_sign} * {legacy_key} + {legacy_offset} = {expected}, got {actual})"
+                            f"(sign/offset plus gesture adjustment = {expected}, got {actual})"
                         )
 
         allow_close = bool(item.get("allow_close", item.get("close_enabled", abs(close_rad - open_rad) > 1e-12)))
@@ -333,6 +341,7 @@ def load_gripper_map(side: str, urdf: str | Path, config: str | Path) -> Gripper
                 allow_close,
                 legacy_open,
                 legacy_close,
+                open_adjustment,
             )
         )
     if {j.get("name") for j in parsed} != {j.name for j in targets}:

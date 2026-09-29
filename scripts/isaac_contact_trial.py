@@ -101,7 +101,7 @@ def validate_preload(preload, *, plan_sha, profile_sha, urdf_sha, active_names, 
 
 
 def validate_hand_plan(profile, plan):
-    """Reject old plans that vary thumb shaping or start the hand at zero."""
+    """Reject variable thumb shaping or a reset different from mapped open."""
     from sim2data.control.gripper import allowed_closing_joint_names, validate_gesture_targets
     side = plan["side"]
     active = profile["gripper_commissioning"][side]["active_joints"]

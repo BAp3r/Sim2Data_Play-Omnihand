@@ -14,7 +14,7 @@ class ContactGateTests(unittest.TestCase):
         self.assertFalse(contact_release_gate([row]*1000+[bad],.08,.001)["passed"])
         self.assertFalse(contact_release_gate([dict(row,support_force_N=0.)]*1000,.08,.001)["passed"])
 
-    def test_plan_cannot_restore_legacy_thumb_rotation_or_zero_reset(self):
+    def test_plan_cannot_restore_thumb_rotation_or_unmapped_reset(self):
         import json, copy
         profile=json.loads((Path(__file__).parents[1]/"configs/commissioning.synthetic.json").read_text())
         for side in ("left","right"):
@@ -25,8 +25,13 @@ class ContactGateTests(unittest.TestCase):
             validate_hand_plan(profile,plan)
             bad=copy.deepcopy(plan);bad["hand_close"][0]+=.1
             with self.assertRaises(ValueError):validate_hand_plan(profile,bad)
-            bad=copy.deepcopy(plan);bad["start_configuration"]["hand"]=[0.]*10
+            bad=copy.deepcopy(plan);bad["start_configuration"]["hand"][0]+=.1
             with self.assertRaises(ValueError):validate_hand_plan(profile,bad)
+            # Source zero is a valid direct open pose for the right open jaw.
+            # Reject a mismatch with the mapped pose, not zero as a number.
+            if side == "right":
+                self.assertEqual(opened, [0.]*10)
+                validate_hand_plan(profile,plan)
 
     def test_preload_rejects_fixed_hand_channels(self):
         request = dict(plan_sha256="p", profile_sha256="c", urdf_sha256="u",

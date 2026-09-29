@@ -307,30 +307,31 @@
         },
         {
           "name": "left_hand__l_thumb_abad_joint",
-          "open_rad": -1.51,
-          "close_rad": -1.51,
+          "open_rad": 0.0,
+          "close_rad": 0.0,
           "legacy_name": "thumb_cm_yaw",
           "legacy_open_rad": 1.51,
           "legacy_close_rad": 1.51,
           "legacy_sign": -1,
-          "legacy_offset_rad": 0,
+          "legacy_offset_rad": 1.51,
           "allow_close": false
         },
         {
           "name": "left_hand__l_thumb_mcp_joint",
-          "open_rad": 0.5,
+          "open_rad": 0.0,
           "close_rad": 0.7,
           "legacy_name": "thumb_cm_pitch",
           "legacy_open_rad": -0.5,
           "legacy_close_rad": -0.7,
           "legacy_sign": -1,
           "legacy_offset_rad": 0,
-          "allow_close": true
+          "allow_close": true,
+          "gesture_open_adjustment_rad": -0.5
         },
         {
           "name": "left_hand__l_index_abad_joint",
-          "open_rad": 0,
-          "close_rad": 0,
+          "open_rad": 0.0,
+          "close_rad": 0.0,
           "legacy_name": "index_mp_yaw",
           "legacy_open_rad": 0,
           "legacy_close_rad": 0,
@@ -340,30 +341,32 @@
         },
         {
           "name": "left_hand__l_index_pip_joint",
-          "open_rad": -0.5,
+          "open_rad": 0.0,
           "close_rad": -0.7,
           "legacy_name": "index_mp_pitch",
           "legacy_open_rad": 0.5,
           "legacy_close_rad": 0.7,
           "legacy_sign": -1,
           "legacy_offset_rad": 0,
-          "allow_close": true
+          "allow_close": true,
+          "gesture_open_adjustment_rad": 0.5
         },
         {
           "name": "left_hand__l_middle_pip_joint",
-          "open_rad": -0.5,
+          "open_rad": 0.0,
           "close_rad": -0.7,
           "legacy_name": "middle_mp_pitch",
           "legacy_open_rad": 0.5,
           "legacy_close_rad": 0.7,
           "legacy_sign": -1,
           "legacy_offset_rad": 0,
-          "allow_close": true
+          "allow_close": true,
+          "gesture_open_adjustment_rad": 0.5
         },
         {
           "name": "left_hand__l_ring_abad_joint",
-          "open_rad": 0,
-          "close_rad": 0,
+          "open_rad": 0.0,
+          "close_rad": 0.0,
           "legacy_name": "ring_mp_yaw",
           "legacy_open_rad": 0,
           "legacy_close_rad": 0,
@@ -373,19 +376,19 @@
         },
         {
           "name": "left_hand__l_ring_pip_joint",
-          "open_rad": -1.48,
-          "close_rad": -1.48,
+          "open_rad": 0.0,
+          "close_rad": 0.0,
           "legacy_name": "ring_mp_pitch",
           "legacy_open_rad": 1.48,
           "legacy_close_rad": 1.48,
           "legacy_sign": -1,
-          "legacy_offset_rad": 0,
+          "legacy_offset_rad": 1.48,
           "allow_close": false
         },
         {
           "name": "left_hand__l_pinky_abad_joint",
-          "open_rad": 0,
-          "close_rad": 0,
+          "open_rad": 0.0,
+          "close_rad": 0.0,
           "legacy_name": "pinky_mp_yaw",
           "legacy_open_rad": 0,
           "legacy_close_rad": 0,
@@ -395,13 +398,13 @@
         },
         {
           "name": "left_hand__l_pinky_pip_joint",
-          "open_rad": -1.48,
-          "close_rad": -1.48,
+          "open_rad": 0.0,
+          "close_rad": 0.0,
           "legacy_name": "pinky_mp_pitch",
           "legacy_open_rad": 1.48,
           "legacy_close_rad": 1.48,
           "legacy_sign": -1,
-          "legacy_offset_rad": 0,
+          "legacy_offset_rad": 1.48,
           "allow_close": false
         }
       ],
@@ -415,10 +418,12 @@
       "gesture": "tripod",
       "source": "legacy tripod intent mapped by explicit active joint name/sign/offset to current source URDF; synthetic, not hardware commands",
       "coordinate_space": "source_urdf_joint_radians",
-      "mapping_notes": "Legacy left tripod open/closed radians are recorded per channel. Current URDF sign and offset mapping is explicit; only thumb_mcp, index_pip, middle_pip may close. Thumb roll/abad and ring/pinky channels remain fixed.",
+      "mapping_notes": "User-confirmed open-jaw intent (2026-09-28). Unused flexion channels stay at the source URDF straight endpoint 0 rad. Thumb roll/abad remain fixed near source zero; this synthetic neutral candidate still requires geometry and physical validation. Historical legacy angles are preserved; explicit sign/offset and gesture_open_adjustment_rad describe the changed endpoints. Only the previously allowed closure channels may move.",
       "legacy_gesture_source": ".local/evidence/m15/legacy_hand_semantics_20260928.md",
       "command_policy": "all ten current URDF active non-mimic joints; mimic/passive read-only",
-      "reset_policy": "direct open gesture after articulation.initialize; arm reset recorded separately"
+      "reset_policy": "direct open gesture after articulation.initialize; arm reset recorded separately",
+      "gesture_revision": "open_jaw_20260928",
+      "neutral_pose_status": "synthetic_candidate_pending_contact_validation"
     },
     "right": {
       "interface": "scalar_open_close_0_open_1_closed",
@@ -426,41 +431,42 @@
       "active_joints": [
         {
           "name": "right_hand__R_thumb_roll_joint",
-          "open_rad": 0.03,
-          "close_rad": 0.03,
+          "open_rad": 0.0,
+          "close_rad": 0.0,
           "legacy_name": "thumb_cm_roll",
           "legacy_open_rad": 0.03,
           "legacy_close_rad": 0.03,
           "legacy_sign": 1,
-          "legacy_offset_rad": 0,
+          "legacy_offset_rad": -0.03,
           "allow_close": false
         },
         {
           "name": "right_hand__R_thumb_abad_joint",
-          "open_rad": -1.4,
-          "close_rad": -1.4,
+          "open_rad": 0.0,
+          "close_rad": 0.0,
           "legacy_name": "thumb_cm_yaw",
           "legacy_open_rad": -1.51,
           "legacy_close_rad": -1.51,
           "legacy_sign": 1,
-          "legacy_offset_rad": 0.11,
+          "legacy_offset_rad": 1.51,
           "allow_close": false
         },
         {
           "name": "right_hand__R_thumb_mcp_joint",
-          "open_rad": 0.5,
+          "open_rad": 0.0,
           "close_rad": 0.7,
           "legacy_name": "thumb_cm_pitch",
           "legacy_open_rad": 0.5,
           "legacy_close_rad": 0.7,
           "legacy_sign": 1,
           "legacy_offset_rad": 0,
-          "allow_close": true
+          "allow_close": true,
+          "gesture_open_adjustment_rad": -0.5
         },
         {
           "name": "right_hand__R_index_abad_joint",
-          "open_rad": 0,
-          "close_rad": 0,
+          "open_rad": 0.0,
+          "close_rad": 0.0,
           "legacy_name": "index_mp_yaw",
           "legacy_open_rad": 0,
           "legacy_close_rad": 0,
@@ -470,30 +476,31 @@
         },
         {
           "name": "right_hand__R_index_pip_joint",
-          "open_rad": 0.5,
+          "open_rad": 0.0,
           "close_rad": 0.7,
           "legacy_name": "index_mp_pitch",
           "legacy_open_rad": 0.5,
           "legacy_close_rad": 0.7,
           "legacy_sign": 1,
           "legacy_offset_rad": 0,
-          "allow_close": true
+          "allow_close": true,
+          "gesture_open_adjustment_rad": -0.5
         },
         {
           "name": "right_hand__R_middle_pip_joint",
-          "open_rad": 1.48,
-          "close_rad": 1.48,
+          "open_rad": 0.0,
+          "close_rad": 0.0,
           "legacy_name": "middle_mp_pitch",
           "legacy_open_rad": 1.48,
           "legacy_close_rad": 1.48,
           "legacy_sign": 1,
-          "legacy_offset_rad": 0,
+          "legacy_offset_rad": -1.48,
           "allow_close": false
         },
         {
           "name": "right_hand__R_ring_abad_joint",
-          "open_rad": 0,
-          "close_rad": 0,
+          "open_rad": 0.0,
+          "close_rad": 0.0,
           "legacy_name": "ring_mp_yaw",
           "legacy_open_rad": 0,
           "legacy_close_rad": 0,
@@ -503,19 +510,19 @@
         },
         {
           "name": "right_hand__R_ring_pip_joint",
-          "open_rad": 1.48,
-          "close_rad": 1.48,
+          "open_rad": 0.0,
+          "close_rad": 0.0,
           "legacy_name": "ring_mp_pitch",
           "legacy_open_rad": 1.48,
           "legacy_close_rad": 1.48,
           "legacy_sign": 1,
-          "legacy_offset_rad": 0,
+          "legacy_offset_rad": -1.48,
           "allow_close": false
         },
         {
           "name": "right_hand__R_pinky_abad_joint",
-          "open_rad": 0,
-          "close_rad": 0,
+          "open_rad": 0.0,
+          "close_rad": 0.0,
           "legacy_name": "pinky_mp_yaw",
           "legacy_open_rad": 0,
           "legacy_close_rad": 0,
@@ -525,13 +532,13 @@
         },
         {
           "name": "right_hand__R_pinky_pip_joint",
-          "open_rad": 1.48,
-          "close_rad": 1.48,
+          "open_rad": 0.0,
+          "close_rad": 0.0,
           "legacy_name": "pinky_mp_pitch",
           "legacy_open_rad": 1.48,
           "legacy_close_rad": 1.48,
           "legacy_sign": 1,
-          "legacy_offset_rad": 0,
+          "legacy_offset_rad": -1.48,
           "allow_close": false
         }
       ],
@@ -545,10 +552,12 @@
       "gesture": "pinch",
       "source": "legacy pinch intent mapped by explicit active joint name/sign/offset to current source URDF; synthetic, not hardware commands",
       "coordinate_space": "source_urdf_joint_radians",
-      "mapping_notes": "Legacy right pinch open/closed radians are recorded per channel. Current URDF sign and thumb abad offset mapping is explicit; only thumb_mcp and index_pip may close. Middle/ring/pinky channels remain fixed.",
+      "mapping_notes": "User-confirmed open-jaw intent (2026-09-28). Unused flexion channels stay at the source URDF straight endpoint 0 rad. Thumb roll/abad remain fixed near source zero; this synthetic neutral candidate still requires geometry and physical validation. Historical legacy angles are preserved; explicit sign/offset and gesture_open_adjustment_rad describe the changed endpoints. Only the previously allowed closure channels may move.",
       "legacy_gesture_source": ".local/evidence/m15/legacy_hand_semantics_20260928.md",
       "command_policy": "all ten current URDF active non-mimic joints; mimic/passive read-only",
-      "reset_policy": "direct open gesture after articulation.initialize; arm reset recorded separately"
+      "reset_policy": "direct open gesture after articulation.initialize; arm reset recorded separately",
+      "gesture_revision": "open_jaw_20260928",
+      "neutral_pose_status": "synthetic_candidate_pending_contact_validation"
     }
   }
 }

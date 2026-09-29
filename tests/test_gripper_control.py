@@ -141,6 +141,36 @@ class GestureSemanticsTests(unittest.TestCase):
         )
         self.assertNotEqual(set(allowed_closing_joint_names("left")), set(allowed_closing_joint_names("right")))
 
+    def test_open_jaw_keeps_unused_fingers_straight(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for side in ("left", "right"):
+                mapping = load_gripper_map(side, self._write_urdf(root, side), PROFILE)
+                for joint in mapping.joints:
+                    if "pip_joint" in joint.name or "thumb_mcp" in joint.name:
+                        self.assertEqual(joint.open_rad, 0.0)
+                        if not joint.allow_close:
+                            for amount in (0, 0.5, 1, 0):
+                                self.assertEqual(mapping.expand(amount)[joint.name], 0.0)
+                    if "thumb_roll" in joint.name or "thumb_abad" in joint.name:
+                        self.assertFalse(joint.allow_close)
+                        self.assertLessEqual(abs(joint.open_rad), 0.05)
+
+    def test_gesture_adjustment_is_explicit_and_checked(self):
+        profile = json.loads(PROFILE.read_text(encoding="utf-8"))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            urdf = self._write_urdf(root, "left")
+            active = profile["gripper_commissioning"]["left"]["active_joints"]
+            target = next(item for item in active if item["name"].endswith("thumb_mcp_joint"))
+            self.assertEqual(target["legacy_open_rad"], -0.5)
+            self.assertEqual(target["gesture_open_adjustment_rad"], -0.5)
+            del target["gesture_open_adjustment_rad"]
+            bad = root / "bad.json"
+            bad.write_text(json.dumps(profile), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "explicit legacy mapping"):
+                load_gripper_map("left", urdf, bad)
+
     def test_mimics_are_not_commands_and_endpoints_are_limited(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
