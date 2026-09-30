@@ -667,7 +667,7 @@ def create_plan(urdf_path, profile_path, manifest_path, side, grasp_search=None)
         for fraction in np.linspace(0, 1, 9)[1:]:
             target = grasp.copy()
             target[:3,3] += [0,0,.08*fraction]
-            waypoint = solve_ik(model, target, base_world, close_q, lift_waypoints[-1])
+            waypoint = solve_ik(model, target, base_world, close_q, lift_waypoints[-1],prefer_initial=True)
             lift_path_ik_ok &= waypoint["position_residual_m"] <= .0002 and waypoint["orientation_residual_rad"] <= .002
             lift_waypoints.append(waypoint["q"])
         ik_lift = dict(ik_lift, q=lift_waypoints[-1])

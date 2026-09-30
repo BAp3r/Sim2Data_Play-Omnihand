@@ -269,7 +269,9 @@ def run(args):
             if row[side]["hand_force_N"]<=.02 or row["support_force_N"]>.01:
                 raise RuntimeError(label+" requires a physically held airborne box")
             result=plan_transport(models[side],base[side],mapping[side]["active"],plans[side],q,
-                row["box_position"],row["box_quaternion_wxyz"],np.asarray(destination)-row["box_position"],profile["table"])
+                row["box_position"],row["box_quaternion_wxyz"],np.asarray(destination)-row["box_position"],profile["table"],
+                bin_config=profile["bin"],
+                measured_hand=([row[side]["q"][i] for i in mapping[side]["indices"][6:]] if side=="right" else None))
             _write(args.out/(label+"_plan.json"),result)
             if not result["passed"]:raise RuntimeError(label+" Cartesian transport screening failed")
             return result["waypoints"]
