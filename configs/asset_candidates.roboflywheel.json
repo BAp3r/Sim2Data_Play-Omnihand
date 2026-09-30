@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "source_repository": "https://modelscope.cn/datasets/RoboFlywheel/Rigid",
+  "source_revision": "b288a2e15ee585a7d1c7a756e20d4c37c2817249",
+  "license_status": "Apache-2.0 as declared by pinned README; underlying provenance not independently verified",
+  "license_evidence": "pinned publisher README, retained with private source subset",
+  "verified_source_file_count": 20,
+  "verified_source_bytes": 74060878,
+  "files_publicly_redistributed": false,
+  "production_collection_allowed": false,
+  "candidates": [
+    {
+      "id": "27_26_0000",
+      "category": "Parcel Box",
+      "mesh_measured_aabb_m": [
+        [
+          -0.100002,
+          -0.034405,
+          -0.033781
+        ],
+        [
+          0.099998,
+          0.034374,
+          0.034003
+        ]
+      ],
+      "mesh_dimensions_m": [
+        0.2,
+        0.068779,
+        0.067784
+      ],
+      "publisher_declared_bbox_m": [
+        0.2,
+        0.15,
+        0.1
+      ],
+      "mass_kg": 0.1298,
+      "mass_source": "composed",
+      "material_source": "vlm",
+      "mass_check": "ok",
+      "friction": 0.5,
+      "inertia_eigenvalues": [
+        0.00020043856549335673,
+        0.0005713025285066775,
+        0.0005736995279999658
+      ],
+      "hulls": 4,
+      "up_axis_fix": {
+        "leaf": "27_26_0000",
+        "vis_ext": [
+          0.06877936,
+          0.19999999000000002,
+          0.06778433
+        ],
+        "real_bbox": [
+          0.2,
+          0.15,
+          0.1
+        ],
+        "ambiguous": false,
+        "axis_map": "Y->X X->Y Z->Z",
+        "rotated": "Y->X X->Y Z->Z"
+      },
+      "runtime_validated": false,
+      "production_binding": false,
+      "root_config_key": "official_asset_root",
+      "relative_path": "Candidates/RoboFlywheel/Rigid/b288a2e1_sim2data_20260924/assets/27/26/27_26_0000/27_26_0000.usd",
+      "usd_sha256": "ad15d2e47be8e23b376fc64dd8151600ffb9172ba825ffc83cead796282a290f",
+      "source_url": "https://modelscope.cn/datasets/RoboFlywheel/Rigid/resolve/b288a2e15ee585a7d1c7a756e20d4c37c2817249/assets/27/26/27_26_0000/27_26_0000.usd",
+      "selection": "candidate_only; does not replace NVIDIA cardbox"
+    },
+    {
+      "id": "6_30_0000",
+      "category": "Folding Carton Box",
+      "mesh_measured_aabb_m": [
+        [
+          -0.061056,
+          -0.015967,
+          -0.074999
+        ],
+        [
+          0.06107,
+          0.01602,
+          0.075001
+        ]
+      ],
+      "mesh_dimensions_m": [
+        0.122126,
+        0.031987,
+        0.15
+      ],
+      "publisher_declared_bbox_m": [
+        0.1,
+        0.05,
+        0.15
+      ],
+      "mass_kg": 0.05,
+      "mass_source": "vlm_anchored",
+      "material_source": "vlm",
+      "mass_check": "flag",
+      "friction": 0.6,
+      "inertia_eigenvalues": [
+        6.861139664797844e-05,
+        0.00012190181360948668,
+        0.0001703359967425349
+      ],
+      "hulls": 1,
+      "up_axis_fix": {
+        "leaf": "6_30_0000",
+        "vis_ext": [
+          0.12212655,
+          0.15000000000000002,
+          0.03198692
+        ],
+        "real_bbox": [
+          0.1,
+          0.05,
+          0.15
+        ],
+        "ambiguous": false,
+        "axis_map": "Y->Z X->X Z->Y",
+        "rotated": "Y->Z X->X Z->Y"
+      },
+      "runtime_validated": false,
+      "production_binding": false,
+      "root_config_key": "official_asset_root",
+      "relative_path": "Candidates/RoboFlywheel/Rigid/b288a2e1_sim2data_20260924/assets/6/30/6_30_0000/6_30_0000.usd",
+      "usd_sha256": "622e1ff4522748131357e6d4dc3a2c47e6f348ddbb68168edec7aa675d48adee",
+      "source_url": "https://modelscope.cn/datasets/RoboFlywheel/Rigid/resolve/b288a2e15ee585a7d1c7a756e20d4c37c2817249/assets/6/30/6_30_0000/6_30_0000.usd",
+      "selection": "candidate_only; does not replace NVIDIA cardbox"
+    }
+  ]
+}

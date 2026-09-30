@@ -1,0 +1,136 @@
+# 双臂桌面中转数采：实施顺序
+
+本文件记录 2026-09-22 用户确认的目标及随后明确授权的实施轮次。当前推进 A/B/D、资产与运行时绑定方案；GPU 资源和依赖允许时做最小 physics + RGB smoke。接触任务 C 仍等待 A/B，正式机器人数据集和批量采集未验收。旧暂停记录仅作历史，生产采集保持关闭。
+
+```mermaid
+flowchart LR
+    L[桌面左侧纸盒] --> LP[左手接触抓取]
+    LP --> T[桌面中转区放下]
+    T --> S[松手、稳定、左臂撤离]
+    S --> RP[右手重新抓取]
+    RP --> B[桌外右侧框子]
+    B --> Q[松手、框内容纳、稳定验收]
+```
+
+## 已确定的设计
+
+- 主线 Isaac Lab / Isaac Sim，USD 场景，Blender 仅补自建法兰、相机支架等缺件。
+- AIRBOT Play 与 OmniHand 2025 双臂；场景左/右侧与手的解剖左右型分别记录。
+- 两路腕部 D405 RGB，加一路通用仿真主相机。手机绕拍不充当训练视角。
+- 主相机初始设计为 640×480 / 30 Hz 理想针孔，fx=fy=600 px、主点 (319.5, 239.5)；属于允许设计的合成参数。世界位姿待桌面/框子布局确定后，以覆盖左抓取区、中转区、右侧框子为标准配置和验证。
+- 中转是先放下、松手、稳定，再由右手抓起；完整两段对应一个 episode。
+- 机器人反馈和硬件可行命令记录双臂全量具名通道。维度等待模型和接口审计。
+- LeRobotDataset v3.0 使用官方 SDK。虚拟数据格式测试与物理成功数据分别验收。
+- 生产参数缺失时停止采集。允许设计的仿真参数标为 synthetic，实测参数不能被视觉估计覆盖。
+
+## 本地与远端分工
+
+Windows 保存代码、审计和低成本测试；GPU 服务器负责接触仿真、渲染及批量编码。沿用服务器现有软件作为只读验证候选，再用独立 uv 项目冻结最终环境，不修改他人的环境。资产包版本与运行时版本分开记录。
+
+官方资产继续留在 NAS，通过真实挂载路径引用。软件缓存、环境和写入中的数据放本地盘；完成并通过 loader 回读后再归档到 NAS。现有 SMB 挂载可写，不等于项目获准修改官方资产；项目始终只读它们。Windows 软链接权限不足时直接配置外部根路径，无需复制资产全集。
+
+GitHub 只发布经审阅的代码、公开文档和允许再分发的文件。内网容量大，但许可仍适用；数据集、实录和标定原件优先留独立私有存储。自建/获授权 USD 走 Git LFS。原本独立的开发历史保持本地；发布分支基于既有 GitHub main 导入已审阅快照，同一分支推向两个远端，保留原 LICENSE，不直接推送 main 或强行合并无关历史。其余配置见 `docs/CONFIGURATION.md`。
+
+## 关卡和下一接口
+
+文档阶段已结束，本轮按以下依赖关卡推进；分项小样与生产验收分开记录：
+
+1. **设计冻结（已交付基线）**：固定桌面中转任务、三路 RGB、坐标/单位、模块接口、仓库存储边界和模型分工。未知实测量留空，形成待补输入清单。
+2. **资产与装配输入**：对两个用户候选 URDF 及官方 OmniHand 2025 来源进行版本/许可/接口审计；选定 NAS 的 card_box；补齐桌面、双底座、手/法兰/D405 和桌外框子参数。交付 manifest 和装配规格，不靠猜 DOF 推进。
+3. **实现基础接口与场景关卡**：绑定兼容的现有 Isaac Lab 环境；按坐标链搭双臂场景，补自建安装件；完成记录适配器和官方 LeRobot 写入边界。实施轮次中通过 headless、关节映射、投影/遮挡与碰撞检查后，A/B 才可交给 C。环境与数据写入根目录各自隔离。
+4. **分段与整回合实现**：A/B 验收通过后，左取放和右取放分别实现，再通过“左手已松开、物体稳定、左臂已撤离”的中转门禁串联；输出真实命令、同步帧、失败类型和 sidecar，完成 M3 接触验收。
+5. **数据集验证（后置）**：D 的官方 SDK 合成小样可在实施轮次中与 A/B 并行；只有 M3 的真实完整回合经 writer/finalize/官方 loader 回读、时序/索引/统计检查后才算 M4。失败回到相应模块修复，不提前把数据标为可训练。
+6. **受控扩量**：nominal 整回合通过后扩大盒子位置/朝向/外观等随机化，逐级测并行度；验收断点恢复、分组划分与存储吞吐，再正式采集。
+
+| 关卡 | 需要的输入与证据 | 完成后交给 |
+|---|---|---|
+| A 资产 | 固定来源/版本的 URDF、驱动映射、mesh/材质依赖、card_box USD 和碰撞质量检查 | B 装配、C 控制 |
+| B 装配 | 桌面/底座/法兰/手根/TCP/D405 变换，框子几何与位置，中转共达区 | C 接触规划 |
+| D 格式 | 官方 SDK 多回合视频写入、finalize、重新打开、时间窗口和统计验证 | 记录适配器 |
+| C 单场景 | 左段/右段接触验证，再整段接力；失败分类与无作弊证据 | M3 物理验收 |
+| E 质量框架 | seed/划分/缺帧/未就绪阻断；M3/M4 后才扩随机化和并行 | M5 批量测试 |
+
+先做同一盒子和固定场景的完整接力，再增加位置/yaw、尺寸和外观随机化，最后加入经测量约束的质量、摩擦和控制扰动。每次尺寸变化同步更新碰撞、惯性假设和抓取候选；框内有效放置区按完整物体包络验收。
+
+## 仍需补齐的生产输入
+
+手的硬件修订与解剖左右型、机器人控制通道映射、桌面及双底座尺寸位姿、法兰/支架完整变换与惯性、腕相机内外参、盒子尺寸质量与刚性假设、外侧框子的内尺寸/底面高度/位姿。约 4 cm 仅是法兰名义长度。
+
+第一波最多三个 Luna Max 子代理，各自 worktree；第二波可先做 E 的 plan-only 框架，A/B 通过后再启动 C。本轮从正式发布基线派生独立实施分支，先审阅旧在途模块，再按各自范围复用。公共 schema、依赖选择和最终集成由主会话负责。Sol High/Astra High 留给明确需要的专项复核，不额外制造并发写入。
+
+## 代理分工与本轮收口
+
+主会话负责视频/图像理解、设计、计划、公共 schema 和最终审阅；需要专项多模态复核时用 Astra High。Luna Max 仅接收已经拆清楚的小任务，Sol High 按需负责复杂代码适配/复核。最多三个子代理同时工作，不递归派生。
+
+历史 A/B/D 曾启动，B 的坐标工具与参数清单已进入发布基线；文档优先时暂停的 A/D/E 内容仍保留旧 worktree。本轮重新核对本地模型清单后，实际启动三名 Luna Max 代理 A/B/D，分别使用新的独立 worktree，从 `0e523e0` 派生。E 和 C 未启动。旧内容按文件审阅复用，不合并原独立开发历史。
+
+本轮收口是可实施的资产/运行时绑定方案、可审阅装配输入和能真实执行的官方格式小样；缺失实测参数继续阻断生产采集。各项实际结果以验证记录为准，不承诺机器人抓取或数据吞吐。
+
+## 当前本地检查与后续验证分界
+
+| 本地可做且已检查 | 能完善什么 | 不能据此判定什么 |
+|---|---|---|
+| 三份文档、任务卡和配置的静态审阅 | 多模态责任、RGB/depth 范围、原子坐标链、中转接口一致 | 实物尺寸、标定值或可达性 |
+| 配置缺项/错误单位/错误父 frame/跳过中转阶段注入 | 预检明确报告缺项或设计冲突，保持采集关闭 | 完整数值 schema、接触成功 |
+| SE(3)、相机轴和时钟/通道边界测试 | 单位/旋转方向、缺帧/错帧标签、不可变通道布局 | 真实相机投影及渲染延迟 |
+| JSON/TOML、私有目录忽略、LFS 属性 | 可解析配置及本地文件存储规则 | 远程 LFS 推拉或全面保密/许可审计 |
+| 预检 CLI 新报告/重复输出测试 | 输入不被改动，旧报告不被覆盖 | 多进程 writer 崩溃恢复 |
+
+运行入口为 `uv run --frozen --offline --no-python-downloads python -m unittest discover -s tests -v` 和 `python -m sim2data.preflight`（同一 uv 环境）。当前预检退出 2 是预期阻断；结果分为 `unresolved_parameters`（缺项）和 `invalid_contracts`（与已冻结设计冲突）。完整命令与结果见 `docs/VALIDATION.md`。
+
+本轮对候选 URDF 的 XML/关节图/mesh 引用执行静态审计，D 执行官方 SDK 回读；资源允许的运行时 smoke 只验证引擎、单盒物理和 RGB。E 的 plan-only 模块继续保留，不扩随机化跑测。机器人装配投影、碰撞和接触仍分别属于 M2/M3。
+
+## 本轮实现后的直接接入点
+
+三包和固定上游源码已落实，独立锁见 `PACKAGING.md`。A 的 `configs/asset_manifest.json` 提供来源、静态解析、SDK 驱动映射候选及生产阻塞；B 的 `configs/assembly_inputs.template.json` 提供逐侧原子链，CAD 审查见 `FLANGE_ASSEMBLY_REVIEW.md`；D 提供 `sim2data.export` 和 `scripts/lerobot_smoke.py`。后续先补模型 archive 绑定、实物修订及装配 datum，再处理运行时 RTX 启动失败并执行场景验证。当前不进入 C/E 批量阶段。
+
+## Synthetic 调试推进（2026-09-22）
+
+已实现 `scripts/assemble_commissioning.py` 双侧 URDF 组合、`scripts/build_commissioning_preview.py` 静态 USD 与 `scripts/blender_review_scene.py` CPU 预览。官方 O10 包和第三方 ROS2 arm 包已闭合；Astra Max 已实际执行视频/CAD/网格复核。Luna 在独立 worktree 用 uv 建立新的 Windows 环境；由主会话串行执行 GPU smoke。下一接口为审阅后的装配 datum、限位内姿态与动力学/控制映射；生产采集关闭，尚无接力 episode。
+
+装配修正进度：新用户单臂包闭合，保留6轴；旧G2座通过替换输入模型消除。官方Thor桌面已定向审计，工具支持只读绑定/单位核对/静态展开。预览采用限位内姿态与独立腕部近景，未恢复接触任务。下一步核定转接件配合、相机支架、六轴非零驱动约束与桌面碰撞支撑面。
+
+本轮Astra xhigh已实际执行左右手来源与D405对称复核，官方左右包36个mesh重新核验；主会话集成右相机刚体滚转候选、逐侧hand SHA绑定、官网参考材质与正交对称图。下一阶段先解决右screw朝向改变后的支架和校准，不将静态对称、参考配色或本轮证据目录名m4当作M4数据验收。
+
+同一Astra xhigh继续执行实录外观修正和两侧D405各外移20 mm；使用独立worktree及新的私有证据目录，复用已有源网格和CPU环境。集成需重新检查FK增量、相机对称、材质实际导入和带图例的前后效果。相机支架、动态碰撞及生产标定仍是下一阶段输入。
+
+## 2026-09-23 headless推进与模型协议
+
+用户随后确认先完成“规划运动样本”。已沿 Pinocchio 位置 IK → 审阅 USD 的逐帧 FK/RTX → LeRobot 官方单episode写入及全量回读推进，范围及交付见 `MOTION_SAMPLE.md`。这是明确标记的运动学回放与格式样本，不启动接触接力 C 或扩量 E；下一接口仍需机器人驱动、碰撞、装配/标定和 Kit 正常清理。
+
+完整装配的下一接口已实际运行：`scripts/isaac_scene_smoke.py` 校验审阅 USD/profile/纹理/manifest 身份后，从 NAS 直接重绑定 Thor 和 cardbox，使用三台审阅相机生成 RTX RGB。该 smoke 只证明静态场景打开和三路帧产出；inventory 显示机器人无 rigid body、articulation 或 drive，未推进 PhysX。腕相机在当前静态姿态下未覆盖桌面/纸盒，故 B 视觉覆盖未验收。Kit 逐扩展清理在 Windows 5.1.0.0 出现访问冲突，关闭栈与退出证据单独保留。C 和 E 扩量均未启动，生产采集继续阻断。证据目录 m7 是实施序号，不是里程碑验收。
+
+后续窄实现指定GPT-6 Luna Max，复杂适配指定GPT-6 Sol High，替代5.6对应角色；历史启动记录保留。模板ID更新不等于账号或当前工具已实际支持，启动前核对。该轮由主会话运行既有隔离环境，不另下载Isaac。远端PRO 6000满载时切换本机，先对选定NAS纸盒进行明确synthetic的缩放/质量wrapper、落体支撑和RGB检查，再据结果评估装配场景验证。仍不启动接触接力或批量采集。
+
+
+## 2026-09-23 接触验证前置变更
+
+已落实低维夹爪控制的公共接口和逐侧 synthetic 映射，但尚未导入 PhysX articulation。下一项必须在独立新输出目录执行：加载真实 arm+left/right hand URDF，建立固定连接、关节 drive 与 mimic，先记录空载开合的 commanded/measured joint values，再加入合成刚体纸盒。桌外框的 synthetic 支撑顶面与桌面顶面共高；物理验证前仍需核对 Thor 实际碰撞上界约 15.5 mm。
+
+未完成 articulation 前不得启动接触状态机、录制成功视频或开放生产采集。
+
+2026-09-24 下一接口：已审阅集成真实 articulation response 探针并完成左右空载测试，失败证据见 VALIDATION.md。先解决目标坐标/限位映射、USD mimic reference axis与耦合、转换后的collision/visual依赖，再重跑空载。两侧通过且collider可用后才进入用户授权的单臂接触录制；C接力与E扩量仍未启动。
+
+2026-09-24 M11直接接口：左右空载经过坐标修正和显式synthetic mimic约束参数后通过；当前阶段已进入用户授权的单臂接触fixture调试。先解决实际下探撞盒/对向手型，再要求接触支撑抬离并保持，之后验证放回松手。不得将这条fixture视为原双臂桌面接力或生产装配验收；E扩量未启动。
+
+接触下一接口：先解决高频mimic在碰撞时的数值稳定性与手指几何净空，再重跑单臂；稳定的手接触抬升保持未验证前，不串联双臂relay或批量采集。
+
+最终对照：1 ms、低力条件下contact07完整运行仍推倒盒子。下一步需解决对向包络/抓取净空与手部RGB可见性，再验证接触抬升；复核接触时mimic残差、惯性/碰撞几何和RGB同步。Kit正常关闭仍未验收。
+
+2026-09-24 M12：先完成全局状态几何规划与 Thor/cardbox 场景可见性修复；规划候选未通过碰撞门禁时不得启动接触状态机。RoboFlywheel 资产只作为 NAS candidate，待独立 PhysX 接触验证后再评估替换。
+
+## 2026-09-28 next execution boundary
+
+Left synthetic single-arm lift/hold now passed with real contact and two RGB videos (`m15/contact_left06`, private evidence). Right `contact_right03` failed lift and visual evidence. Continue with right finger contact location/force distribution and renderer visibility, then require right standalone acceptance before implementing the same-object table relay. Neither two standalone videos nor a concatenation qualifies as the complete episode.
+
+Two attempted delegated continuations (Luna Max search and Sol High relay adaptation) returned model-at-capacity errors; neither produced new code. The root executed this round's implementation and tests. All source assets remain read-only. Kit close still fails to return, so report persistence and externally terminated process status remain separate.
+
+### O10 commissioning result (2026-09-28)
+
+The hand mapping and active-channel restrictions are implemented and covered by regression tests. Fresh real-articulation probes completed both sides with 1920 PhysX steps and four amount stages. The probes passed strict readback gates, but Kit close required owner termination, so shutdown is not a normal-exit acceptance. The left and right probe videos are diagnostic only.
+
+Restricted refinement ultimately produced an executable left top-down candidate. Translating and re-screening the right fixed-pinch template at the table relay center also passed geometry/IK. Both standalone PhysX trials made contact and produced visible robot RGB, but neither lifted under the corrected fixed gestures. No success criteria were relaxed.
+
+### Continuous relay implementation boundary (2026-09-28)
+
+The real dual-arm scene runner is implemented and has run. `relay05` used one dynamic CardBox, two initialized SingleArticulations and three mounted/overhead cameras. It recorded 238 pre-action frames at 25 Hz, then failed during left close on fixed-hand channel drift. Transfer, handoff, right regrasp and bin placement are wired but unverified. `run_relay_episode.py` provides bounded process cleanup and success-only invocation of the existing official writer/loader adapter. No successful export or 20-attempt randomized batch has run.

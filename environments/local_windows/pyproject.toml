@@ -1,0 +1,45 @@
+[project]
+name = "sim2data-local-windows"
+version = "0.1.0"
+description = "Sim2Data Windows Isaac Sim 5.1 runtime environment"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+  "sim2data-core>=0.1,<0.2",
+  "sim2data-isaac>=0.1,<0.2",
+  "isaaclab==0.47.2",
+  "isaacsim[all,extscache]==5.1.0.0",
+  "torch==2.7.0+cu128",
+  "torchvision==0.22.0+cu128",
+  "filelock==3.13.1",
+  "fsspec==2024.6.1",
+  "networkx==3.3",
+  "pywin32==306",
+]
+
+[tool.uv.sources]
+sim2data-core = { path = "../../packages/sim2data_core", editable = true }
+sim2data-isaac = { path = "../../packages/sim2data_isaac", editable = true }
+isaaclab = { path = "../../third_party/IsaacLab/source/isaaclab", editable = true }
+torch = { index = "pytorch-cu128" }
+torchvision = { index = "pytorch-cu128" }
+
+[tool.uv]
+package = false
+environments = ["sys_platform == 'win32' and platform_machine == 'AMD64'"]
+extra-build-dependencies = { isaaclab = ["toml"], flatdict = ["setuptools<81"] }
+override-dependencies = [
+  "filelock==3.13.1",
+  "fsspec==2024.6.1",
+  "networkx==3.3",
+  "pywin32==306",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[[tool.uv.index]]
+name = "nvidia"
+url = "https://pypi.nvidia.com"
+explicit = false
