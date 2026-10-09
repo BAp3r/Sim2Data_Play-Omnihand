@@ -39,6 +39,16 @@ class RelayTests(unittest.TestCase):
     def test_fatal_failure_wins_over_transition(self):
         self.assertEqual(RelayStateMachine().tick(.01,True,fatal=True),RelayPhase.FAILED)
 
+    def test_physical_success_without_rgb_acceptance_cannot_export(self):
+        from relay_recording import REQUIRED_GATES
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)/"capture";root.mkdir()
+            (root/"capture.json").write_text(json.dumps({"sample_kind":"synthetic_physx_dual_arm_relay",
+                "task_success":True,"gates":dict.fromkeys(REQUIRED_GATES,True)}))
+            with self.assertRaisesRegex(ValueError,"RGB visibility"):
+                export_relay(root,Path(temp)/"dataset")
+            self.assertFalse((Path(temp)/"dataset").exists())
+
 
 @unittest.skipUnless(importlib.util.find_spec("numpy") and importlib.util.find_spec("scipy"), "scientific geometry dependencies unavailable")
 class FootprintTests(unittest.TestCase):

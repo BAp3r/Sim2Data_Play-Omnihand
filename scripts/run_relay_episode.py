@@ -16,6 +16,7 @@ def execute(args):
     env=os.environ.copy();env["OMNI_KIT_ACCEPT_EULA"]="YES"
     env["PYTHONPATH"]=os.pathsep.join(str(root/p) for p in ("packages/sim2data_core/src","scripts"))
     command=[str(args.sim_python),str(root/"scripts/isaac_relay.py"),"--spec",str(args.spec.resolve()),"--out",str(out)]
+    if getattr(args,"render_diagnostic",False):command.append("--render-diagnostic")
     if getattr(args,"use_uv",False):
         command=['uv','run','--no-project','--offline','--no-python-downloads','--python',str(args.sim_python),
                  'python',*command[1:]]
@@ -41,6 +42,8 @@ def execute(args):
                      normal_exit=code==0 and not terminated,kit_close_timeout=terminated and closing is not None)
     (out/"process_exit.json").write_text(json.dumps(exit_record,indent=2),encoding="utf-8")
     report=json.loads((out/"result.json").read_text(encoding="utf-8")) if (out/"result.json").exists() else {}
+    if getattr(args,"render_diagnostic",False):
+        return 0 if report.get("render_diagnostic",{}).get("passed") is True else 3
     if not report.get("passed"):
         return 3
     if args.export_python is None:
@@ -63,4 +66,5 @@ if __name__=="__main__":
     parser.add_argument("--close-timeout",type=float,default=60)
     parser.add_argument("--runtime-timeout",type=float,default=1200)
     parser.add_argument("--use-uv",action="store_true")
+    parser.add_argument("--render-diagnostic",action="store_true")
     raise SystemExit(execute(parser.parse_args()))

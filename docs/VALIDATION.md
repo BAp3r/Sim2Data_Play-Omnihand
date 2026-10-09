@@ -1,5 +1,25 @@
 # Sim2Data 验证记录
 
+## 2026-10-09 M21/M22 连续 PhysX 复核
+
+本次输入为 `32e61f24396a7618169f8614ae57cdce1fe47c2f` 及三个已存在的未提交撤离修复文件；已核对双远端、运行进程并保存代码/输入哈希，没有覆盖旧证据。两个 Luna Max 和一个 Sol High 启动尝试均返回容量错误，没有产出代理代码；主会话继续执行。本节是 synthetic 研发结果，不是生产装配或实机一致性验收。
+
+修复前有限 XY/yaw 随机化完整成功 **0/20**：16 次 right_lower 规划拒绝、3 次入框松手后 right_retreat 碰撞、1 次 left_transfer 拒绝。左侧真实抬升20次、中转与右側真实抬升19次，失败视频保留但未进入成功示范集。
+
+交接中的独立撤离修复成功回合逐步复核：trace 共72180行，计数0..72179无断点；同一动态CardBox、episode内物体reset与逐帧关节状态写入均0，非法场景接触为0。最终1000个物理步的完整footprint均在框内，线速度最大7.67e-6 m/s、角速度1.81e-5 rad/s、框底支撑约0.7848 N、双手接触为0。1792点完整joint/TCP/开合/命令诊断轨迹已生成，但左机器人与Thor缺失的首帧被主会话拒绝；Kit close超时、owner终止，与物理成功分开记录。官方relay导出尚未因此通过。
+
+渲染生命周期修复先做短诊断：stage/reference异步加载等待、session deinstance/语义标注在PhysX创建前完成；reset后只调用禁用物理更新的sim.render，不额外裸app.update。四个采样点全部包含左右机器人、Thor和CardBox。该组合实验没有隔离缺失画面的唯一根因。完整RGB复跑记录1452帧后被right_lower起点门禁拒绝，实测手型下非接触食指PIP间隙1.343 mm，保持原2 mm门槛；没有起点豁免或手型改动。
+
+数值对照支持只改synthetic时间曲线：右侧搬运跟踪误差峰值0.09295 rad、盒子相对手掌位移约2.60 mm、转动0.351 rad；搬运从5秒延长到10秒后跟踪峰值0.04666 rad、PIP间隙2.483 mm、位移2.19 mm、转动0.276 rad。撤离沿原已筛选边执行并在竖直/返回交界停速，8秒实际回合将右臂命令加速度峰值26.877降至5.171 rad/s²。该回合八项物理门禁全部通过、79059步、三路各1964帧/25fps/78.56秒并完整解码；主会话发现搬运末段右臂被俯视画面边缘裁切，故RGB拒绝，仍未导出成功集。
+
+后续俯视synthetic眼点Z改为1.40 m，并增加语义轮廓触边门禁；两只mounted wrist相机、抓取端点、固定通道、mimic只读、预载荷、重力和碰撞门槛保持原值。较大视野短诊断4点通过，随后固定seed完整动态复跑八项物理gate全真、79059步、三路各1964帧；俯视机器人/Thor触边帧为0，四类标签在全部帧可见，主会话复核中转/搬运/入框/撤离关键帧并批准synthetic任务画面覆盖。三路完整解码与连续trace复核通过。正常Kit关闭、全面平滑度和柔和放置仍未验收；入框松手支撑力存在约24 N的瞬态，最终稳定不等于柔和放置。
+
+官方SDK实际运行第一次因relay脚本传入只有vcodec的SimpleNamespace而编码失败，保留失败输出，未重装SDK。改用仓库集成测试已有的官方RGBEncoderConfig后，在全新目录调用既有LeRobotV3Writer的create/add_frame/save_episode/finalize，官方loader全部1964帧回读成功：1episode、32state/14action、三路视频tensor各[3,240,320]，训练batch分别[2,32]/[2,14]/[2,3,240,320]；state最大误差0、action1.19e-7、timestamp3.66e-6秒。全帧RGB压缩平均绝对误差的最大值为overhead1.058、wrist_left1.639、wrist_right1.757/255。SDK实际LeRobot0.6.2/codebasev3.0，复用原overlay与解释器。源相机rendering_time三路skew0，与计数物理时间累计差最大3.73e-6秒，全部帧核对。新的独立编码视频/loader二次复核另存私有报告；数据未上传Hub。
+
+跟踪误差口径：上述0.09295/0.04666 rad为执行前观测对比将要发出的目标，包含下一控制间隔位移；对照此前实际保持目标的右侧搬运误差峰值为0.04898->0.02458 rad。这些数值描述改进，不构成生产跟踪或平滑度门禁。新随机化队列只在固定seed物理/RGB/官方回读通过后启动，统计独立于原0/20及固定seed研发尝试。
+
+已运行：根环境unittest discovery157项，139通过/18跳过；simulation解释器下relay/render/timing/transport专项18项全部通过；compileall与diff check通过。准确机器命令、帧/视频绝对路径、批准观察、完整轨迹和数值报告保存在私有M22 COMMANDS及相关目录。纯Python检查和诊断轨迹不替代PhysX或官方SDK回读。
+
 ## 2026-09-23 完整装配静态 RTX smoke（M7 实施证据）
 
 新增入口 `scripts/isaac_scene_smoke.py`，在独立 Windows Isaac Sim 5.1.0.0 / Isaac Lab 0.47.2 环境中读取审阅过的双臂 USD、NAS cardbox 与 Thor 源 USD。脚本启动前校验 preview report、profile、纹理和 manifest SHA256；通过 session layer 重新绑定平台可读的 NAS 桌面路径，不修改源资产。结果写入 ignored `.local/evidence/m7/full_scene04/`，三路原相机均实际产生 `640×480×3` RTX RGB：`overhead.png`、`wrist_left.png`、`wrist_right.png`。主视角显示双臂、OmniHand、Thor 桌、纸盒和右侧框子；腕相机当前限位姿态只看到局部指尖/背景，覆盖不接受。

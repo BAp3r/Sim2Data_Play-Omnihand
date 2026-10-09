@@ -11,11 +11,26 @@ import itertools
 import json
 from pathlib import Path
 import traceback
+import time
 
 from convert_physx_commissioning import _start_kit, sha256
 from isaac_finger_response import _action, _reset_hand_to_open, _json, _write
-from isaac_contact_trial import validate_hand_plan, validate_planned_scene, validate_preload
+from isaac_contact_trial import validate_hand_plan, validate_planned_scene, validate_preload, camera_content
 from relay_recording import PhysicalEpisodeRecorder, REQUIRED_GATES
+
+RENDER_LABELS = ("left_robot", "right_robot", "thor", "cardbox")
+
+
+def wait_stage_assets(context, app, label, max_updates=600):
+    """Drain asset work before physics starts; zero pending files is not an RGB gate."""
+    started=time.monotonic();stable=0
+    for update in range(max_updates):
+        app.update()
+        status=context.get_stage_loading_status()
+        stable=stable+1 if context.get_stage() is not None and status[2]==0 else 0
+        if stable>=10:
+            return dict(label=label,updates=update+1,loading_status=list(status),elapsed_s=time.monotonic()-started)
+    raise RuntimeError(f"stage asset loading did not settle: {label}")
 
 
 def footprint_inside(position, quaternion_wxyz, size, center_xy, size_xy, margin=.005):
@@ -67,10 +82,16 @@ def run(args):
         from plan_contact_trajectory import RobotModel,pose,solve_ik,positions_for,collision_screen
         from sim2data.relay import RelayStateMachine,RelayPhase
         from scipy.spatial.transform import Rotation
-        context=omni.usd.get_context();context.open_stage(str(Path(recipe["left"]["usd"]).resolve()))
+        import omni.timeline
+        omni.timeline.get_timeline_interface().stop()
+        context=omni.usd.get_context()
+        if not context.open_stage(str(Path(recipe["left"]["usd"]).resolve())):
+            raise RuntimeError("left articulation stage did not open")
+        report["asset_loading"]=[wait_stage_assets(context,app,"left_stage_open")]
         stage=context.get_stage();stage.SetEditTarget(stage.GetSessionLayer())
         stage.DefinePrim("/right_commissioning").GetReferences().AddReference(str(Path(recipe["right"]["usd"]).absolute()))
         stage.Load()
+        report["asset_loading"].append(wait_stage_assets(context,app,"right_reference"))
         for side in sides:
             for item in responses[side]["mimic_constraint_override"]:
                 prim=stage.GetPrimAtPath(item["prim"])
@@ -79,11 +100,6 @@ def run(args):
             root=stage.GetPrimAtPath(responses[side]["physics"]["root_path"])
             PhysxSchema.PhysxArticulationAPI.Apply(root).CreateSolverPositionIterationCountAttr(32)
             PhysxSchema.PhysxArticulationAPI(root).CreateSolverVelocityIterationCountAttr(8)
-            parent=f"/{side}_commissioning"
-            for p in list(Usd.PrimRange(stage.GetPrimAtPath(parent))):
-                if p.IsInstance():p.SetInstanceable(False)
-            for p in Usd.PrimRange(stage.GetPrimAtPath(parent)):
-                if p.IsA(UsdGeom.Mesh):add_update_semantics(p,side+"_robot")
         scene_plan=plans["left"]
         variation=None
         if "randomization_seed" in recipe:
@@ -100,6 +116,22 @@ def run(args):
             scene["initial_box_quaternion_wxyz"]=variation["quaternion_wxyz"]
         place_robot_base(stage,"/right_commissioning",profile["robots"]["right"])
         UsdLux.DomeLight.Define(stage,"/World/RelayLight").CreateIntensityAttr(900)
+        report["asset_loading"].append(wait_stage_assets(context,app,"complete_scene"))
+        report["render_session_deinstanced"]=[]
+        render_roots=(("/left_commissioning","left_robot"),("/right_commissioning","right_robot"),
+                      ("/World/RuntimeThor","thor"),(scene["box_prim_path"],"cardbox"))
+        # Only session opinions change. Drain Hydra work while the timeline is
+        # stopped, before creating the simulation and its contact views.
+        for path,label in render_roots:
+            root=stage.GetPrimAtPath(path)
+            for prim in list(Usd.PrimRange(root)):
+                if prim.IsInstance():
+                    prim.SetInstanceable(False);report["render_session_deinstanced"].append(str(prim.GetPath()))
+            add_update_semantics(root,label)
+            for prim in Usd.PrimRange(root):
+                if prim.IsA(UsdGeom.Mesh) and UsdGeom.Imageable(prim).ComputePurpose()!=UsdGeom.Tokens.guide:
+                    add_update_semantics(prim,label)
+        report["asset_loading"].append(wait_stage_assets(context,app,"session_deinstance_semantics"))
         carb.settings.get_settings().set_bool("/isaaclab/render/offscreen",True)
         sim=SimulationContext(SimulationCfg(dt=dt,device="cpu",use_fabric=False))
         carb.settings.get_settings().set_bool("/physics/disableContactProcessing",False)
@@ -121,7 +153,7 @@ def run(args):
         cameras={}
         overhead=Camera("/World/TrainingOverhead",resolution=(320,240));cameras["overhead"]=overhead
         # Training overhead view keeps both arm bases, relay area and bin in frame.
-        overhead_eye=np.array([.12,-.08,1.20]); overhead_target=np.array([.12,-.08,0.0])
+        overhead_eye=np.array([.12,-.08,1.40]); overhead_target=np.array([.12,-.08,0.0])
         m=Gf.Matrix4d().SetLookAt(Gf.Vec3d(*overhead_eye),Gf.Vec3d(*overhead_target),Gf.Vec3d(0,1,0)).GetInverse();q=m.ExtractRotationQuat()
         overhead.set_world_pose(overhead_eye,np.array([q.GetReal(),*q.GetImaginary()]),camera_axes="usd")
         for side in sides:
@@ -132,6 +164,12 @@ def run(args):
             cameras["wrist_"+side]=camera
         for name,camera in cameras.items():
             camera.set_focal_length(18 if name == "overhead" else 12);camera.set_horizontal_aperture(24);camera.set_vertical_aperture(18);camera.set_clipping_range(.01,10)
+        report["training_cameras"]=dict(synthetic=True,production_calibration=None,
+            overhead_eye_m=overhead_eye.tolist(),overhead_target_m=overhead_target.tolist(),
+            resolution=[320,240],focal_lengths={n:18 if n=="overhead" else 12 for n in cameras},
+            horizontal_aperture=24,vertical_aperture=18)
+        report["motion_timing"]=dict(synthetic=True,right_transfer_s=10,right_retreat_s=8,
+            released_retreat_stops_at_vertical_exit=True,path_geometry_changed=False)
         sim.reset();box.initialize()
         for view in collision_views.values():view.initialize()
         mapping={};models={};base={};targets={};amounts={s:0. for s in sides};reset={}
@@ -158,9 +196,10 @@ def run(args):
             models[side]=RobotModel(recipe[side]["urdf"],side)
             base[side]=pose(profile["robots"][side]["base_xyz_m"],profile["robots"][side]["base_rpy_rad"])
             targets[side]=np.array(plans[side]["start_configuration"]["arm"])
-        for camera in cameras.values():camera.initialize()
+        for camera in cameras.values():
+            camera.initialize();camera.add_semantic_segmentation_to_frame()
         for _ in range(20):
-            sim.render(); app.update()
+            sim.render()
         report.update(phase="reset_settle",initialization=reset,scene=scene,real_articulations=True,
             scene_audit=audit_colliders(stage,roots=(scene["box_prim_path"],"/World/RuntimeThor","/World/Bin","/left_commissioning","/right_commissioning")))
         trace=(args.out/"trace.jsonl").open("w");physical_step=0;record_step=0;previous_box=None
@@ -195,6 +234,30 @@ def run(args):
             command();sim.step(render=False);trace.write(json.dumps(read())+"\n")
         for side in sides:
             if max(abs(x) for x in read()[side]["qd"])>1:raise RuntimeError("reset velocities failed to settle")
+        from PIL import Image
+        visibility_samples=[]
+        for update in range(40):
+            sim.render()
+            if update in (0,9,19,39):
+                sample=dict(update=update,simulation_time_s=sim.current_time,cameras={})
+                for name,camera in cameras.items():
+                    sample["cameras"][name]=camera_content(camera,RENDER_LABELS)
+                    rgb=np.asarray(camera.get_rgba())
+                    if rgb.shape!=(240,320,4):raise RuntimeError(f"missing initial RGB: {name}")
+                    Image.fromarray(rgb[...,:3].astype(np.uint8)).save(args.out/f"initial_{name}_{update:03d}.png")
+                visibility_samples.append(sample)
+        report["render_diagnostic"]=dict(samples=visibility_samples,
+            passed=all(sample["cameras"]["overhead"]["all_labels_visible"] and
+                not set(RENDER_LABELS[:3]).intersection(sample["cameras"]["overhead"]["edge_touching_labels"]) for sample in visibility_samples),
+            source_assets_read_only=True,physics_parameters_changed=False,episode_steps=0)
+        _write(args.out/"result.json",report)
+        if getattr(args,"render_diagnostic",False):
+            report["phase"]="render_diagnostic_complete"
+            return 0 if report["render_diagnostic"]["passed"] else 3
+        if not report["render_diagnostic"]["passed"]:
+            raise RuntimeError("overhead left/right robot, Thor or CardBox semantic visibility failed before episode")
+        report["visibility_summary"]={name:{label:dict(min_pixels=240*320,max_pixels=0,visible_frames=0) for label in RENDER_LABELS} for name in cameras}
+        report["overhead_edge_clipped_frames"]=0
         state_names=[n for side in sides for n in mapping[side]["names"]]
         recorder=PhysicalEpisodeRecorder(args.out/"capture",state_names=state_names,physics_hz=hz,fps=fps,
             provenance={"synthetic":True,"gesture_endpoints":{s:{k:plans[s][k] for k in ("hand_open","hand_close")} for s in sides},
@@ -206,14 +269,27 @@ def run(args):
             sim.render();row=read();state=[row[s]["q"][i] for s in sides for i in mapping[s]["indices"]]
             # Capture the current image/state before the command below is sent.
             images={}
+            visibility={}
             for n,c in cameras.items():
                 rgba=c.get_rgba()
                 if rgba is None:
-                    sim.render(); app.update(); rgba=c.get_rgba()
+                    sim.render(); rgba=c.get_rgba()
                 array=np.asarray(rgba) if rgba is not None else None
                 if array is None or array.ndim!=3 or array.shape[-1] not in (3,4):
                     raise RuntimeError(f"training camera {n} did not produce RGB")
                 images[n]=array[...,:3].astype(np.uint8)
+                visibility[n]=camera_content(c,RENDER_LABELS)
+                for label,pixels in visibility[n]["class_pixels"].items():
+                    summary=report["visibility_summary"][n][label]
+                    summary["min_pixels"]=min(summary["min_pixels"],pixels)
+                    summary["max_pixels"]=max(summary["max_pixels"],pixels)
+                    summary["visible_frames"]+=int(pixels>20)
+            row["camera_visibility"]=visibility
+            if set(RENDER_LABELS[:3]).intersection(visibility["overhead"]["edge_touching_labels"]):
+                report["overhead_edge_clipped_frames"]+=1
+                raise RuntimeError("overhead robot/Thor is clipped at image boundary")
+            if any(visibility["overhead"]["class_pixels"][label]<=20 for label in RENDER_LABELS[:3]):
+                raise RuntimeError("overhead robot/Thor semantic visibility lost during episode")
             actual,action=command()
             recorder.record(physics_step=record_step,state=state,action=action,active_commands=actual,cameras=images,
                 camera_physics_steps={c:record_step for c in cameras},auxiliary=row)
@@ -231,7 +307,7 @@ def run(args):
                     for i,n in zip(mp["indices"][6:],mp["names"][6:]):
                         if i in mp["fixed"] and abs(rr["q"][i]-actual[n])>.03:raise RuntimeError(f"{s} fixed hand channel drift")
             record_step+=stride;trace.flush();return row
-        def phase(name,side,goal,amount,seconds,condition=None,touchdown_force_key=None,waypoints=None,require_held=False):
+        def phase(name,side,goal,amount,seconds,condition=None,touchdown_force_key=None,waypoints=None,require_held=False,stop_indices=()):
             if machine.phase.value!=name: raise RuntimeError("relay stage order mismatch")
             report["phase"]=name;_write(args.out/"result.json",report)
             initial=targets[side].copy();initial_amount=amounts[side];steps=round(seconds*fps);stable=0
@@ -240,8 +316,8 @@ def run(args):
                 t=min(1,(i+1)/steps);blend=t*t*(3-2*t)
                 targets[side]=initial+(np.asarray(goal)-initial)*blend;amounts[side]=initial_amount+(amount-initial_amount)*blend
                 if waypoints is not None:
-                    x=blend*(len(waypoints)-1);j=min(int(x),len(waypoints)-2)
-                    targets[side]=np.asarray(waypoints[j])+(x-j)*(np.asarray(waypoints[j+1])-waypoints[j])
+                    from relay_motion import sample_waypoints
+                    targets[side]=np.asarray(sample_waypoints(waypoints,t,stop_indices))
                 row=control_interval()
                 if touchdown_force_key and row[touchdown_force_key] > .5*weight:
                     # Contact with the receiving surface ends descent. Hold
@@ -341,14 +417,25 @@ def run(args):
         cfg=profile["bin"];destination=np.array(cfg["bottom_center_xyz_m"]);destination[2]=cfg["top_z_m"]-cfg["inner_size_xyz_m"][2]+plans["right"]["box_size"][2]/2
         over=destination.copy();over[2]=cfg["top_z_m"]+.12
         transfer=held_translation("right",over,"right_transfer")
-        phase("right_transfer","right",transfer[-1],1,5,waypoints=transfer,require_held=True)
+        # Synthetic time scaling on the same screened path reduces tracking lag
+        # and grasp slip before strict measured-shape descent screening.
+        phase("right_transfer","right",transfer[-1],1,10,waypoints=transfer,require_held=True)
         lower=held_translation("right",destination,"right_lower")
         phase("right_lower","right",lower[-1],1,4,
               touchdown_force_key="bin_support_force_N",waypoints=lower,require_held=True)
         in_bin=lambda r:stable(r) and hand_free(r) and .8*weight<r["bin_support_force_N"]<1.2*weight and footprint_inside(r["box_position"],r["box_quaternion_wxyz"],plans["right"]["box_size"],destination[:2],cfg["inner_size_xyz_m"][:2])
         phase("right_release","right",targets["right"].copy(),0,2,in_bin)
         report["gates"]["bin_footprint"]=True
-        phase("right_retreat","right",plans["right"]["pregrasp"],0,3,in_bin)
+        from transport_planner import plan_released_retreat
+        released=read();mp=mapping["right"]
+        retreat=plan_released_retreat(models["right"],base["right"],mp["active"],plans["right"],
+            [released["right"]["q"][i] for i in mp["indices"][:6]],
+            released["box_position"],released["box_quaternion_wxyz"],profile["table"],profile["bin"],
+            [released["right"]["q"][i] for i in mp["indices"][6:]])
+        _write(args.out/"right_retreat_plan.json",retreat)
+        if not retreat["passed"]:raise RuntimeError("right released retreat screening failed")
+        phase("right_retreat","right",retreat["waypoints"][-1],0,8,in_bin,
+              waypoints=retreat["waypoints"],stop_indices=retreat["stop_waypoint_indices"])
         report["gates"].update(final_released_stable=True,no_illegal_collision=True,no_object_teleport=True)
         report.update(passed=True,phase="complete",physics_steps=physical_step)
     except Exception:
@@ -367,4 +454,5 @@ def run(args):
 
 if __name__=="__main__":
     parser=argparse.ArgumentParser();parser.add_argument("--spec",type=Path,required=True);parser.add_argument("--out",type=Path,required=True)
+    parser.add_argument("--render-diagnostic",action="store_true",help="Short scene-only RGB/semantic check; no relay or dataset success claim")
     raise SystemExit(run(parser.parse_args()))

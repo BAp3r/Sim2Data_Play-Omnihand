@@ -114,14 +114,15 @@ def validate_hand_plan(profile, plan):
     return allowed_closing_joint_names(side)
 
 
-def camera_content(camera):
+def camera_content(camera, labels=("robot", "cardbox")):
     """Record visible labelled pixel counts, not merely non-black backgrounds."""
     import numpy as np
     frame = camera.get_current_frame()
     # Read the same renderer frame as get_rgba(), including paused scene review.
     annotator = getattr(camera, "_custom_annotators", {}).get("semantic_segmentation")
     annotation = annotator.get_data() if annotator is not None else frame.get("semantic_segmentation")
-    counts = {"robot": 0, "cardbox": 0}
+    counts = dict.fromkeys(labels, 0)
+    bounds = dict.fromkeys(labels)
     if isinstance(annotation, dict) and annotation.get("data") is not None:
         labels = annotation.get("info", {}).get("idToLabels", annotation.get("idToLabels", {}))
         if isinstance(labels, str):
@@ -131,10 +132,20 @@ def camera_content(camera):
             kind = fields.get("class") if isinstance(fields, dict) else fields
             if kind in counts:
                 counts[kind] += int(np.count_nonzero(pixels == int(index)))
+                if pixels.ndim==2:
+                    y,x=np.nonzero(pixels == int(index))
+                    if len(x):
+                        rectangle=[int(x.min()),int(y.min()),int(x.max()),int(y.max())]
+                        old=bounds[kind]
+                        bounds[kind]=rectangle if old is None else [min(old[0],rectangle[0]),min(old[1],rectangle[1]),max(old[2],rectangle[2]),max(old[3],rectangle[3])]
+    edge_labels=[label for label,rectangle in bounds.items() if rectangle is not None and
+                 (rectangle[0]==0 or rectangle[1]==0 or rectangle[2]==pixels.shape[1]-1 or rectangle[3]==pixels.shape[0]-1)]
     return {"class_pixels": counts, "frame_keys": list(frame),
+            "class_pixel_bounds_xyxy":bounds,"edge_touching_labels":edge_labels,
             "semantic_info": _json(annotation.get("info", {})) if isinstance(annotation, dict) else None,
             "rendering_time": _json(frame.get("rendering_time")),
-            "robot_and_box_visible": counts["robot"] > 20 and counts["cardbox"] > 20}
+            "robot_and_box_visible": counts.get("robot", 0) > 20 and counts.get("cardbox", 0) > 20,
+            "all_labels_visible": all(value > 20 for value in counts.values())}
 
 
 def main():
