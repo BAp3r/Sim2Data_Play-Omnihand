@@ -84,8 +84,20 @@ def run(args):
                 if p.IsInstance():p.SetInstanceable(False)
             for p in Usd.PrimRange(stage.GetPrimAtPath(parent)):
                 if p.IsA(UsdGeom.Mesh):add_update_semantics(p,side+"_robot")
+        scene_plan=plans["left"]
+        variation=None
+        if "randomization_seed" in recipe:
+            from relay_randomization import initial_pose
+            variation=initial_pose(recipe["randomization_seed"],scene_plan["box_center"])
+            scene_plan=dict(scene_plan,box_center=variation["box_center_m"])
+            report["randomization"]=variation
         scene=build_scene(stage,table_path=recipe["table"],cardbox_path=recipe["cardbox"],
-            profile=profile,plan=plans["left"],robot_parent_path="/left_commissioning",side="left",manifest=manifest)
+            profile=profile,plan=scene_plan,robot_parent_path="/left_commissioning",side="left",manifest=manifest)
+        if variation:
+            # Initial condition only, before SimulationContext or episode steps.
+            w,x,y,z=variation["quaternion_wxyz"]
+            UsdGeom.Xformable(stage.GetPrimAtPath(scene["box_prim_path"])).AddOrientOp().Set(Gf.Quatf(w,x,y,z))
+            scene["initial_box_quaternion_wxyz"]=variation["quaternion_wxyz"]
         place_robot_base(stage,"/right_commissioning",profile["robots"]["right"])
         UsdLux.DomeLight.Define(stage,"/World/RelayLight").CreateIntensityAttr(900)
         carb.settings.get_settings().set_bool("/isaaclab/render/offscreen",True)
@@ -186,7 +198,8 @@ def run(args):
         state_names=[n for side in sides for n in mapping[side]["names"]]
         recorder=PhysicalEpisodeRecorder(args.out/"capture",state_names=state_names,physics_hz=hz,fps=fps,
             provenance={"synthetic":True,"gesture_endpoints":{s:{k:plans[s][k] for k in ("hand_open","hand_close")} for s in sides},
-                        "profile_sha256":sha256(Path(recipe["profile"])),"reset_physics_steps":500})
+                        "profile_sha256":sha256(Path(recipe["profile"])),"reset_physics_steps":500,
+                        "randomization":variation})
         machine=RelayStateMachine();dwell=0.;previous_box=None
         def control_interval():
             nonlocal physical_step,record_step,previous_box
@@ -280,11 +293,26 @@ def run(args):
         def hand_free(row):return all(row[s]["hand_force_N"]<.01 for s in sides)
         def lifted(side,z):return lambda r:r["box_position"][2]>z+.025 and r[side]["hand_force_N"]>.02 and r["support_force_N"]<.01 and r["ground_force_N"]<.01 and np.linalg.norm(r["box_velocity"][:3])<.05
         source=np.array(scene["box_center_world_m"]);relay=np.array(profile["relay_region"]["center_xyz_m"]);relay[2]=source[2]-.001
+        if variation:
+            # Save the actual settled scene even if planning rejects this trial.
+            settled=control_interval()
+            from handoff_planner import replan_handoff
+            replan=replan_handoff(models["left"],base["left"],mapping["left"]["active"],
+                plans["left"],settled["box_position"],settled["box_quaternion_wxyz"],targets["left"],profile["table"])
+            _write(args.out/"left_initial_plan.json",replan)
+            report["left_replan_from_settled_pose"]={k:v for k,v in replan.items() if k!="plan"}
+            if not replan["passed"]:
+                raise RuntimeError("left randomized initial IK/OBB/path screening failed")
+            plans["left"]=replan["plan"]
+            source=np.array(settled["box_position"])
+            # Active endpoints and intrinsic J^T F preload are preserved under
+            # rigid rotation/translation of the entire grasp template.
         machine.tick(.001,True)
         phase("left_approach","left",plans["left"]["pregrasp"],0,4)
         phase("left_approach_lower","left",plans["left"]["grasp"],0,2)
         phase("left_close","left",plans["left"]["grasp"],1,2)
-        phase("left_lift","left",plans["left"]["lift"],1,3,lifted("left",source[2]));report["gates"]["left_contact_lift"]=True
+        phase("left_lift","left",plans["left"]["lift"],1,3,lifted("left",source[2]),
+              waypoints=plans["left"]["lift_waypoints"] if variation else None);report["gates"]["left_contact_lift"]=True
         transfer=held_translation("left",relay+np.array([0,0,.12]),"left_transfer")
         phase("left_transfer","left",transfer[-1],1,7,waypoints=transfer,require_held=True)
         lower=held_translation("left",relay,"left_lower")

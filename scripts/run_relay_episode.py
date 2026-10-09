@@ -16,6 +16,9 @@ def execute(args):
     env=os.environ.copy();env["OMNI_KIT_ACCEPT_EULA"]="YES"
     env["PYTHONPATH"]=os.pathsep.join(str(root/p) for p in ("packages/sim2data_core/src","scripts"))
     command=[str(args.sim_python),str(root/"scripts/isaac_relay.py"),"--spec",str(args.spec.resolve()),"--out",str(out)]
+    if getattr(args,"use_uv",False):
+        command=['uv','run','--no-project','--offline','--no-python-downloads','--python',str(args.sim_python),
+                 'python',*command[1:]]
     (out.parent/(out.name+"_command.json")).write_text(json.dumps({"argv":command,"cwd":str(root)},indent=2),encoding="utf-8")
     started=time.monotonic();closing=None;terminated=False
     with (out.parent/(out.name+".log")).open("w",encoding="utf-8") as log:
@@ -59,4 +62,5 @@ if __name__=="__main__":
     parser.add_argument("--export-pythonpath",action="append",default=[])
     parser.add_argument("--close-timeout",type=float,default=60)
     parser.add_argument("--runtime-timeout",type=float,default=1200)
+    parser.add_argument("--use-uv",action="store_true")
     raise SystemExit(execute(parser.parse_args()))
