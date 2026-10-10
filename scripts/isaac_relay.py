@@ -17,6 +17,7 @@ from convert_physx_commissioning import _start_kit, sha256
 from isaac_finger_response import _action, _reset_hand_to_open, _json, _write
 from isaac_contact_trial import validate_hand_plan, validate_planned_scene, validate_preload, camera_content
 from relay_recording import PhysicalEpisodeRecorder, REQUIRED_GATES
+from relay_motion import resolve_motion_timing
 
 RENDER_LABELS = ("left_robot", "right_robot", "thor", "cardbox")
 
@@ -53,6 +54,10 @@ def run(args):
     _write(args.out/"result.json",report)
     app=None;recorder=None;trace=None
     try:
+        motion_timing=resolve_motion_timing(recipe["motion_timing"] if "motion_timing" in recipe else {})
+        report["motion_timing"]=dict(synthetic=True,**motion_timing,
+            right_transfer_s=10,right_retreat_s=8,
+            released_retreat_stops_at_vertical_exit=True)
         sides=("left","right");plans={};responses={};preloads={}
         for side in sides:
             item=recipe[side];plans[side]=json.loads(Path(item["plan"]).read_text(encoding="utf-8"))
@@ -168,8 +173,6 @@ def run(args):
             overhead_eye_m=overhead_eye.tolist(),overhead_target_m=overhead_target.tolist(),
             resolution=[320,240],focal_lengths={n:18 if n=="overhead" else 12 for n in cameras},
             horizontal_aperture=24,vertical_aperture=18)
-        report["motion_timing"]=dict(synthetic=True,right_transfer_s=10,right_retreat_s=8,
-            released_retreat_stops_at_vertical_exit=True,path_geometry_changed=False)
         sim.reset();box.initialize()
         for view in collision_views.values():view.initialize()
         mapping={};models={};base={};targets={};amounts={s:0. for s in sides};reset={}
@@ -421,10 +424,10 @@ def run(args):
         # and grasp slip before strict measured-shape descent screening.
         phase("right_transfer","right",transfer[-1],1,10,waypoints=transfer,require_held=True)
         lower=held_translation("right",destination,"right_lower")
-        phase("right_lower","right",lower[-1],1,4,
+        phase("right_lower","right",lower[-1],1,motion_timing["right_lower_s"],
               touchdown_force_key="bin_support_force_N",waypoints=lower,require_held=True)
         in_bin=lambda r:stable(r) and hand_free(r) and .8*weight<r["bin_support_force_N"]<1.2*weight and footprint_inside(r["box_position"],r["box_quaternion_wxyz"],plans["right"]["box_size"],destination[:2],cfg["inner_size_xyz_m"][:2])
-        phase("right_release","right",targets["right"].copy(),0,2,in_bin)
+        phase("right_release","right",targets["right"].copy(),0,motion_timing["right_release_s"],in_bin)
         report["gates"]["bin_footprint"]=True
         from transport_planner import plan_released_retreat
         released=read();mp=mapping["right"]

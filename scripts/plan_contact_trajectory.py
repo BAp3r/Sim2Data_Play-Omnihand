@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import json
 import math
+import numbers
 from pathlib import Path
 import sys
 import traceback
@@ -339,6 +340,31 @@ def hand_box_clearance(geometry, position, rotation, box_center, box_size):
             "penetrating_samples_beyond_1mm": sum(row["penetrating_samples_beyond_1mm"] for row in rows.values()),
             "links": rows}
 
+
+def _finite_vector3(value, label):
+    """Copy a finite numeric three-vector, rejecting JSON booleans and strings."""
+    raw = np.asarray(value, dtype=object)
+    if raw.shape != (3,) or any(isinstance(item, (bool, np.bool_)) or
+                                not isinstance(item, numbers.Real) for item in raw):
+        raise ValueError(f"{label} must be a numeric 3-vector")
+    try:
+        result = np.asarray(raw, dtype=float)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError(f"{label} must contain finite numeric values") from exc
+    if not np.isfinite(result).all():
+        raise ValueError(f"{label} must contain only finite values")
+    return result.copy()
+
+
+def _grasp_search_box_center(search):
+    if search.get("scene_kind") != SCENE_KIND or search.get("coordinate_frame") != "world":
+        raise ValueError("grasp search scene/frame mismatch")
+    center = _finite_vector3(search.get("box_center_m"), "grasp search box_center_m")
+    size = _finite_vector3(search.get("box_size_m"), "grasp search box_size_m")
+    if not np.allclose(size, BOX_SIZE, rtol=0.0, atol=1e-7):
+        raise ValueError(f"grasp search box size mismatch: {size.tolist()}")
+    return center
+
 def palm_goal(approach, close_hint):
     approach = approach / np.linalg.norm(approach)
     close = close_hint - np.dot(close_hint, approach) * approach
@@ -348,19 +374,21 @@ def palm_goal(approach, close_hint):
 
 
 def fit_contacts(clouds, approach, close_hint, collision_clouds=None, allowed_links=(),
-                 open_geometry=None, table_z=None):
+                 open_geometry=None, table_z=None, box_center=None):
+    center = _finite_vector3(BOX_CENTER if box_center is None else box_center,
+                             "box center")
     rotation0, close_axis = palm_goal(approach, close_hint)
     half = BOX_SIZE / 2
     face_axis = int(np.argmax(np.abs(close_axis[:2])))
     face_direction = 1.0 if close_axis[face_axis] >= 0 else -1.0
-    face_coordinates = {"thumb": BOX_CENTER[face_axis] - face_direction * half[face_axis],
-                        "index": BOX_CENTER[face_axis] + face_direction * half[face_axis],
-                        "middle": BOX_CENTER[face_axis] + face_direction * half[face_axis]}
-    target = {role: BOX_CENTER.copy() for role in clouds}
+    face_coordinates = {"thumb": center[face_axis] - face_direction * half[face_axis],
+                        "index": center[face_axis] + face_direction * half[face_axis],
+                        "middle": center[face_axis] + face_direction * half[face_axis]}
+    target = {role: center.copy() for role in clouds}
     for role in clouds:
         coordinate = face_coordinates[role]
         target[role][face_axis] = coordinate
-    initial_position = BOX_CENTER - approach * 0.075
+    initial_position = center - approach * 0.075
     allowed_links = set(allowed_links)
     penalty_clouds = ({name: points for name, points in collision_clouds.items()
                        if name not in allowed_links} if collision_clouds else {})
@@ -381,7 +409,7 @@ def fit_contacts(clouds, approach, close_hint, collision_clouds=None, allowed_li
         parts = []
         for role in clouds:
             world = clouds[role] @ matrix.T + position
-            distances, _ = box_face_patch_distances(world, BOX_CENTER, BOX_SIZE,
+            distances, _ = box_face_patch_distances(world, center, BOX_SIZE,
                                                      face_axis, face_coordinates[role])
             nearest_count = min(8, len(distances))
             nearest = np.sort(np.partition(distances, nearest_count - 1)[:nearest_count])
@@ -389,19 +417,19 @@ def fit_contacts(clouds, approach, close_hint, collision_clouds=None, allowed_li
             parts.extend(nearest)
         if len(collision_points):
             hand_world = collision_points @ matrix.T + position
-            signed_clearance = box_sdf(hand_world, BOX_CENTER, BOX_SIZE)
+            signed_clearance = box_sdf(hand_world, center, BOX_SIZE)
             parts.extend(hand_clearance_residual(signed_clearance))
         if len(contact_points):
             contact_world = contact_points @ matrix.T + position
             # An intended contact link may touch the box, but its other surface
             # samples must not pass through it to reach the opposite face.
             parts.extend(hand_clearance_residual(
-                box_sdf(contact_world, BOX_CENTER, BOX_SIZE),
+                box_sdf(contact_world, center, BOX_SIZE),
                 minimum_clearance_m=-0.0005, weight=12))
         if len(open_points):
             open_world = open_points @ matrix.T + position
             parts.extend(hand_clearance_residual(
-                box_sdf(open_world, BOX_CENTER, BOX_SIZE), minimum_clearance_m=0.003, weight=30))
+                box_sdf(open_world, center, BOX_SIZE), minimum_clearance_m=0.003, weight=30))
         if table_z is not None and len(all_points):
             heights = (all_points @ matrix.T + position)[:, 2] - table_z
             if len(open_points):
@@ -409,19 +437,19 @@ def fit_contacts(clouds, approach, close_hint, collision_clouds=None, allowed_li
             parts.extend(hand_clearance_residual(heights, minimum_clearance_m=0.003, weight=24))
         parts.extend(value[3:] * 0.018)
         parts.extend((position - initial_position) * 0.025)
-        parts.append(max(float(np.dot(position - BOX_CENTER, approach)) + 0.015, 0.0) * 8)
+        parts.append(max(float(np.dot(position - center, approach)) + 0.015, 0.0) * 8)
         return np.asarray(parts)
 
     solution = least_squares(residual, np.r_[initial_position, np.zeros(3)],
-                             bounds=(np.r_[BOX_CENTER - 0.16, [-1.0] * 3],
-                                     np.r_[BOX_CENTER + 0.16, [1.0] * 3]),
+                             bounds=(np.r_[center - 0.16, [-1.0] * 3],
+                                     np.r_[center + 0.16, [1.0] * 3]),
                              max_nfev=180, ftol=1e-8, xtol=1e-8, gtol=1e-8)
     position = solution.x[:3]
     rotation = rotation0 * Rotation.from_rotvec(solution.x[3:])
     contact_residuals = {}
     for role, point in target.items():
         world = clouds[role] @ rotation.as_matrix().T + position
-        distances, projected = box_face_patch_distances(world, BOX_CENTER, BOX_SIZE,
+        distances, projected = box_face_patch_distances(world, center, BOX_SIZE,
                                                         face_axis, face_coordinates[role])
         nearest_count = min(8, len(distances))
         nearest_indices = np.argpartition(distances, nearest_count - 1)[:nearest_count]
@@ -438,7 +466,7 @@ def fit_contacts(clouds, approach, close_hint, collision_clouds=None, allowed_li
                                    "nearest_box_patch_point_world_m": projected[closest_index].tolist()}
     matrix = np.eye(4)
     matrix[:3, :3], matrix[:3, 3] = rotation.as_matrix(), position
-    closed_hand = (hand_box_clearance(collision_clouds, position, rotation, BOX_CENTER, BOX_SIZE)
+    closed_hand = (hand_box_clearance(collision_clouds, position, rotation, center, BOX_SIZE)
                    if collision_clouds else {"minimum_signed_clearance_m": None,
                                              "penetrating_samples_beyond_1mm": None, "links": {}})
     noncontact_minimum = min((row["minimum_signed_clearance_m"]
@@ -549,6 +577,7 @@ def create_plan(urdf_path, profile_path, manifest_path, side, grasp_search=None)
     if profile.get("purpose") != "synthetic_commissioning_only" or profile.get("production_collection_enabled") is not False:
         raise ValueError("explicit production-disabled synthetic profile required")
     table = profile["table"]
+    center = BOX_CENTER.copy()
     if not math.isclose(float(table["collision_top_z_m"]), -0.0155, abs_tol=1e-8):
         raise ValueError("Thor collision top must match audited -0.0155 m datum")
     card = manifest["assets"]["card_box"]
@@ -592,8 +621,9 @@ def create_plan(urdf_path, profile_path, manifest_path, side, grasp_search=None)
         for key, path in (("urdf", urdf_path), ("profile", profile_path), ("manifest", manifest_path)):
             if search.get(key + "_sha256") != sha256(Path(path)):
                 raise ValueError(f"grasp search {key} identity mismatch")
-        if search.get("side") != side or search.get("scene_kind") != SCENE_KIND:
-            raise ValueError("grasp search side/scene mismatch")
+        if search.get("side") != side:
+            raise ValueError("grasp search side mismatch")
+        center = _grasp_search_box_center(search)
         searched = {c["name"]: c for c in search["candidates"] if "palm_pose_world" in c}
         candidates = [(np.asarray(c["approach_unit_world"]), np.asarray(c["closing_axis_unit_world"]), c["name"])
                       for c in searched.values()]
@@ -629,11 +659,11 @@ def create_plan(urdf_path, profile_path, manifest_path, side, grasp_search=None)
             for role in contact_roles(side):
                 link = f"{side}_hand__{'l' if side == 'left' else 'R'}_{role}_dip_link"
                 world = geometry[link] @ matrix[:3,:3].T + matrix[:3,3]
-                coordinate = BOX_CENTER[axis] + (-direction if role == "thumb" else direction)*BOX_SIZE[axis]/2
-                distances, _ = box_face_patch_distances(world, BOX_CENTER, BOX_SIZE, axis, coordinate)
+                coordinate = center[axis] + (-direction if role == "thumb" else direction)*BOX_SIZE[axis]/2
+                distances, _ = box_face_patch_distances(world, center, BOX_SIZE, axis, coordinate)
                 contact_rows[role] = {"nearest_mean_m": float(np.sort(distances)[:8].mean()),
                                       "face_axis": axis, "face_coordinate_m": float(coordinate)}
-            clearance = hand_box_clearance(geometry, matrix[:3, 3], rotation, BOX_CENTER, BOX_SIZE)
+            clearance = hand_box_clearance(geometry, matrix[:3, 3], rotation, center, BOX_SIZE)
             clearance["noncontact_minimum_clearance_m"] = min(
                 item["minimum_signed_clearance_m"] for name, item in clearance["links"].items() if name not in distal_links)
             fit = dict(position=matrix[:3,3], rotation=rotation, matrix=matrix,
@@ -645,7 +675,7 @@ def create_plan(urdf_path, profile_path, manifest_path, side, grasp_search=None)
         else:
             fit = fit_contacts(clouds, approach, close_hint, closed_hand_geometry,
                                allowed_links=distal_links, open_geometry=open_hand_geometry,
-                               table_z=table["collision_top_z_m"])
+                               table_z=table["collision_top_z_m"], box_center=center)
         fit["active_targets"] = active
         pre, grasp, lift = fit["matrix"].copy(), fit["matrix"].copy(), fit["matrix"].copy()
         pre[:3, 3] -= approach * 0.05
@@ -657,11 +687,11 @@ def create_plan(urdf_path, profile_path, manifest_path, side, grasp_search=None)
                                     box_center, allowed, table["collision_top_z_m"], table["ground_z_m"],
                                     require_contact=require_contact)
         ik_pre = solve_ik(model, pre, base_world, open_q, initial=preview_q,
-                          screen=lambda q: screen(q, 0, BOX_CENTER, set()))
+                          screen=lambda q: screen(q, 0, center, set()))
         ik_grasp = solve_ik(model, grasp, base_world, close_q, ik_pre["q"],
-                            screen=lambda q: screen(q, 1, BOX_CENTER, tips))
+                            screen=lambda q: screen(q, 1, center, tips))
         ik_lift = solve_ik(model, lift, base_world, close_q, ik_grasp["q"],
-                           screen=lambda q: screen(q, 1, BOX_CENTER + [0,0,.08], tips))
+                           screen=lambda q: screen(q, 1, center + [0,0,.08], tips))
         lift_waypoints = [ik_grasp["q"]]
         lift_path_ik_ok = True
         for fraction in np.linspace(0, 1, 9)[1:]:
@@ -683,13 +713,13 @@ def create_plan(urdf_path, profile_path, manifest_path, side, grasp_search=None)
             tips = {f"{side}_hand__{'l' if side == 'left' else 'R'}_{name}_dip_link"
                     for name in contact_roles(side)}
             pre_gate = collision_screen(model, ik_pre["q"], active, 0.0, base_world,
-                                        BOX_CENTER, set(), table["collision_top_z_m"], table["ground_z_m"])
+                                        center, set(), table["collision_top_z_m"], table["ground_z_m"])
             open_grasp_gate = collision_screen(model, ik_grasp["q"], active, 0.0, base_world,
-                                               BOX_CENTER, set(), table["collision_top_z_m"], table["ground_z_m"])
+                                               center, set(), table["collision_top_z_m"], table["ground_z_m"])
             grasp_gate = collision_screen(model, ik_grasp["q"], active, 1.0, base_world,
-                                          BOX_CENTER, tips, table["collision_top_z_m"], table["ground_z_m"])
+                                          center, tips, table["collision_top_z_m"], table["ground_z_m"])
             lift_gate = collision_screen(model, ik_lift["q"], active, 1.0, base_world,
-                                         BOX_CENTER + [0, 0, 0.08], tips, table["collision_top_z_m"], table["ground_z_m"])
+                                         center + [0, 0, 0.08], tips, table["collision_top_z_m"], table["ground_z_m"])
             collision = {"pregrasp": pre_gate, "open_grasp": open_grasp_gate,
                          "closed_grasp": grasp_gate, "lift": lift_gate}
         closed_hand_clearance = fit["closed_hand_box_clearance"]
@@ -703,7 +733,7 @@ def create_plan(urdf_path, profile_path, manifest_path, side, grasp_search=None)
             # Fixed hand-shaping channels are checked at both endpoints.  They
             # are not optimizer/runtime variables and do not receive preload.
             checked = collision_screen(model, approach_start_q, active, 0.0, base_world,
-                                       BOX_CENTER, set(), table["collision_top_z_m"], table["ground_z_m"])
+                                       center, set(), table["collision_top_z_m"], table["ground_z_m"])
             if not checked["passed"]:
                 path_gate["failures"].append({"segment":"hand_open_reset", "fraction":0.0,
                                               "reasons":checked["failures"]})
@@ -715,7 +745,7 @@ def create_plan(urdf_path, profile_path, manifest_path, side, grasp_search=None)
                 ("finger_close", ik_grasp["q"], ik_grasp["q"], 0, 1),
                 ("lift", ik_grasp["q"], ik_lift["q"], 1, 1)):
                 for u in np.linspace(0, 1, 25):
-                    box_target = BOX_CENTER + ([0,0,.08*u] if segment == "lift" else np.zeros(3))
+                    box_target = center + ([0,0,.08*u] if segment == "lift" else np.zeros(3))
                     allowed = tips if segment in ("finger_close", "lift") else set()
                     arm_sample = start+(end-start)*u
                     if segment == "lift":
@@ -785,7 +815,7 @@ def create_plan(urdf_path, profile_path, manifest_path, side, grasp_search=None)
                               "fixed_active_joint_names": [item["name"] for item in active
                                                             if item["name"] not in closing_joint_names(side)],
                               "mimic_command_policy": "read_only"},
-            "box_center": BOX_CENTER.tolist(), "box_size": BOX_SIZE.tolist(),
+            "box_center": center.tolist(), "box_size": BOX_SIZE.tolist(),
             "mass_kg": 0.08, "friction": 0.8, "physics_dt": 0.001,
             "planner": {"algorithm": "source URDF FK+mimic, collision STL sampling, scipy least_squares contact fitting and bounded six-axis IK",
                         "mimic_relations_are_source_urdf": True,
