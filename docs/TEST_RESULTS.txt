@@ -1,0 +1,35 @@
+test_missing_asset (test_foundation.AssetTests.test_missing_asset) ... ok
+test_refuses_directory (test_foundation.AssetTests.test_refuses_directory) ... ok
+test_refuses_path_escape (test_foundation.AssetTests.test_refuses_path_escape) ... ok
+test_refuses_unresolved_lfs (test_foundation.AssetTests.test_refuses_unresolved_lfs) ... ok
+test_resolves_without_copy (test_foundation.AssetTests.test_resolves_without_copy) ... ok
+test_root_symlink_is_allowed (test_foundation.AssetTests.test_root_symlink_is_allowed) ... ok
+test_symlink_escape (test_foundation.AssetTests.test_symlink_escape) ... ok
+test_empty_episode (test_foundation.ClockTests.test_empty_episode) ... ok
+test_frame_gap (test_foundation.ClockTests.test_frame_gap) ... ok
+test_missing_camera (test_foundation.ClockTests.test_missing_camera) ... ok
+test_one_step_camera_lag (test_foundation.ClockTests.test_one_step_camera_lag) ... ok
+test_valid_clocks (test_foundation.ClockTests.test_valid_clocks) ... ok
+test_wall_clock_timestamp_not_allowed (test_foundation.ClockTests.test_wall_clock_timestamp_not_allowed) ... ok
+test_candidate_in_parent_directory (test_foundation.InventoryTests.test_candidate_in_parent_directory) ... ok
+test_explicit_overwrite (test_foundation.InventoryTests.test_explicit_overwrite) ... ok
+test_match_truncation (test_foundation.InventoryTests.test_match_truncation) ... ok
+test_missing_root_is_not_an_empty_inventory (test_foundation.InventoryTests.test_missing_root_is_not_an_empty_inventory) ... ok
+test_report_refuses_overwrite (test_foundation.InventoryTests.test_report_refuses_overwrite) ... ok
+test_scan_limits_are_explicit (test_foundation.InventoryTests.test_scan_limits_are_explicit) ... ok
+test_video_metadata_only (test_foundation.InventoryTests.test_video_metadata_only) ... ok
+test_dimension_check (test_foundation.LayoutTests.test_dimension_check) ... ok
+test_no_duplicate_names (test_foundation.LayoutTests.test_no_duplicate_names) ... ok
+test_nonfinite_check (test_foundation.LayoutTests.test_nonfinite_check) ... ok
+test_separate_state_and_action_dimensions (test_foundation.LayoutTests.test_separate_state_and_action_dimensions) ... ok
+test_component_separation (test_foundation.SeedTests.test_component_separation) ... ok
+test_invalid_seed (test_foundation.SeedTests.test_invalid_seed) ... ok
+test_order_independent (test_foundation.SeedTests.test_order_independent) ... ok
+test_integer_decimation (test_foundation.TimingTests.test_integer_decimation) ... ok
+test_invalid_rates (test_foundation.TimingTests.test_invalid_rates) ... ok
+test_negative_frame_index (test_foundation.TimingTests.test_negative_frame_index) ... ok
+
+----------------------------------------------------------------------
+Ran 30 tests in 0.008s
+
+OK

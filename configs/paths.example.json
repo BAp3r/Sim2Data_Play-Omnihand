@@ -1,0 +1,12 @@
+{
+  "status": "EXAMPLE_ONLY",
+  "official_asset_root_environment_variable": "SIM2DATA_ASSET_ROOT",
+  "robot_asset_root_environment_variable": "SIM2DATA_ROBOT_ROOT",
+  "data_root_environment_variable": "SIM2DATA_DATA_ROOT",
+  "asset_manifest_path_policy": "POSIX relative paths beneath a named configured root",
+  "usd_path_policy": "Resolve in Python before adding USD references; do not assume USD expands shell environment variables",
+  "local_configuration": ".local/paths.json (ignored by Git)",
+  "additional_private_roots_to_bind": ["third_party_root", "calibration_root", "scratch_root", "cache_root", "logs_root"],
+  "loader_status": "documentation only; the M0 tools do not automatically load .local/paths.json or .env",
+  "external_asset_copy_policy": "read-only references, no whole-library copying or hashing"
+}

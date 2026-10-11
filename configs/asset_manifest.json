@@ -1,0 +1,583 @@
+{
+  "schema_version": 1,
+  "manifest_id": "sim2data-assets-m1-2026-09-22",
+  "status": "STATIC_EVIDENCE_INDEXED_PHYSICAL_VALIDATION_PENDING",
+  "production_collection_allowed": false,
+  "audit_evidence": {
+    "status": "PARTIAL_STATIC_EVIDENCE_INDEXED",
+    "card_box_usd_parse": {
+      "private_path": ".local/evidence/m1/card_box_usd_parse_20260922.json",
+      "status": "READ_ONLY_SINGLE_FILE_EXECUTED_THIS_TURN",
+      "scope": "named USD plus explicitly named dependency files; no directory scan",
+      "runtime": "existing Isaac Sim 6.1 candidate interpreter",
+      "raw_asset_root": "private server mount recorded in .local/paths.json"
+    },
+    "airbot_urdf_snapshots": {
+      "private_root": ".local/worktrees/a-assets/reports",
+      "status": "REUSED_FROM_PRIOR_A_AUDIT; HASHES RECHECKED THIS TURN",
+      "official_commit_binding": "pinned URLs in manifest; repository objects were not refetched in this turn"
+    },
+    "omnihand_sdk_table": {
+      "private_path": ".local/evidence/m1/API_PYTHON_O10_026740d_20260922.md",
+      "status": "OFFICIAL_GITHUB_COMMIT_VERIFIED",
+      "repository": "https://github.com/AgibotTech/agillink_omnihand_sdk.git",
+      "head_ref": "refs/heads/main",
+      "commit": "026740d9fdd8ba32b0605fa702a992b322076f1b",
+      "path": "doc/en/API_PYTHON_O10.md",
+      "git_blob": "d479e89cff3e2b38b33ba2d5a5f0747f3107a72d",
+      "raw_sha256": "44df6abf37de24ebdfa81d96f0471cff92f3612c69a10eee18149b418fd9875d",
+      "official_archive_hash_binding": "NOT_ESTABLISHED",
+      "readme_sha256": "e7186a39e797fec40d339a69ad31573c078d92bfac7a1c93b44b39b38d671afd",
+      "evidence_index": ".local/evidence/m1/omnihand_sdk_source_audit_20260922.json"
+    }
+  },
+  "units": {
+    "length": "m",
+    "angle": "rad",
+    "transform_convention": "T_A_B maps column vectors expressed in B into A",
+    "quaternion_serialization": "wxyz"
+  },
+  "selection": {
+    "arm_candidate": null,
+    "hand_candidate": "omnihand_2025_o10",
+    "hand_selection_status": "PROVISIONAL_STATIC_ONLY_HARDWARE_BADGE_PENDING",
+    "object_candidate": "isaacsim_5_1_simple_warehouse_cardbox_a_01",
+    "reason_unselected": [
+      "AIRBOT Play physical revision and source asset package are not bound",
+      "OmniHand O10 versus O12 hardware identity is not confirmed from the supplied hardware",
+      "flange-to-hand adapter, hand root, TCP, mass and inertia are not measured",
+      "URDF snapshot limits do not exactly match the current O10 SDK table"
+    ]
+  },
+  "assets": {
+    "card_box": {
+      "id": "isaacsim_5_1_simple_warehouse_cardbox_a_01",
+      "requested_name": "card_box",
+      "runtime_smoke": {
+        "observed_on": "2026-09-23",
+        "scope": "synthetic scale 0.12, mass 0.08 kg; existing source boundingCube collision",
+        "physics_and_rgb": true,
+        "nas_material_resolution": "passed using Windows mapped NAS path; direct UNC MDL failed",
+        "normal_shutdown": false,
+        "robot_grasp_validated": false,
+        "production_collection_allowed": false,
+        "private_evidence": ".local/evidence/m6/cardbox04_nas_drive/result.json"
+      },
+      "mdl_import_dependencies": [
+        {
+          "relative_path": "5.1.0/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/Materials/OmniUe4Base.mdl",
+          "sha256": "5ca22bdae198012f2fa285de0c1b6c7041c8c539c76671a19e471f021b99370d",
+          "kind": "MDL_import_module",
+          "present_on_audit": true
+        },
+        {
+          "relative_path": "5.1.0/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/Materials/OmniUe4Function.mdl",
+          "sha256": "9217e09bfd17109af755e4a1910c8c6fa7fca3f859b9081ff28e75167795bd85",
+          "kind": "MDL_import_module",
+          "present_on_audit": true
+        }
+      ],
+      "status": "STATIC_VERIFIED_PHYSICAL_PENDING",
+      "task_binding_status": "PROP_CANDIDATE_NOT_DESKTOP_TARGET_BOUND",
+      "library": "Isaac Sim official asset package",
+      "library_version": "5.1.0",
+      "root_config_key": "official_asset_root",
+      "relative_path": "5.1.0/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/Props/SM_CardBoxA_01.usd",
+      "sha256": "7401195d235442dd5c19fb7408ec0e67bfb7aa8c1235e97d313c90b3fbb4985d",
+      "source": {
+        "kind": "NVIDIA Isaac Sim content pack",
+        "version_evidence": "asset package directory 5.1.0 and Isaac/5.1 namespace",
+        "license_evidence": "PACKAGE-LICENSES/isaac-sim-assets-LICENSE.txt",
+        "redistribution": "external_private_storage_only_pending NVIDIA Omniverse terms review"
+      },
+      "evidence": {
+        "usd_parse_report": ".local/evidence/m1/card_box_usd_parse_20260922.json",
+        "parse_status": "read-only pxr parse executed against one named file",
+        "dependency_scope": "four direct USD asset paths plus three MDL resource tokens",
+        "runtime_contact_status": "not run"
+      },
+      "usd": {
+        "opened_read_only": true,
+        "default_prim": "/Root",
+        "mesh_prim": "/Root/SM_CardBoxA_01",
+        "meters_per_unit": 1.0,
+        "up_axis": "Z",
+        "root_sublayers": [],
+        "root_external_references": [],
+        "mesh_points": 36,
+        "mesh_faces": 44,
+        "authored_extent_before_scale": [
+          [-35.0, -25.0, 0.000015258789],
+          [35.0, 25.0, 50.000015258789]
+        ],
+        "mesh_local_scale": [0.01, 0.01, 0.01],
+        "world_bounds_m": [0.7, 0.5, 0.5]
+      },
+      "collision": {
+        "physics_collision_api": true,
+        "physics_mesh_collision_api": true,
+        "collision_enabled": true,
+        "approximation": "boundingCube",
+        "cooked_data_present": null,
+        "cooked_data_status": "NOT_CAPTURED_IN_CURRENT_READ_ONLY_PARSE",
+        "physical_contact_validation": "pending Isaac Sim/PhysX runtime test"
+      },
+      "rigid_body": {
+        "rigid_body_api_authored": false,
+        "mass_kg": null,
+        "center_of_mass_m": null,
+        "inertia_kg_m2": null,
+        "scene_action": "add a dynamic rigid body only after approved mass/inertia or an explicit audited approximation"
+      },
+      "material_dependencies": [
+        {
+          "relative_path": "5.1.0/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/Materials/MI_LampCeilingA.mdl",
+          "kind": "MDL",
+          "referenced_as": "../Materials/MI_LampCeilingA.mdl",
+          "sha256": "14af0a60278973bbbf7dc28fb0838f4e29c7743320b21ce9c6927755160ba78d",
+          "present_on_audit": true
+        },
+        {
+          "relative_path": "5.1.0/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/Materials/Textures/T_CardBoxA_D.png",
+          "kind": "albedo_texture",
+          "referenced_as": "../Materials/Textures/T_CardBoxA_D.png",
+          "sha256": "4409289f550915651a7da8400061e339b9bf8d8614592e51ceff10a54d636530",
+          "present_on_audit": true
+        },
+        {
+          "relative_path": "5.1.0/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/Materials/Textures/T_CardBoxA_N.png",
+          "kind": "normal_texture",
+          "referenced_as": "../Materials/Textures/T_CardBoxA_N.png",
+          "sha256": "124c63109931aa50a6c85ac342ab12088beafdb8b5947b372b11c515ffca8de3",
+          "present_on_audit": true
+        },
+        {
+          "relative_path": "5.1.0/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/Materials/Textures/T_CardBoxA_ORM.png",
+          "kind": "roughness_metallic_occlusion_texture",
+          "referenced_as": "../Materials/Textures/T_CardBoxA_ORM.png",
+          "sha256": "7fbee22ae8599548ced630569f9562bb53e97b092789298ba3a7b69fef643ffd",
+          "present_on_audit": true
+        }
+      ],
+      "transitive_material_dependencies": [
+        {
+          "relative_path": "5.1.0/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/Materials/Textures/Alum_Anodized_roughness.png",
+          "kind": "MDL_resource_texture",
+          "referenced_by": "MI_LampCeilingA.mdl",
+          "sha256": "78fbda4ad9fc3ceabd3286580b99829cb7bdad420cd9db37b24c91f641504d79",
+          "present_on_audit": true
+        },
+        {
+          "relative_path": "5.1.0/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/Materials/Textures/T_Floor_01_D.png",
+          "kind": "MDL_resource_texture",
+          "referenced_by": "MI_LampCeilingA.mdl",
+          "sha256": "e1c2dce6aa3438248ad3c960cba22c4160d9a86c152a978f6f228b8a99770834",
+          "present_on_audit": true
+        },
+        {
+          "relative_path": "5.1.0/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/Materials/Textures/T_Floor_01_N.png",
+          "kind": "MDL_resource_texture",
+          "referenced_by": "MI_LampCeilingA.mdl",
+          "sha256": "4ab1797de4aad446a31ee70f7e5ebe29afabafe4bda17d203c2a01e286f71fc7",
+          "present_on_audit": true
+        }
+      ],
+      "dependency_closure_status": "explicit direct and MDL token resources checked; shader module resolution still pending",
+      "missing_or_blocking_inputs": [
+        "approved mass and inertia",
+        "whether the physical target is rigid enough for this rigid mesh",
+        "whether this warehouse prop is the intended physical task box",
+        "contact approximation acceptance for grasping",
+        "runtime proof that the MDL shader resolves in the selected Isaac Sim environment"
+      ]
+    }
+  },
+  "robot_candidates": [
+    {
+      "id": "airbot_play_ros2_foiegreis",
+      "role": "AIRBOT Play arm candidate",
+      "status": "CANDIDATE_STATIC_SNAPSHOT_PHYSICAL_PENDING",
+      "source": {
+        "repository": "https://github.com/foiegreis/ros2_quadrupeds_and_humanoids",
+        "file_url": "https://github.com/foiegreis/ros2_quadrupeds_and_humanoids/blob/7792960fb60f3118d9827b641dcc441e9ae2d06f/manipulator/Airbot/airbot_play_description/urdf/airbot_play.urdf",
+        "raw_url": "https://raw.githubusercontent.com/foiegreis/ros2_quadrupeds_and_humanoids/7792960fb60f3118d9827b641dcc441e9ae2d06f/manipulator/Airbot/airbot_play_description/urdf/airbot_play.urdf",
+        "commit": "7792960fb60f3118d9827b641dcc441e9ae2d06f",
+        "license": "Apache-2.0",
+        "license_review": "repository LICENSE snapshot reviewed; mesh redistribution and package-level notices still require review",
+        "evidence": {
+          "urdf_snapshot": ".local/worktrees/a-assets/reports/github_urdf/foiegreis_airbot_play.urdf",
+          "license_snapshot": ".local/worktrees/a-assets/reports/github_urdf/foiegreis_LICENSE",
+          "license_evidence_status": "Apache-2.0 repository license snapshot retained",
+          "retrieval_status": "reused prior A audit; pinned URL and commit recorded, remote object not refetched this turn"
+        }
+      },
+      "urdf": {
+        "sha256": "08cce00b5be18ca3f828aae5f41a5acd7b7b0607f6a0fce27bd0994048772cc3",
+        "robot_name": "Airbot Play",
+        "root_link": "base_link",
+        "arm_flange_boundary_link": "link6",
+        "declared_length_unit": null,
+        "working_length_unit": "m (URDF SI convention; importer check pending)",
+        "joint_angle_unit": "rad",
+        "inertial_data_authored": true,
+        "collision_meshes_authored": true,
+        "visual_meshes_authored": true
+      },
+      "arm_control": {
+        "active_joint_count": 6,
+        "active_joint_names": ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"],
+        "joint_limits": [
+          {"name": "joint1", "lower_rad": -3.14, "upper_rad": 2.09, "effort": 18.0, "velocity_rad_s": 3.14},
+          {"name": "joint2", "lower_rad": -2.96, "upper_rad": 0.17, "effort": 18.0, "velocity_rad_s": 3.14},
+          {"name": "joint3", "lower_rad": -0.087, "upper_rad": 3.14, "effort": 18.0, "velocity_rad_s": 3.14},
+          {"name": "joint4", "lower_rad": -2.96, "upper_rad": 2.96, "effort": 300.0, "velocity_rad_s": 6.28},
+          {"name": "joint5", "lower_rad": -1.74, "upper_rad": 1.74, "effort": 300.0, "velocity_rad_s": 6.28},
+          {"name": "joint6", "lower_rad": -3.14, "upper_rad": 3.14, "effort": 300.0, "velocity_rad_s": 6.28}
+        ],
+        "command_channel_names": ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"],
+        "mapping_status": "URDF candidate names only; hardware actuator IDs, zero offsets, sign, mode and action binding pending",
+        "joint_count_status": "URDF_REVISION_CANDIDATE_NOT_HARDWARE_MOTOR_COUNT",
+        "command_channel_status": "URDF_NAME_CANDIDATES_NOT_HARDWARE_ACTION_MAPPING",
+        "hardware_motor_ids": null,
+        "hardware_action_dim": null
+      },
+      "original_end_effector_boundary": {
+        "parent_link": "link6",
+        "replace_with": "flange_to_mount_to_omnihand_root",
+        "original_active_joint": "gripper_joint",
+        "original_mimic_joint": {"name": "gripper_joint1", "mimics": "gripper_joint", "multiplier": 1.0, "offset": 0.0},
+        "original_gripper_links": ["left", "right"],
+        "custom_end_frame": {"joint": "joint_custom_end", "child": "gripper_center", "xyz_m": [0.0, 0.0, 0.02]},
+        "original_camera_frame": {"joint": "camera_joint", "child": "camera_link", "parent": "link6", "xyz_m": [-0.105, 0.0, -0.111], "rpy_rad": [0.0, -1.046, 0.0]},
+        "replacement_status": "required; original gripper and camera are not the OmniHand/D405 assembly"
+      },
+      "mesh_dependencies": {
+        "package_name": "airbot_play_description",
+        "visual_glob": "meshes/visual/*.obj",
+        "collision_glob": "meshes/collision/*.stl",
+        "resolution_status": "source package not bound in the private asset root"
+      },
+      "physical_pending": [
+        "AIRBOT Play hardware revision and official asset identity",
+        "flange datum and adapter interface",
+        "actuator IDs, zero pose, signs and limits",
+        "collision and self-collision behavior after replacing the original gripper",
+        "full adapter and OmniHand mass/inertia"
+      ]
+    },
+    {
+      "id": "airbot_play_discoverse_v3_gripper_fixed",
+      "role": "AIRBOT Play arm candidate",
+      "status": "CANDIDATE_STATIC_SNAPSHOT_PHYSICAL_PENDING",
+      "source": {
+        "repository": "https://github.com/discoverse-dev/DISCOVERSE",
+        "file_url": "https://github.com/discoverse-dev/DISCOVERSE/blob/d67f47c084aba0e0cf422a8725235f8b9238655a/models/urdf/airbot_play_v3_gripper_fixed.urdf",
+        "raw_url": "https://raw.githubusercontent.com/discoverse-dev/DISCOVERSE/d67f47c084aba0e0cf422a8725235f8b9238655a/models/urdf/airbot_play_v3_gripper_fixed.urdf",
+        "commit": "d67f47c084aba0e0cf422a8725235f8b9238655a",
+        "license": "MIT",
+        "license_review": "repository LICENSE snapshot reviewed; mesh redistribution and package-level notices still require review",
+        "evidence": {
+          "urdf_snapshot": ".local/worktrees/a-assets/reports/github_urdf/discoverse_airbot_play_v3_gripper_fixed.urdf",
+          "license_snapshot": null,
+          "license_evidence_status": "MIT claim reused from prior A audit; raw repository license snapshot not retained",
+          "retrieval_status": "reused prior A audit; pinned URL and commit recorded, remote object not refetched this turn"
+        }
+      },
+      "urdf": {
+        "sha256": "dc4fe8b37a6668a4432fba698aa3ef8207fe31a00d74c587988f58cf0f7a4b55",
+        "robot_name": "airbot_play_v3_gripper",
+        "root_link": "world",
+        "fixed_base_child": "arm_base",
+        "arm_flange_boundary_link": "link6",
+        "declared_length_unit": null,
+        "working_length_unit": "m (URDF SI convention; importer check pending)",
+        "joint_angle_unit": "rad",
+        "inertial_data_authored": true,
+        "collision_meshes_authored": true,
+        "visual_meshes_authored": true
+      },
+      "arm_control": {
+        "active_joint_count": 6,
+        "active_joint_names": ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"],
+        "joint_limits": [
+          {"name": "joint1", "lower_rad": -3.14, "upper_rad": 2.09, "effort": 18.0, "velocity_rad_s": 3.14},
+          {"name": "joint2", "lower_rad": -2.96, "upper_rad": 0.17, "effort": 18.0, "velocity_rad_s": 3.14},
+          {"name": "joint3", "lower_rad": -0.087, "upper_rad": 3.14, "effort": 18.0, "velocity_rad_s": 3.14},
+          {"name": "joint4", "lower_rad": -2.96, "upper_rad": 2.96, "effort": 3.0, "velocity_rad_s": 6.28},
+          {"name": "joint5", "lower_rad": -1.74, "upper_rad": 1.74, "effort": 3.0, "velocity_rad_s": 6.28},
+          {"name": "joint6", "lower_rad": -3.14, "upper_rad": 3.14, "effort": 3.0, "velocity_rad_s": 6.28}
+        ],
+        "command_channel_names": ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"],
+        "mapping_status": "URDF candidate names only; hardware actuator IDs, zero offsets, sign, mode and action binding pending",
+        "joint_count_status": "URDF_REVISION_CANDIDATE_NOT_HARDWARE_MOTOR_COUNT",
+        "command_channel_status": "URDF_NAME_CANDIDATES_NOT_HARDWARE_ACTION_MAPPING",
+        "hardware_motor_ids": null,
+        "hardware_action_dim": null
+      },
+      "original_end_effector_boundary": {
+        "parent_link": "link6",
+        "replace_with": "flange_to_mount_to_omnihand_root",
+        "original_fixed_joints": ["endleft", "endright"],
+        "original_gripper_links": ["left", "right"],
+        "original_gripper_offsets_m": {"left": [0.0, 0.04, 0.0], "right": [0.0, -0.04, 0.0]},
+        "custom_end_frame": {"joint": "joint_custom_end", "child": "custom_end_link", "xyz_m": [0.0, 0.0, 0.02]},
+        "original_camera_frame": null,
+        "replacement_status": "required; fixed original gripper must be removed at link6 before OmniHand assembly"
+      },
+      "mesh_dependencies": {
+        "package_name": "airbot_play_v3_gripper",
+        "visual_and_collision_meshes": ["meshes/arm_base.STL", "meshes/link1.STL", "meshes/link2.STL", "meshes/link3.STL", "meshes/link4.STL", "meshes/link5.STL", "meshes/link6.STL", "meshes/left.STL", "meshes/right.STL"],
+        "resolution_status": "source package not bound in the private asset root"
+      },
+      "candidate_differences": [
+        "joint4-joint6 effort limits are 3 in this snapshot versus 300 in the ROS2 candidate",
+        "this file contains a fixed world-to-arm_base joint and uses arm_base as the robot root",
+        "original gripper fingers are fixed and have no direct gripper command channel"
+      ],
+      "physical_pending": [
+        "AIRBOT Play v3 hardware revision and official asset identity",
+        "flange datum and adapter interface",
+        "actuator IDs, zero pose, signs and limits",
+        "collision and self-collision behavior after replacing the original gripper",
+        "full adapter and OmniHand mass/inertia"
+      ]
+    }
+  ],
+  "hand_candidates": [
+    {
+      "id": "omnihand_2025_o10",
+      "role": "OmniHand 2025 灵动款 / O10",
+      "status": "STATIC_SNAPSHOT_OFFICIAL_SDK_VERIFIED_MODEL_ARCHIVE_PENDING",
+      "variant": "O10",
+      "hardware_revision": null,
+      "anatomical_sides": ["left", "right"],
+      "source": {
+        "official_page": "https://www.agibot.com.cn/DOCS/OS/Omnihand-O10",
+        "official_urdf_upload_date": "2026-08-27",
+        "left_urdf_download": "https://www.agibot.com.cn/file/ueditor/php/upload/file/20260827/1787813527171066.zip",
+        "right_urdf_download": "https://www.agibot.com.cn/file/ueditor/php/upload/file/20260827/1787813525152953.zip",
+        "left_model_download": "https://www.agibot.com.cn/file/ueditor/php/upload/file/20260827/1787813704283815.zip",
+        "right_model_download": "https://www.agibot.com.cn/file/ueditor/php/upload/file/20260827/1787813704317306.zip",
+        "sdk_repository": "https://github.com/AgibotTech/agillink_omnihand_sdk",
+        "sdk_commit": "026740d9fdd8ba32b0605fa702a992b322076f1b",
+        "sdk_version": null,
+        "sdk_version_status": "NOT_STATED_IN_VERIFIED_README_OR_API_DOCUMENT; TAG_QUERY_TIMEOUT",
+        "license": "Mulan PSL v2",
+        "license_review": "private URDF license snapshot retained; exact model archive redistribution terms remain pending",
+        "evidence": {
+          "left_urdf_snapshot": ".local/worktrees/a-assets/reports/remote_omnihand_left.urdf",
+          "right_urdf_snapshot": ".local/worktrees/a-assets/reports/remote_omnihand_right.urdf",
+          "license_snapshot": ".local/worktrees/a-assets/reports/remote_omnihand_LICENSE",
+          "sdk_api_document": ".local/evidence/m1/API_PYTHON_O10_026740d_20260922.md",
+          "sdk_source_status": "OFFICIAL_GITHUB_COMMIT_VERIFIED",
+          "sdk_commit": "026740d9fdd8ba32b0605fa702a992b322076f1b",
+          "sdk_api_git_blob": "d479e89cff3e2b38b33ba2d5a5f0747f3107a72d",
+          "sdk_api_sha256": "44df6abf37de24ebdfa81d96f0471cff92f3612c69a10eee18149b418fd9875d",
+          "official_page_capture": ".local/evidence/m1/agibot_omnihand_o10_page_20260922.html",
+          "official_page_sha256": "d3eb26c17c8152486b74d20fc605b7dfc13b1c99e89c224f62b745c26de80464",
+          "official_download_links_verified": true,
+          "official_archive_hash_binding": false,
+          "retrieval_status": "URDF and license snapshots reused from prior A audit; official model archives were not fetched or hash-bound this turn"
+        }
+      },
+      "geometry_snapshot": {
+        "left_urdf_sha256": "3254940d243eae8490879163b462d7b92cd295658cf79a98d4df0d856010e0c3",
+        "right_urdf_sha256": "cc8a7285cf6416460e148ac405b1070dac9db5425f4b352f2fcb81c081069f4f",
+        "robot_name": "omnihand",
+        "root_link": "base_link",
+        "total_joint_count_left": 23,
+        "total_joint_count_right": 23,
+        "nonfixed_physical_joint_count": 16,
+        "fixed_joint_count": 7,
+        "active_motor_count": 10,
+        "passive_mimic_count": 6,
+        "mesh_package": "omnihand_description",
+        "mesh_resolution_status": "model archive remains private and is not copied into this repository",
+        "snapshot_source_status": "PRIVATE_URDF_SNAPSHOT_HASHED; OFFICIAL_ARCHIVE_HASH_NOT_BOUND",
+        "official_download_hash_bound": false,
+        "sdk_dof_claim": "official README/API documents 10 active + 6 passive for O10"
+      },
+      "active_motor_channels": {
+        "left": ["L_thumb_roll_joint", "L_thumb_abad_joint", "L_thumb_mcp_joint", "L_index_abad_joint", "L_index_pip_joint", "L_middle_pip_joint", "L_ring_abad_joint", "L_ring_pip_joint", "L_pinky_abad_joint", "L_pinky_pip_joint"],
+        "right": ["R_thumb_roll_joint", "R_thumb_abad_joint", "R_thumb_mcp_joint", "R_index_abad_joint", "R_index_pip_joint", "R_middle_pip_joint", "R_ring_abad_joint", "R_ring_pip_joint", "R_pinky_abad_joint", "R_pinky_pip_joint"]
+      },
+      "passive_mimic_joints": {
+        "left": [
+          {"name": "L_thumb_pip_joint", "mimic": "L_thumb_mcp_joint", "multiplier": 1.33, "offset": 0.0},
+          {"name": "L_thumb_dip_joint", "mimic": "L_thumb_mcp_joint", "multiplier": 1.3, "offset": 0.0},
+          {"name": "L_index_dip_joint", "mimic": "L_index_pip_joint", "multiplier": 1.097, "offset": 0.0},
+          {"name": "L_middle_dip_joint", "mimic": "L_middle_pip_joint", "multiplier": 1.097, "offset": 0.0},
+          {"name": "L_ring_dip_joint", "mimic": "L_ring_pip_joint", "multiplier": 1.097, "offset": 0.0},
+          {"name": "L_pinky_dip_joint", "mimic": "L_pinky_pip_joint", "multiplier": 1.097, "offset": 0.0}
+        ],
+        "right": [
+          {"name": "R_thumb_pip_joint", "mimic": "R_thumb_mcp_joint", "multiplier": 1.33, "offset": 0.0},
+          {"name": "R_thumb_dip_joint", "mimic": "R_thumb_mcp_joint", "multiplier": 1.3, "offset": 0.0},
+          {"name": "R_index_dip_joint", "mimic": "R_index_pip_joint", "multiplier": 1.097, "offset": 0.0},
+          {"name": "R_middle_dip_joint", "mimic": "R_middle_pip_joint", "multiplier": 1.097, "offset": 0.0},
+          {"name": "R_ring_dip_joint", "mimic": "R_ring_pip_joint", "multiplier": 1.097, "offset": 0.0},
+          {"name": "R_pinky_dip_joint", "mimic": "R_pinky_pip_joint", "multiplier": 1.097, "offset": 0.0}
+        ]
+      },
+      "sdk_control": {
+        "angle_unit": "rad",
+        "active_angle_limits_source": "official agillink SDK API_PYTHON_O10.md at commit 026740d9fdd8ba32b0605fa702a992b322076f1b",
+        "evidence_path": ".local/evidence/m1/API_PYTHON_O10_026740d_20260922.md",
+        "evidence_status": "OFFICIAL_GITHUB_COMMIT_VERIFIED",
+        "values_binding_status": "SDK_DOCUMENTED_HARDWARE_IDENTITY_AND_SIMULATOR_MAPPING_PENDING",
+        "active_angle_limits_rad": {
+          "left": [[-1.12, 0.03], [-0.05, 1.64], [-0.84, 0.0], [0.0, 0.16], [0.0, 1.48], [0.0, 1.48], [-0.17, 0.0], [0.0, 1.48], [-0.19, 0.0], [0.0, 1.48]],
+          "right": [[-0.03, 1.12], [-1.64, 0.05], [0.0, 0.84], [-0.16, 0.0], [0.0, 1.48], [0.0, 1.48], [0.0, 0.17], [0.0, 1.48], [0.0, 0.19], [0.0, 1.48]]
+        },
+        "velocity_limits_rad_s": [0.164, 0.164, 0.308, 0.164, 0.308, 0.308, 0.164, 0.308, 0.164, 0.308],
+        "raw_motor_position_range_inclusive": [0, 4096],
+        "mixed_control_target_position_range_inclusive": [0, 4095],
+        "mixed_control_current_range_mA": [0, 1000],
+        "pure_torque_control": false,
+        "command_channel_count": 10,
+        "command_channel_count_status": "SDK_DOCUMENTED_10_ACTIVE_VALUES_HARDWARE_ACTION_BINDING_PENDING",
+        "state_channel_count_before_tactile": 16,
+        "state_channel_count_status": "SDK_DOCUMENTED_16_ACTIVE_PLUS_PASSIVE_ANGLE_VALUES_NOT_OBSERVATION_DIMENSION",
+        "state_observation_dimension": null,
+        "observability_status": "SDK_ANGLE_READBACK_DOCUMENTED_PHYSICAL_FEEDBACK_AND_DERIVATION_AUDIT_PENDING",
+        "tactile_status": "SDK_DOCUMENTED_1D_TACTILE_READBACK_SIMULATOR_AND_REAL_SENSOR_BINDING_PENDING",
+        "mapping_status": "SDK active order and limits documented; hardware identity, motor feedback observability and simulator actuator calibration pending"
+      },
+      "urdf_sdk_reconciliation": {
+        "matches_exactly": false,
+        "reason": "private URDF snapshot and current SDK table have small but material joint-limit differences",
+        "examples": [
+          "right thumb roll URDF [-0.1745, 0.8727] versus SDK [-0.03, 1.12] rad",
+          "right index PIP URDF upper 1.5708 versus SDK upper 1.48 rad",
+          "left and right thumb/index abduction limits also differ"
+        ],
+        "action": "reconcile against the exact model archive and hardware revision before actuator creation"
+      },
+      "physical_pending": [
+        "O10/O12 badge and hardware revision on both hands",
+        "left/right anatomical side confirmation at installation",
+        "hand root and flange adapter interface",
+        "mesh and collision import into Isaac Lab",
+        "joint zero, sign, effort, damping and contact parameters",
+        "hand mass, center of mass and inertia including mount and D405"
+      ]
+    },
+    {
+      "id": "omnihand_pro_2025_o12",
+      "role": "explicit alternative, not selected",
+      "status": "CANDIDATE_UNSELECTED",
+      "variant": "O12",
+      "hardware_revision": null,
+      "active_motor_count": 12,
+      "passive_mimic_count": null,
+      "source": {
+        "official_page": "https://www.agibot.com.cn/DOCS/OS/Omnihand-O10",
+        "sdk_repository": "https://github.com/AgibotTech/agillink_omnihand_sdk",
+        "sdk_commit": "026740d9fdd8ba32b0605fa702a992b322076f1b",
+        "license": "Mulan PSL v2"
+      },
+      "selection_blocker": "requested name alone does not establish O12; O12 has 12 active channels, a different joint table and motor position range 0-2000"
+    }
+  ],
+  "assembly_interfaces": {
+    "left": {
+      "arm_flange_to_mount": null,
+      "mount_to_hand_root": null,
+      "hand_root_to_grasp_tcp": null,
+      "status": "pending measured adapter and approved hand model"
+    },
+    "right": {
+      "arm_flange_to_mount": null,
+      "mount_to_hand_root": null,
+      "hand_root_to_grasp_tcp": null,
+      "status": "pending measured adapter and approved hand model"
+    }
+  },
+  "audit_notes": {
+    "no_asset_copy": true,
+    "no_full_library_hash": true,
+    "usd_parse_method": "read-only pxr Usd/UsdGeom/UsdPhysics inspection on the existing remote asset",
+    "runtime_status": "no Kit/GPU physics or RGB smoke performed by this asset audit",
+    "production_gate": "keep collection disabled until a single arm candidate, O10/O12 identity, model archive, adapter chain, mass/inertia and runtime collision checks are approved"
+  },
+  "commissioning_model_packages": [
+    {
+      "id": "official_o10_20260827_left",
+      "status": "STATIC_PACKAGE_CLOSED_SYNTHETIC_ASSEMBLY_CANDIDATE",
+      "anatomical_side": "left",
+      "source_page": "https://www.agibot.com.cn/DOCS/OS/Omnihand-O10",
+      "report": "docs/MODEL_BINDING.md",
+      "private_evidence": ".local/evidence/m2/omni_left_inspection.json",
+      "urdf_sha256": "8c33ee9e9e9ce08cb9e379618d7e06f07791bf65a159e36f6481dd4e4d75e468",
+      "physical_joint_count": 17,
+      "mimic_joint_count": 6,
+      "zero_range_revolute_joints": [
+        "l_middle_abad_jonit"
+      ],
+      "hardware_action_dimension": null,
+      "hardware_revision_binding": null,
+      "physics_validated": false,
+      "not_equivalent_to_previous_private_snapshot": true
+    },
+    {
+      "id": "official_o10_20260827_right",
+      "status": "STATIC_PACKAGE_CLOSED_SYNTHETIC_ASSEMBLY_CANDIDATE",
+      "anatomical_side": "right",
+      "source_page": "https://www.agibot.com.cn/DOCS/OS/Omnihand-O10",
+      "report": "docs/MODEL_BINDING.md",
+      "private_evidence": ".local/evidence/m2/omni_right_inspection.json",
+      "urdf_sha256": "5acb477166ae7b1211d2a8378fd1593e59e7742aa26f4f4578c0ba01bda9e952",
+      "physical_joint_count": 17,
+      "mimic_joint_count": 6,
+      "zero_range_revolute_joints": [
+        "R_middle_abad_joint"
+      ],
+      "hardware_action_dimension": null,
+      "hardware_revision_binding": null,
+      "physics_validated": false,
+      "not_equivalent_to_previous_private_snapshot": true
+    },
+    {
+      "id": "airbot_ros2_7792960",
+      "status": "THIRD_PARTY_STATIC_PACKAGE_CLOSED",
+      "repository": "https://github.com/foiegreis/ros2_quadrupeds_and_humanoids",
+      "commit": "7792960fb60f3118d9827b641dcc441e9ae2d06f",
+      "relative_package": "manipulator/Airbot/airbot_play_description",
+      "private_evidence": ".local/evidence/m2/airbot_ros2_full_package.json",
+      "physics_validated": false,
+      "flange_boundary": "link6 retains original gripper body; not bare flange",
+      "hardware_binding": null
+    },
+    {
+      "id": "user_play_b02c7ac6",
+      "status": "USER_SUPPLIED_STATIC_PACKAGE_CLOSED",
+      "source_kind": "user supplied private SolidWorks URDF package; upstream revision unverified",
+      "urdf_sha256": "b02c7ac6fd1dd6a65f355ef6650c2a7584fdbd56ccfc497b767292010ce4e0b0",
+      "relative_urdf": "urdf/play.urdf",
+      "package_name": "play",
+      "arm_revolute_joints": 6,
+      "flange_candidate": "link6",
+      "original_effector_subtree": "end_joint -> end_link only; no gripper children",
+      "license_status": "package.xml declares Apache-2.0; provenance and redistribution authorization not independently established",
+      "drive_limits_status": "all six effort and velocity limits are zero; physical drive binding blocked",
+      "private_evidence": ".local/evidence/m3/user_play_inspection.json",
+      "physics_validated": false,
+      "hardware_revision_binding": null
+    },
+    {
+      "id": "isaac_5_1_thorlabs_table",
+      "status": "STATIC_DEPENDENCY_AND_GEOMETRY_AUDITED",
+      "source_kind": "existing NVIDIA Isaac Sim 5.1 content package",
+      "relative_path": "5.1.0/Assets/Isaac/5.1/Isaac/Props/Mounts/ThorlabsTable/table_instanceable.usd",
+      "sha256": "f5a00da4c05db6dd0441f8c76a886a898435e61890dd1f445ff7e8f79e1e2495",
+      "dependency": "Props/instaceable_meshes.usd",
+      "dependency_sha256": "b7827de44e5051d8d7803507b9362dbf8521181996449a88934b59ceb0d54db6",
+      "meters_per_unit": 1.0,
+      "up_axis": "Z",
+      "visual_top_z_m": 0.0,
+      "collision_top_z_m": -0.0155,
+      "physics_validated": false,
+      "report": "docs/THOR_TABLE_AUDIT.md"
+    }
+  ]
+}

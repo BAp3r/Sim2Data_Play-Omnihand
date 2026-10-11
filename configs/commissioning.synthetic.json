@@ -1,0 +1,563 @@
+{
+  "schema_version": 1,
+  "purpose": "synthetic_commissioning_only",
+  "production_collection_enabled": false,
+  "assumptions": [
+    "Design values for debug only, not measured calibration",
+    "Scene left uses anatomical left O10 and scene right uses anatomical right O10 as a synthetic choice",
+    "Flange and hand roots aligned by synthetic fixed joints; mating side and overlap unverified",
+    "D405 nominal body and color optical centers symmetric; right is rotated 180deg around optical direction with bottom-screw translation compensation; mounting support and calibrated extrinsics unknown",
+    "User-requested outward camera shift: left mount Y +0.020 m, right mount Y -0.020 m from M4; reviewed arm pose maps these to world X outward by 0.020 m",
+    "Thor visual tabletop z=0 and collision upper bound z=-0.0155 m are separate synthetic scene datums; no measured correction is implied",
+    "Full flat ground is a synthetic zero-thickness Mesh at ground_z_m; bin top, bottom and wall heights are synthetic and not measured assembly values"
+  ],
+  "table": {
+    "asset_id": "isaac_5_1_thorlabs_table",
+    "source_meters_per_unit": 1.0,
+    "source_up_axis": "Z",
+    "T_world_asset": {
+      "xyz_m": [
+        -0.2737505042552948,
+        0,
+        0
+      ],
+      "rpy_rad": [
+        0,
+        0,
+        0
+      ]
+    },
+    "ground_z_m": -0.7947,
+    "placement_status": "synthetic XY bounding-box centering; native visual top z=0; original dimensions preserved",
+    "visual_top_z_m": 0.0,
+    "collision_top_z_m": -0.0155,
+    "visual_collision_delta_m": 0.0155,
+    "height_relation_status": "synthetic_datums_only"
+  },
+  "robots": {
+    "left": {
+      "base_xyz_m": [
+        -0.23,
+        -0.22,
+        0
+      ],
+      "base_rpy_rad": [
+        0,
+        0,
+        1.5707963267948966
+      ],
+      "T_flange_mount": {
+        "xyz_m": [
+          0,
+          0,
+          0.0866
+        ],
+        "rpy_rad": [
+          0,
+          0,
+          1.5707963267948966
+        ]
+      },
+      "T_mount_hand_root": {
+        "xyz_m": [
+          0,
+          0,
+          0.0262
+        ],
+        "rpy_rad": [
+          0,
+          0,
+          0
+        ]
+      },
+      "T_mount_camera_housing": {
+        "xyz_m": [
+          0.08,
+          0.031,
+          0.012
+        ],
+        "rpy_rad": [
+          0,
+          -1.5707963267948966,
+          0
+        ]
+      },
+      "T_housing_color_optical": {
+        "xyz_m": [
+          0.01085,
+          0.009,
+          0.021
+        ],
+        "rpy_rad": [
+          -1.5707963267948966,
+          0,
+          -1.5707963267948966
+        ]
+      },
+      "camera_proxy_size_xyz_m": [
+        0.023,
+        0.042,
+        0.042
+      ],
+      "camera_housing_frame": "D405 bottom screw frame (official nominal convention)",
+      "flange_frame_status": "user play native link6; nominal end plane .0865 m plus .0001 m display clearance; butt placement only; +90deg synthetic clocking places camera below palm, not measured key alignment",
+      "camera_candidate_status": "Astra xhigh M5: user-requested 20 mm outward shift, mirrored body/optical centers; bracket and calibration unverified",
+      "preview_joint_positions": {
+        "left_arm__joint2": -0.7,
+        "left_arm__joint3": 0.7
+      },
+      "hand_model": {
+        "id": "official_o10_20260827_left",
+        "anatomical_side": "left",
+        "urdf_sha256": "8c33ee9e9e9ce08cb9e379618d7e06f07791bf65a159e36f6481dd4e4d75e468"
+      }
+    },
+    "right": {
+      "base_xyz_m": [
+        0.23,
+        -0.22,
+        0
+      ],
+      "base_rpy_rad": [
+        0,
+        0,
+        1.5707963267948966
+      ],
+      "T_flange_mount": {
+        "xyz_m": [
+          0,
+          0,
+          0.0866
+        ],
+        "rpy_rad": [
+          0,
+          0,
+          1.5707963267948966
+        ]
+      },
+      "T_mount_hand_root": {
+        "xyz_m": [
+          0,
+          0,
+          0.0262
+        ],
+        "rpy_rad": [
+          0,
+          0,
+          0
+        ]
+      },
+      "T_mount_camera_housing": {
+        "xyz_m": [
+          0.038,
+          -0.031,
+          0.012
+        ],
+        "rpy_rad": [
+          3.141592653589793,
+          -1.5707963267948966,
+          0
+        ]
+      },
+      "T_housing_color_optical": {
+        "xyz_m": [
+          0.01085,
+          0.009,
+          0.021
+        ],
+        "rpy_rad": [
+          -1.5707963267948966,
+          0,
+          -1.5707963267948966
+        ]
+      },
+      "camera_proxy_size_xyz_m": [
+        0.023,
+        0.042,
+        0.042
+      ],
+      "camera_housing_frame": "D405 bottom screw frame (official nominal convention)",
+      "flange_frame_status": "user play native link6; nominal end plane .0865 m plus .0001 m display clearance; butt placement only; +90deg synthetic clocking places camera below palm, not measured key alignment",
+      "camera_candidate_status": "Astra xhigh M5: user-requested 20 mm outward shift, mirrored body/optical centers; bracket and calibration unverified",
+      "preview_joint_positions": {
+        "right_arm__joint2": -0.7,
+        "right_arm__joint3": 0.7
+      },
+      "hand_model": {
+        "id": "official_o10_20260827_right",
+        "anatomical_side": "right",
+        "urdf_sha256": "5acb477166ae7b1211d2a8378fd1593e59e7742aa26f4f4578c0ba01bda9e952"
+      }
+    }
+  },
+  "relay_region": {
+    "center_xyz_m": [
+      0,
+      0.13,
+      0.001
+    ],
+    "size_xyz_m": [
+      0.24,
+      0.2,
+      0.002
+    ]
+  },
+  "box": {
+    "size_xyz_m": [
+      0.08,
+      0.06,
+      0.08
+    ],
+    "center_xyz_m": [
+      -0.23,
+      0.13,
+      0.04
+    ],
+    "mass_kg": 0.12,
+    "asset_role": "synthetic_box_not_nas_card_box"
+  },
+  "bin": {
+    "inner_size_xyz_m": [
+      0.28,
+      0.32,
+      0.2
+    ],
+    "wall_thickness_m": 0.012,
+    "bottom_center_xyz_m": [
+      0.64,
+      0.05,
+      -0.2
+    ],
+    "top_height_reference": "thor_tabletop_surface",
+    "top_z_m": 0.0,
+    "height_relation_status": "synthetic_top_rim_equal_to_tabletop"
+  },
+  "overhead": {
+    "eye_xyz_m": [
+      1.25,
+      -1.65,
+      1.25
+    ],
+    "target_xyz_m": [
+      0.08,
+      0,
+      0.04
+    ],
+    "resolution_wh": [
+      640,
+      480
+    ],
+    "focal_length_mm": 24,
+    "horizontal_aperture_mm": 25.6
+  },
+  "gates": {
+    "static_preview_only": true,
+    "physics_validated": false,
+    "rgb_validated": false,
+    "contact_validated": false,
+    "dataset_export_allowed": false
+  },
+  "camera_model_source": {
+    "repository": "https://github.com/IntelRealSense/realsense-ros",
+    "commit": "9a11121700cb4780e273e34141f6402fe184321d",
+    "xacro": "realsense2_description/urdf/_d405.urdf.xacro",
+    "mesh": "realsense2_description/meshes/d405.stl",
+    "mesh_scale_xyz": [
+      0.001,
+      0.001,
+      0.001
+    ],
+    "extrinsics_status": "official_nominal_not_calibrated",
+    "inertial_status": "upstream_explicitly_unreliable_do_not_use"
+  },
+  "review_status": "ASTRA_XHIGH_M5_OUTWARD_CAMERA_CANDIDATE; independent anatomical hands; mechanical support pending",
+  "arm_model": {
+    "id": "user_play_b02c7ac6",
+    "urdf_sha256": "b02c7ac6fd1dd6a65f355ef6650c2a7584fdbd56ccfc497b767292010ce4e0b0",
+    "source_status": "user_supplied_private_model_not_hardware_validated"
+  },
+  "camera_symmetry": {
+    "mode": "mirrored_centers_with_rigid_camera_roll",
+    "reflection_plane": "mount Y=0 between corresponding side-local frames",
+    "right_optical_roll_relative_left_rad": 3.141592653589793,
+    "negative_mesh_scale_allowed": false,
+    "image_pixel_flip_applied": false,
+    "nominal_body_center_in_housing_m": [
+      0.00315,
+      0,
+      0.021
+    ],
+    "production_calibration": false
+  },
+  "gripper_commissioning": {
+    "left": {
+      "interface": "scalar_open_close_0_open_1_closed",
+      "mapping_status": "synthetic_assumption_pending_physx_response",
+      "active_joints": [
+        {
+          "name": "left_hand__l_thumb_roll_joint",
+          "open_rad": 0.05,
+          "close_rad": 0.05,
+          "legacy_name": "thumb_cm_roll",
+          "legacy_open_rad": -0.03,
+          "legacy_close_rad": -0.03,
+          "legacy_sign": -1,
+          "legacy_offset_rad": 0.02,
+          "allow_close": false
+        },
+        {
+          "name": "left_hand__l_thumb_abad_joint",
+          "open_rad": 0.0,
+          "close_rad": 0.0,
+          "legacy_name": "thumb_cm_yaw",
+          "legacy_open_rad": 1.51,
+          "legacy_close_rad": 1.51,
+          "legacy_sign": -1,
+          "legacy_offset_rad": 1.51,
+          "allow_close": false
+        },
+        {
+          "name": "left_hand__l_thumb_mcp_joint",
+          "open_rad": 0.0,
+          "close_rad": 0.7,
+          "legacy_name": "thumb_cm_pitch",
+          "legacy_open_rad": -0.5,
+          "legacy_close_rad": -0.7,
+          "legacy_sign": -1,
+          "legacy_offset_rad": 0,
+          "allow_close": true,
+          "gesture_open_adjustment_rad": -0.5
+        },
+        {
+          "name": "left_hand__l_index_abad_joint",
+          "open_rad": 0.0,
+          "close_rad": 0.0,
+          "legacy_name": "index_mp_yaw",
+          "legacy_open_rad": 0,
+          "legacy_close_rad": 0,
+          "legacy_sign": 1,
+          "legacy_offset_rad": 0,
+          "allow_close": false
+        },
+        {
+          "name": "left_hand__l_index_pip_joint",
+          "open_rad": 0.0,
+          "close_rad": -0.7,
+          "legacy_name": "index_mp_pitch",
+          "legacy_open_rad": 0.5,
+          "legacy_close_rad": 0.7,
+          "legacy_sign": -1,
+          "legacy_offset_rad": 0,
+          "allow_close": true,
+          "gesture_open_adjustment_rad": 0.5
+        },
+        {
+          "name": "left_hand__l_middle_pip_joint",
+          "open_rad": 0.0,
+          "close_rad": -0.7,
+          "legacy_name": "middle_mp_pitch",
+          "legacy_open_rad": 0.5,
+          "legacy_close_rad": 0.7,
+          "legacy_sign": -1,
+          "legacy_offset_rad": 0,
+          "allow_close": true,
+          "gesture_open_adjustment_rad": 0.5
+        },
+        {
+          "name": "left_hand__l_ring_abad_joint",
+          "open_rad": 0.0,
+          "close_rad": 0.0,
+          "legacy_name": "ring_mp_yaw",
+          "legacy_open_rad": 0,
+          "legacy_close_rad": 0,
+          "legacy_sign": 1,
+          "legacy_offset_rad": 0,
+          "allow_close": false
+        },
+        {
+          "name": "left_hand__l_ring_pip_joint",
+          "open_rad": 0.0,
+          "close_rad": 0.0,
+          "legacy_name": "ring_mp_pitch",
+          "legacy_open_rad": 1.48,
+          "legacy_close_rad": 1.48,
+          "legacy_sign": -1,
+          "legacy_offset_rad": 1.48,
+          "allow_close": false
+        },
+        {
+          "name": "left_hand__l_pinky_abad_joint",
+          "open_rad": 0.0,
+          "close_rad": 0.0,
+          "legacy_name": "pinky_mp_yaw",
+          "legacy_open_rad": 0,
+          "legacy_close_rad": 0,
+          "legacy_sign": 1,
+          "legacy_offset_rad": 0,
+          "allow_close": false
+        },
+        {
+          "name": "left_hand__l_pinky_pip_joint",
+          "open_rad": 0.0,
+          "close_rad": 0.0,
+          "legacy_name": "pinky_mp_pitch",
+          "legacy_open_rad": 1.48,
+          "legacy_close_rad": 1.48,
+          "legacy_sign": -1,
+          "legacy_offset_rad": 1.48,
+          "allow_close": false
+        }
+      ],
+      "mimic_joints": "URDF_mimic_only_do_not_command",
+      "synthetic_drive": {
+        "stiffness": 4.0,
+        "damping": 0.15,
+        "max_force": 1.5,
+        "max_velocity_rad_s": 1.0
+      },
+      "gesture": "tripod",
+      "source": "legacy tripod intent mapped by explicit active joint name/sign/offset to current source URDF; synthetic, not hardware commands",
+      "coordinate_space": "source_urdf_joint_radians",
+      "mapping_notes": "User-confirmed open-jaw intent (2026-09-28). Unused flexion channels stay at the source URDF straight endpoint 0 rad. Thumb roll/abad remain fixed near source zero; this synthetic neutral candidate still requires geometry and physical validation. Historical legacy angles are preserved; explicit sign/offset and gesture_open_adjustment_rad describe the changed endpoints. Only the previously allowed closure channels may move.",
+      "legacy_gesture_source": ".local/evidence/m15/legacy_hand_semantics_20260928.md",
+      "command_policy": "all ten current URDF active non-mimic joints; mimic/passive read-only",
+      "reset_policy": "direct open gesture after articulation.initialize; arm reset recorded separately",
+      "gesture_revision": "open_jaw_20260928",
+      "neutral_pose_status": "synthetic_candidate_pending_contact_validation"
+    },
+    "right": {
+      "interface": "scalar_open_close_0_open_1_closed",
+      "mapping_status": "synthetic_assumption_pending_physx_response",
+      "active_joints": [
+        {
+          "name": "right_hand__R_thumb_roll_joint",
+          "open_rad": 0.0,
+          "close_rad": 0.0,
+          "legacy_name": "thumb_cm_roll",
+          "legacy_open_rad": 0.03,
+          "legacy_close_rad": 0.03,
+          "legacy_sign": 1,
+          "legacy_offset_rad": -0.03,
+          "allow_close": false
+        },
+        {
+          "name": "right_hand__R_thumb_abad_joint",
+          "open_rad": 0.0,
+          "close_rad": 0.0,
+          "legacy_name": "thumb_cm_yaw",
+          "legacy_open_rad": -1.51,
+          "legacy_close_rad": -1.51,
+          "legacy_sign": 1,
+          "legacy_offset_rad": 1.51,
+          "allow_close": false
+        },
+        {
+          "name": "right_hand__R_thumb_mcp_joint",
+          "open_rad": 0.0,
+          "close_rad": 0.7,
+          "legacy_name": "thumb_cm_pitch",
+          "legacy_open_rad": 0.5,
+          "legacy_close_rad": 0.7,
+          "legacy_sign": 1,
+          "legacy_offset_rad": 0,
+          "allow_close": true,
+          "gesture_open_adjustment_rad": -0.5
+        },
+        {
+          "name": "right_hand__R_index_abad_joint",
+          "open_rad": 0.0,
+          "close_rad": 0.0,
+          "legacy_name": "index_mp_yaw",
+          "legacy_open_rad": 0,
+          "legacy_close_rad": 0,
+          "legacy_sign": 1,
+          "legacy_offset_rad": 0,
+          "allow_close": false
+        },
+        {
+          "name": "right_hand__R_index_pip_joint",
+          "open_rad": 0.0,
+          "close_rad": 0.7,
+          "legacy_name": "index_mp_pitch",
+          "legacy_open_rad": 0.5,
+          "legacy_close_rad": 0.7,
+          "legacy_sign": 1,
+          "legacy_offset_rad": 0,
+          "allow_close": true,
+          "gesture_open_adjustment_rad": -0.5
+        },
+        {
+          "name": "right_hand__R_middle_pip_joint",
+          "open_rad": 0.0,
+          "close_rad": 0.0,
+          "legacy_name": "middle_mp_pitch",
+          "legacy_open_rad": 1.48,
+          "legacy_close_rad": 1.48,
+          "legacy_sign": 1,
+          "legacy_offset_rad": -1.48,
+          "allow_close": false
+        },
+        {
+          "name": "right_hand__R_ring_abad_joint",
+          "open_rad": 0.0,
+          "close_rad": 0.0,
+          "legacy_name": "ring_mp_yaw",
+          "legacy_open_rad": 0,
+          "legacy_close_rad": 0,
+          "legacy_sign": 1,
+          "legacy_offset_rad": 0,
+          "allow_close": false
+        },
+        {
+          "name": "right_hand__R_ring_pip_joint",
+          "open_rad": 0.0,
+          "close_rad": 0.0,
+          "legacy_name": "ring_mp_pitch",
+          "legacy_open_rad": 1.48,
+          "legacy_close_rad": 1.48,
+          "legacy_sign": 1,
+          "legacy_offset_rad": -1.48,
+          "allow_close": false
+        },
+        {
+          "name": "right_hand__R_pinky_abad_joint",
+          "open_rad": 0.0,
+          "close_rad": 0.0,
+          "legacy_name": "pinky_mp_yaw",
+          "legacy_open_rad": 0,
+          "legacy_close_rad": 0,
+          "legacy_sign": 1,
+          "legacy_offset_rad": 0,
+          "allow_close": false
+        },
+        {
+          "name": "right_hand__R_pinky_pip_joint",
+          "open_rad": 0.0,
+          "close_rad": 0.0,
+          "legacy_name": "pinky_mp_pitch",
+          "legacy_open_rad": 1.48,
+          "legacy_close_rad": 1.48,
+          "legacy_sign": 1,
+          "legacy_offset_rad": -1.48,
+          "allow_close": false
+        }
+      ],
+      "mimic_joints": "URDF_mimic_only_do_not_command",
+      "synthetic_drive": {
+        "stiffness": 4.0,
+        "damping": 0.15,
+        "max_force": 1.5,
+        "max_velocity_rad_s": 1.0
+      },
+      "gesture": "pinch",
+      "source": "legacy pinch intent mapped by explicit active joint name/sign/offset to current source URDF; synthetic, not hardware commands",
+      "coordinate_space": "source_urdf_joint_radians",
+      "mapping_notes": "User-confirmed open-jaw intent (2026-09-28). Unused flexion channels stay at the source URDF straight endpoint 0 rad. Thumb roll/abad remain fixed near source zero; this synthetic neutral candidate still requires geometry and physical validation. Historical legacy angles are preserved; explicit sign/offset and gesture_open_adjustment_rad describe the changed endpoints. Only the previously allowed closure channels may move.",
+      "legacy_gesture_source": ".local/evidence/m15/legacy_hand_semantics_20260928.md",
+      "command_policy": "all ten current URDF active non-mimic joints; mimic/passive read-only",
+      "reset_policy": "direct open gesture after articulation.initialize; arm reset recorded separately",
+      "gesture_revision": "open_jaw_20260928",
+      "neutral_pose_status": "synthetic_candidate_pending_contact_validation"
+    }
+  }
+}
